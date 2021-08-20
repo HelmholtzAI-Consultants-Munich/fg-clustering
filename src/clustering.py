@@ -3,36 +3,54 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import sklearn
 from sklearn_extra.cluster import KMedoids
+from tqdm import tqdm
 
-def forest_guided_clustering(rf, data, target_column, max_K = 6, random_state=42):
+def forest_guided_clustering(rf, data, target_column, max_K = 6, 
+                             random_state=42, 
+                             bootstraps = 300, 
+                             max_iter_clustering = 300):
     y = data.loc[:,target_column].to_numpy()
     X = data.drop(columns=[target_column]).to_numpy()
     
     distanceMatrix = 1 - proximityMatrix(model, X)
-    k = optimizeK(distance_matrix, X, y, max_K, random_state=random_state)
+    k = optimizeK(distanceMatrix, X, y, max_K = 6,
+                  random_state=random_state, 
+                  bootstraps = bootstraps,
+                  max_iter_clustering = max_iter_clustering)
     
     plot_forest_guided_clustering(rf, data, target_column, k, random_state = random_state)
 
-def optimizeK(distance_matrix, x, y, max_K = 6, random_state=42, discart_value = 0.6):
+def optimizeK(distance_matrix, x, y,
+              max_K = 6, 
+              random_state=42, 
+              discart_value = 0.6,
+              bootstraps = 300, 
+              max_iter_clustering = 300):
     
     min_purity = 1
     optimal_k = 1
     
-    for k in range(2, max_K):
+    for k in tqdm(range(2, max_K)):
         #compute clusters        
-        cluster_method = KMedoids(n_clusters=k, random_state=random_state).fit
+        cluster_method = lambda X: KMedoids(n_clusters=k, 
+                                            random_state=random_state, init = 'build',
+                                            method = "pam", max_iter=max_iter_clustering).fit(X).labels_
         labels = cluster_method(distance_matrix)
 
         # compute jaccard indices
-        index_per_cluster = compute_stability_indices(cluster_method = cluster_method, seed = random_state)
-        min_index = min([index_per_cluster[cluster] for cluster in index_per_cluster.keys])
+        index_per_cluster = compute_stability_indices(distance_matrix, 
+                                                      cluster_method = cluster_method, 
+                                                      seed = random_state, 
+                                                      bootstraps = bootstraps)
+        min_index = min([index_per_cluster[cluster] for cluster in index_per_cluster.keys()])
+        print(f'k: {k} index: {min_index}')
         
         # only continue if jaccard indices are all larger 0.6 (thus all clusters are stable)
         if min_index > discart_value:
             # compute balanced purities
             balanced_purity = compute_balanced_average_purity(y, labels)
 
-            if purity<min_purity:
+            if balanced_purity<min_purity:
                 optimal_k = k
                 min_purity = balanced_purity
     return optimal_k
@@ -73,7 +91,7 @@ def compute_stability_indices(distance_matrix, cluster_method, bootstraps = 300,
     np.random.seed = seed
     
     labels = cluster_method(distance_matrix)
-    clusters = no.unique(labels)
+    clusters = np.unique(labels)
     number_datapoints = len(labels)
     index_vector = np.arange(number_datapoints)
     
@@ -82,12 +100,12 @@ def compute_stability_indices(distance_matrix, cluster_method, bootstraps = 300,
     index_per_cluster = {cluster: 0 for cluster in clusters}
     
     for i in range(bootstraps):
-        boostrapped_distance_matrix = bootstrap_matrix(distance_matrix)
-        
-        bootstrapped_labels = cluster_method(boostrapped_distance_matrix)
-        
+        bootsrapped_distance_matrix, mapping_bootstrapped_indices_to_original_indices = bootstrap_matrix(distance_matrix)
+        bootstrapped_labels = cluster_method(bootsrapped_distance_matrix)
         # now compute the indices for the different clusters
-        indices_bootstrap_clusters = _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(bootstrapped_labels)
+        indices_bootstrap_clusters = _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(bootstrapped_labels, 
+                                                                                                       mapping = mapping_bootstrapped_indices_to_original_indices)
+        
         
         jaccard_matrix = _compute_jaccard_matrix(clusters, indices_bootstrap_clusters, indices_original_clusters)
         
@@ -112,9 +130,12 @@ def bootstrap_matrix(M):
     bootstrapped_samples = np.random.choice(np.arange(lm), lm)
     M_bootstrapped = M[:,bootstrapped_samples][bootstrapped_samples,:]
     
-    return M_bootstrapped
+    mapping_bootstrapped_indices_to_original_indices = {bootstrapped : original for bootstrapped, original in enumerate(bootstrapped_samples)}
+    
+    return M_bootstrapped, mapping_bootstrapped_indices_to_original_indices
 
-def proximityMatrix(model, X, normalize=True):      
+def proximityMatrix(model, X, normalize=True):  
+    '''computes the proximity matrix from the model'''
 
     terminals = model.apply(X)
     nTrees = terminals.shape[1]
@@ -132,20 +153,28 @@ def proximityMatrix(model, X, normalize=True):
     return proxMat 
 
 
-def _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(labels):
+def _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(labels, mapping = False):
 
-    clusters = no.unique(labels)
+    clusters = np.unique(labels)
+    number_datapoints = len(labels)
     index_vector = np.arange(number_datapoints)
     
     indices_clusters = {}
     for cluster in clusters:
-        indices_clusters[cluster] = set(index_vector(labels == cluster))
+        indices = set(index_vector[labels == cluster])
+        if mapping is not False:
+            #translate from the bootstrapped indices to the original naming of the indices
+            indices = [mapping[index] for index in indices]
+        
+        indices_clusters[cluster] = indices
+        
+
         
     return indices_clusters
 
 def _compute_jaccard_matrix(clusters, indices_bootstrap_clusters, indices_original_clusters):
         
-    jaccard_matrix = np.zeros[len(clusters), len(clusters)]
+    jaccard_matrix = np.zeros([len(clusters), len(clusters)])
     for i, cluster_original in enumerate(clusters):
         for j, cluster_bootstrap in enumerate(clusters):
             indices_bootstrap = indices_bootstrap_clusters[cluster_bootstrap]
