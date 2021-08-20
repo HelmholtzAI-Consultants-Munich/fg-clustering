@@ -22,6 +22,8 @@ def forest_guided_clustering(rf, data, target_column, max_K = 6,
         k = number_of_clusters
     
     plot_forest_guided_clustering(rf, data, target_column, k, random_state = random_state)
+    
+    return k
 
 def optimizeK(distance_matrix, x, y,
               max_K = 6, 
