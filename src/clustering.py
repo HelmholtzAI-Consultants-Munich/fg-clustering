@@ -92,13 +92,15 @@ def compute_stability_indices(distance_matrix, cluster_method, bootstraps = 300,
         jaccard_matrix = _compute_jaccard_matrix(clusters, indices_bootstrap_clusters, indices_original_clusters)
         
         # compute optimal jaccard index for each cluster -> choose maximum possible jaccard index first
-        for cluster_round in range(len(clusters)):
+        for cluster_round in range(len(jaccard_matrix)):
             best_index = jaccard_matrix.max(axis=1).max()       
-            cluster_number = jaccard_matrix.max(axis=1).argmax()
-            cluster = clusters[cluster_number]
-            jaccard_matrix[cluster_number] = -np.inf
-            index_per_cluster[cluster] += best_index
-        
+            original_cluster_number = jaccard_matrix.max(axis=1).argmax()
+            bootstrapped_cluster_number = jaccard_matrix[original_cluster_number].argmax()
+            jaccard_matrix[original_cluster_number] = -np.inf
+            jaccard_matrix[:,bootstrapped_cluster_number] = -np.inf
+
+            original_cluster = clusters[original_cluster_number]
+            index_per_cluster[original_cluster] += best_index
                                     
     # normalize
     index_per_cluster = {cluster: index_per_cluster[cluster]/bootstraps for cluster in clusters}
