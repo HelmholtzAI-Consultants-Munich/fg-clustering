@@ -8,15 +8,18 @@ from tqdm import tqdm
 def forest_guided_clustering(rf, data, target_column, max_K = 6, 
                              random_state=42, 
                              bootstraps = 300, 
-                             max_iter_clustering = 300):
+                             max_iter_clustering = 300, number_of_clusters = None):
     y = data.loc[:,target_column].to_numpy()
     X = data.drop(columns=[target_column]).to_numpy()
     
     distanceMatrix = 1 - proximityMatrix(model, X)
-    k = optimizeK(distanceMatrix, X, y, max_K = 6,
-                  random_state=random_state, 
-                  bootstraps = bootstraps,
-                  max_iter_clustering = max_iter_clustering)
+    if number_of_clusters is None:
+        k = optimizeK(distanceMatrix, X, y, max_K = 6,
+                      random_state=random_state, 
+                      bootstraps = bootstraps,
+                      max_iter_clustering = max_iter_clustering)
+    else:
+        k = number_of_clusters
     
     plot_forest_guided_clustering(rf, data, target_column, k, random_state = random_state)
 
@@ -43,7 +46,6 @@ def optimizeK(distance_matrix, x, y,
                                                       seed = random_state, 
                                                       bootstraps = bootstraps)
         min_index = min([index_per_cluster[cluster] for cluster in index_per_cluster.keys()])
-        print(f'k: {k} index: {min_index}')
         
         # only continue if jaccard indices are all larger 0.6 (thus all clusters are stable)
         if min_index > discart_value:
