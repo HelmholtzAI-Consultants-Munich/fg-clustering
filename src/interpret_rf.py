@@ -5,10 +5,23 @@ import sklearn
 from sklearn_extra.cluster import KMedoids
 from tqdm import tqdm
 
-def forest_guided_clustering(rf, data, target_column, max_K = 6, 
+def forest_guided_clustering(model, data, target_column, max_K = 6, 
                              random_state=42, 
                              bootstraps = 300, 
                              max_iter_clustering = 300, number_of_clusters = None):
+    # check if random forest is regressor or classifier
+    is_regressor = 'RandomForestRegressor' in str(type(model))
+    is_classifier = 'RandomForestClassifier' in str(type(model))
+    if is_regressor is True:
+        method = "regression"
+        print("Interpreting RandomForestRegressor")
+    elif is_classifier is True:
+        method = "clustering"
+        print("Interpreting RandomForestClassifier")
+    else:
+        raise ValueError(f'Do not recognize {str(type(rf))}. Can only work with sklearn RandomForestRegressor or RandomForestClassifier.')
+    
+    
     y = data.loc[:,target_column].to_numpy()
     X = data.drop(columns=[target_column]).to_numpy()
     
@@ -17,7 +30,8 @@ def forest_guided_clustering(rf, data, target_column, max_K = 6,
         k = optimizeK(distanceMatrix, X, y, max_K = 6,
                       random_state=random_state, 
                       bootstraps = bootstraps,
-                      max_iter_clustering = max_iter_clustering)
+                      max_iter_clustering = max_iter_clustering,
+                      method = method)
     else:
         k = number_of_clusters
     
@@ -30,9 +44,10 @@ def optimizeK(distance_matrix, x, y,
               random_state=42, 
               discart_value = 0.6,
               bootstraps = 300, 
-              max_iter_clustering = 300):
+              max_iter_clustering = 300,
+              method = "clustering"):
     
-    min_purity = 1
+    score_min = np.inf
     optimal_k = 1
     
     for k in tqdm(range(2, max_K)):
@@ -51,13 +66,24 @@ def optimizeK(distance_matrix, x, y,
         
         # only continue if jaccard indices are all larger 0.6 (thus all clusters are stable)
         if min_index > discart_value:
-            # compute balanced purities
-            balanced_purity = compute_balanced_average_purity(y, labels)
-
-            if balanced_purity<min_purity:
+            if method == "clustering":
+                # compute balanced purities
+                score = compute_balanced_average_purity(y, labels)
+            elif method == "regression":
+                # compute the total within cluster variation
+                score = compute_total_within_cluster_variation(y, labels)
+            if score<score_min:
                 optimal_k = k
-                min_purity = balanced_purity
+                score_min = score
     return optimal_k
+
+def compute_total_within_cluster_variation(y, labels):
+    score = 0
+    for cluster in np.unique(labels):
+        y_cluster = y[labels == cluster]
+        score += np.var(y_cluster)*len(y_cluster)
+        
+    return score
         
 def compute_balanced_average_purity(y, labels):
     n0 = sum(y==0)
