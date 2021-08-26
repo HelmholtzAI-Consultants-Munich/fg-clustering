@@ -1,14 +1,22 @@
 import numpy as np
 import pandas as pd
+
+import seaborn as sns
 import matplotlib.pyplot as plt
-import sklearn
+
+from scipy.stats import f_oneway
+
 from sklearn_extra.cluster import KMedoids
+from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
+
 from tqdm import tqdm
 
-def forest_guided_clustering(model, data, target_column, max_K = 6, 
+def forest_guided_clustering(model, data, target_column, output, max_K = 6, thr_pvalue = 0.05,
                              random_state=42, 
                              bootstraps = 300, 
-                             max_iter_clustering = 300, number_of_clusters = None):
+                             max_iter_clustering = 300, 
+                             number_of_clusters = None):
     # check if random forest is regressor or classifier
     is_regressor = 'RandomForestRegressor' in str(type(model))
     is_classifier = 'RandomForestClassifier' in str(type(model))
@@ -19,7 +27,7 @@ def forest_guided_clustering(model, data, target_column, max_K = 6,
         method = "clustering"
         print("Interpreting RandomForestClassifier")
     else:
-        raise ValueError(f'Do not recognize {str(type(rf))}. Can only work with sklearn RandomForestRegressor or RandomForestClassifier.')
+        raise ValueError(f'Do not recognize {str(type(model))}. Can only work with sklearn RandomForestRegressor or RandomForestClassifier.')
     
     
     y = data.loc[:,target_column].to_numpy()
@@ -35,7 +43,7 @@ def forest_guided_clustering(model, data, target_column, max_K = 6,
     else:
         k = number_of_clusters
     
-    plot_forest_guided_clustering(rf, data, target_column, k, random_state = random_state)
+    plot_forest_guided_clustering(model, data, target_column, k, output, thr_pvalue = thr_pvalue, random_state = random_state)
     
     return k
 
@@ -65,6 +73,7 @@ def optimizeK(distance_matrix, x, y,
         min_index = min([index_per_cluster[cluster] for cluster in index_per_cluster.keys()])
         
         # only continue if jaccard indices are all larger 0.6 (thus all clusters are stable)
+        print('For number of cluster {} the Jaccard Index is {}'.format(k, min_index))
         if min_index > discart_value:
             if method == "clustering":
                 # compute balanced purities
@@ -75,6 +84,9 @@ def optimizeK(distance_matrix, x, y,
             if score<score_min:
                 optimal_k = k
                 score_min = score
+            print('For number of cluster {} the score is {}'.format(k,score))
+        else:
+            print('Clustering is instable, no score computed!')
     return optimal_k
 
 def compute_total_within_cluster_variation(y, labels):
@@ -97,7 +109,6 @@ def compute_balanced_average_purity(y, labels):
         small_label = 1
         large_label = 0
         up_scaling_factor = n0/n1
-    
     balanced_purities = []
     for cluster in np.unique(labels):
         y_cluster = y[labels == cluster]
@@ -216,3 +227,72 @@ def _compute_jaccard_matrix(clusters, indices_bootstrap_clusters, indices_origin
             jaccard_matrix[i,j] = len(intersection)/len(union)
             
     return jaccard_matrix
+
+
+def _scale_standard(X):
+        
+    SCALE = StandardScaler()
+    SCALE.fit(X)
+
+    X_scale = pd.DataFrame(SCALE.transform(X))
+    X_scale.columns = X.columns
+    X_scale.reset_index(inplace=True,drop=True)
+
+    return X_scale
+
+
+def _scale_minmax(X):
+        
+    SCALE = MinMaxScaler()
+    SCALE.fit(X)
+
+    X_scale = pd.DataFrame(SCALE.transform(X))
+    X_scale.columns = X.columns
+    X_scale.reset_index(inplace=True,drop=True)
+
+    return X_scale
+
+def plot_forest_guided_clustering(model, data, target_column, k, output, thr_pvalue, random_state):
+    X = data.loc[:, data.columns != 'target']
+    features = X.columns
+
+    proximity_matrix = proximityMatrix(model, X)
+    kmedoids = KMedoids(n_clusters=k, random_state=random_state).fit(proximity_matrix)
+    X['cluster'] = kmedoids.labels_
+    
+    X_heatmap = X.copy()
+    X_heatmap['target'] = data.target
+    X_heatmap.loc['p_value'] = None
+
+    for feature in features:
+        df = X[[feature,'cluster']]
+        df.columns = ['feature', 'cluster']
+        
+        
+        # anova test
+        list_of_df = [df.feature[df.cluster == cluster] for cluster in set(df.cluster)]
+        anova = f_oneway(*list_of_df)
+        X_heatmap.loc['p_value',feature] = anova.pvalue
+
+    X_heatmap.loc['p_value','cluster'] = 0  
+    X_heatmap.loc['p_value','target'] = -1  
+    X_heatmap = X_heatmap.transpose()
+    X_heatmap = X_heatmap.loc[X_heatmap.p_value < thr_pvalue]
+    X_heatmap.sort_values(by='p_value', inplace=True)
+    X_heatmap.drop('p_value', axis=1, inplace=True)
+    X_heatmap.sort_values(by='cluster', axis=1, inplace=True)
+    X_heatmap = _scale_minmax(X_heatmap.transpose())
+
+    X_heatmap_final = pd.DataFrame(columns = X_heatmap.columns)
+    clusters = X_heatmap.cluster.unique()
+    for cluster in clusters:
+        #print(X_heatmap[X_heatmap.cluster == cluster])
+        X_heatmap_final = X_heatmap_final.append(X_heatmap[X_heatmap.cluster == cluster], ignore_index=True)
+        X_heatmap_final = X_heatmap_final.append(pd.DataFrame(np.nan, index = np.arange(5), columns = X_heatmap.columns), ignore_index=True)
+    X_heatmap_final = X_heatmap_final[:-5]
+    X_heatmap_final
+    
+    plot = sns.heatmap(X_heatmap_final.transpose(), xticklabels=False, yticklabels = 1, cmap='coolwarm', cbar_kws={'label': 'standardized feature values'})
+    plot.set(title='Forest-guided clustering')
+    plot.set_yticklabels(X_heatmap_final.columns, size = 6)
+    plt.savefig(output, bbox_inches='tight', dpi = 300)
