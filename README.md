@@ -5,4 +5,4 @@ Explainability methods like variable importance pinpoint the individual contribu
 
 ## Tutorial
 
-To optain the optimal number of clusters and plot the forest-guided clustering run the function ```forest_guided_clustering()```. For further details see the IPython Notebook tutorial. 
+To optain the optimal number of clusters and plot the forest-guided clustering run the function ```forest_guided_clustering()```. For further details see the IPython Notebook ```tutorial.ipynb```. 
