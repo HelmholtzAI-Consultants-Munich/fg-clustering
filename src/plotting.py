@@ -161,10 +161,14 @@ def _plot_boxplots(output, X_anova):
         --- None ---
     """
     
+    num_cols = 6
+    if len(X_anova.cluster.unique()) > 4:
+        num_cols = 4
+    
     target_and_features = X_anova.columns[X_anova.columns != 'cluster']
     X_boxplot = pd.melt(X_anova, id_vars=['cluster'], value_vars=target_and_features)
     
-    plot = sns.FacetGrid(X_boxplot, col='variable', height=3, sharey=False, col_wrap=6)
+    plot = sns.FacetGrid(X_boxplot, col='variable', height=3, sharey=False, col_wrap=num_cols)
     plot.map(sns.boxplot, 'cluster', 'value')
     plt.savefig('{}_boxplots.png'.format(output), bbox_inches='tight', dpi = 300)
     
