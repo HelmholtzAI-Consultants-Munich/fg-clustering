@@ -101,11 +101,13 @@ def _anova_test(X, y, cluster_labels, thr_pvalue):
         X_anova.loc['p_value',feature] = anova.pvalue
 
     X_anova.loc['p_value','target'] = -1
-    X_anova.loc['p_value','cluster'] = 0  
+    X_anova.loc['p_value','cluster'] = -1  
     X_anova = X_anova.transpose()
     X_anova = X_anova.loc[X_anova.p_value < thr_pvalue]
-    X_anova.sort_values(by='p_value', inplace=True)
+    
+    X_anova.sort_values(by='p_value', axis=0, inplace=True)
     X_anova.drop('p_value', axis=1, inplace=True)
+    
     X_anova.sort_values(by=['cluster','target'], axis=1, inplace=True)
     
     return X_anova.transpose()
@@ -134,13 +136,39 @@ def _plot_heatmap(output, X_anova):
         X_heatmap = X_heatmap.append(X_anova[X_anova.cluster == cluster], ignore_index=True)
         X_heatmap = X_heatmap.append(pd.DataFrame(np.nan, index = np.arange(5), columns = X_anova.columns), ignore_index=True)
     X_heatmap = X_heatmap[:-5]
+    X_heatmap.drop('cluster', axis=1, inplace=True)
     
     plot = sns.heatmap(X_heatmap.transpose(), xticklabels=False, yticklabels = 1, cmap='coolwarm', cbar_kws={'label': 'standardized feature values'})
     plot.set(title='Forest-Guided Clustering')
     plot.set_yticklabels(X_heatmap.columns, size = 6)
-    plt.savefig(output, bbox_inches='tight', dpi = 300)
+    plt.savefig('{}_heatmap.png'.format(output), bbox_inches='tight', dpi = 300)
     #plt.close() 
     
+    
+    
+def _plot_boxplots(output, X_anova):
+    """
+    Plot boxplots of significant features devided by clusters. 
+    Parameters
+    ----------
+        output: string
+            Filename for heatmap plot.
+        X_anova: Pandas DataFrame
+            Feature matrix filtered by ANOVA p-value.
+
+    Returns
+    -------
+        --- None ---
+    """
+    
+    target_and_features = X_anova.columns[X_anova.columns != 'cluster']
+    X_boxplot = pd.melt(X_anova, id_vars=['cluster'], value_vars=target_and_features)
+    
+    plot = sns.FacetGrid(X_boxplot, col='variable', height=3, sharey=False, col_wrap=6)
+    plot.map(sns.boxplot, 'cluster', 'value')
+    plt.savefig('{}_boxplots.png'.format(output), bbox_inches='tight', dpi = 300)
+    
+
 
     
 def plot_forest_guided_clustering(output, model, distanceMatrix, data, target_column, k, thr_pvalue, random_state):
@@ -175,4 +203,6 @@ def plot_forest_guided_clustering(output, model, distanceMatrix, data, target_co
     cluster_labels = KMedoids(n_clusters=k, random_state=random_state).fit(distanceMatrix).labels_
     
     X_anova = _anova_test(X, y, cluster_labels, thr_pvalue)
+
     _plot_heatmap(output, X_anova)
+    _plot_boxplots(output, X_anova)
