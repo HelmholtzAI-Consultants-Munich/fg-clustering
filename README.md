@@ -2,13 +2,7 @@
 
 This python package is about explainability of Random Forest models. Since standard methods are not suited in the presence of correlated features, the Forest-Guided Clustering package computes feature importance based on subgroups of instances that follow similar decision rules and returns the optimal value for k.
 
-
-## Description
-
-Explainability methods like variable importance pinpoint the individual contribution of each feature to the classification or regression problem, but cannot identify the role of correlated features and of feature combinations. Forest-Guided Clustering helps to stratify the input data instances into subgroups according to different combinations of decision rules within a Random Forest model. To compute the Forest-Guided Clustering, k-medoids clustering is applied to a distance matrix, which is computed from the Random Forest proximity matrix that indicates which data instances follow the same set of decision rules. The optimal number of clusters k for the k-medoids clustering is determined via total within cluster varaince for regression Random Forest models, or by average balanced purity for classification Random Forest models.
-
-
-![Forest-guided clustering approach.](./data/fgc_overview.png)   
+For detailed documentation and usage examples, please visit the [Wiki](https://github.com/HelmholtzAI-Consultants-Munich/forest_guided_clustering/wiki).
 
 ## Installation
 
