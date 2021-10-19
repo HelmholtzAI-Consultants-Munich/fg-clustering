@@ -9,7 +9,6 @@ Explainability methods like variable importance pinpoint the individual contribu
 
 
 ![Forest-guided clustering approach.](./data/fgc_overview.png)   
-**Pipeline of the Forest-Guided Clustering explainability method**
 
 ## Installation
 
