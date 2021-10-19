@@ -8,7 +8,7 @@ This python package is about explainability of Random Forest models. Since stand
 Explainability methods like variable importance pinpoint the individual contribution of each feature to the classification or regression problem, but cannot identify the role of correlated features and of feature combinations. Forest-Guided Clustering helps to stratify the input data instances into subgroups according to different combinations of decision rules within a Random Forest model. To compute the Forest-Guided Clustering, k-medoids clustering is applied to a distance matrix, which is computed from the Random Forest proximity matrix that indicates which data instances follow the same set of decision rules. The optimal number of clusters k for the k-medoids clustering is determined via total within cluster varaince for regression Random Forest models, or by average balanced purity for classification Random Forest models.
 
 
-![Forest-guided clustering approach.](./data/fgc_overview)   
+![Forest-guided clustering approach.](./data/fgc_overview.png)   
 **Pipeline of the Forest-Guided Clustering explainability method**
 
 ## Installation
@@ -32,6 +32,13 @@ To get explainability of your Random Forest model via Forest-Guided Clustering, 
 forest_guided_clustering(output='fgc', model=rf, data=data_boston, target_column='target')
 ```
 
-where ```output='fgc'``` sets the name for the heatmap and boxplot, ```model=rf``` is a Random Forest Classifier or Regressor object, ```data=data_boston``` is the dataset on which the Random Forest model was trained on and ```target_column='target'``` is the name of the target column in the provided dataset. The function will return the optimal number of clusters and plot the forest-guided clustering results as heatmap and boxplots.
+where 
+
+- ```output='fgc'``` sets the name for the heatmap and boxplot,
+- ```model=rf``` is a Random Forest Classifier or Regressor object, 
+- ```data=data_boston``` is the dataset on which the Random Forest model was trained on and 
+- ```target_column='target'``` is the name of the target column in the provided dataset. 
+
+The function will return the optimal number of clusters and plot the forest-guided clustering results as heatmap and boxplots.
 
 For a detailed tutorial see the IPython Notebook ```tutorial.ipynb```. 
