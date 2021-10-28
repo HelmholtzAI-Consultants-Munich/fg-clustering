@@ -57,10 +57,7 @@ def optimizeK(distance_matrix, y, max_K, bootstraps, max_iter_clustering, discar
         if min_index > discart_value:
             if method == "classifier":
                 # compute balanced purities
-                if len(np.unique(y)) == 2:
-                    score = compute_balanced_average_purity(y, labels)
-                else:
-                    raise ValueError('Forest-guided clustering is only implemented for binary classification')
+                score = compute_balanced_average_impurity(y, labels)
             elif method == "regression":
                 # compute the total within cluster variation
                 score = compute_total_within_cluster_variation(y, labels)
@@ -70,6 +67,9 @@ def optimizeK(distance_matrix, y, max_K, bootstraps, max_iter_clustering, discar
             print('For number of cluster {} the score is {}'.format(k,score))
         else:
             print('Clustering is instable, no score computed!')
+            
+    print(f"The optimal number of clusters is {optimal_k}")
+
     return optimal_k
 
 
@@ -230,9 +230,12 @@ def _compute_jaccard_matrix(clusters, indices_bootstrap_clusters, indices_origin
 
 
 
-def compute_balanced_average_purity(y, labels):
+def compute_balanced_average_impurity(y, labels):
     """
-    Compute balanced average purity as score for Random Forest classifier clustering. 
+    Compute balanced average impurity as score for Random Forest classifier clustering. 
+    Impurity score is an Gini Coefficient of the classes within each cluster. The class sizes are thereby balanced by
+    by rescaling with the inverse size of the class in the overall dataset.
+    
     Parameters
     ----------
         y: Pandas Series
@@ -246,30 +249,28 @@ def compute_balanced_average_purity(y, labels):
             Score for clustering defined by balanced average purity .
     """
     
-    n0 = sum(y==0)
-    n1 = sum(y==1)
+    #compute the number of datapoints for each class to use it then for rescaling of the 
+    #class sizes within each cluster
+    class_rescaling_factor = {class_: 1/sum(y==class_) for class_ in np.unique(y)} #rescaling with inverse class size
+        
+    balanced_impurities = []
     
-    if n0<=n1:
-        small_label = 0
-        large_label = 1
-        up_scaling_factor = n1/n0
-    else:
-        small_label = 1
-        large_label = 0
-        up_scaling_factor = n0/n1
-    balanced_purities = []
     for cluster in np.unique(labels):
         y_cluster = y[labels == cluster]
         
-        x_small = sum(y_cluster == small_label)*up_scaling_factor
-        x_large = sum(y_cluster == large_label)
-        x_tot = x_small+x_large
-        balanced_purity = (x_small/x_tot)*(x_large/x_tot)
-        normalized_balanced_purity = balanced_purity/0.25
+        #compute balanced class probabilities (rescaled with overall class size)
+        class_probabilities_unnormalized = [sum(y_cluster==class_)*class_rescaling_factor[class_] for class_ in np.unique(y)]
+        class_probabilities_unnormalized = np.array(class_probabilities_unnormalized)
+        normalization_factor = class_probabilities_unnormalized.sum()
+        class_probabilities = class_probabilities_unnormalized / normalization_factor
         
-        balanced_purities.append(normalized_balanced_purity)
+        #compute (balanced) gini impurity
+        gini_impurity = 1 - np.sum(class_probabilities**2)
+        
+        balanced_impurities.append(gini_impurity)
     
-    score = np.mean(balanced_purities)
+    score = np.mean(balanced_impurities)
+    
     return score
 
 

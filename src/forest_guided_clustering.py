@@ -28,9 +28,10 @@ def forest_guided_clustering(output, model, data, target_column,
         model: sklearn object
             Trained Random Forest model.
         data: DataFrame
-            Input data with feature matrix and target column.
-        target_column: string
-            Name of target column.
+            Input data with feature matrix. If target_column is a string it has to be a column in the
+            data.
+        target_column: string or numpy array
+            Name of target column or target values as numpy array.
         max_K: int
             Maximum number of clusters for cluster score computation.
         thr_pvalue: int
@@ -66,7 +67,13 @@ def forest_guided_clustering(output, model, data, target_column,
     
     
     X = data.drop(columns=[target_column]).to_numpy()
-    y = data.loc[:,target_column].to_numpy()
+    
+    if type(target_column)==str:
+        y = data.loc[:,target_column].to_numpy()
+        X = data.drop(columns=[target_column]).to_numpy()
+    else:
+        y = target_column
+        X = data.to_numpy()
     
     
     distanceMatrix = 1 - proximityMatrix(model, X)
@@ -75,6 +82,8 @@ def forest_guided_clustering(output, model, data, target_column,
         k = opt.optimizeK(distanceMatrix, y, max_K, bootstraps, max_iter_clustering, discart_value, method, random_state)
     else:
         k = number_of_clusters
+        
+    print(f"Visualizing forest guided clustering for {k} clusters")
     
     pl.plot_forest_guided_clustering(output, model, distanceMatrix, data, target_column, k, thr_pvalue, random_state)
     
