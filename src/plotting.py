@@ -67,6 +67,15 @@ def _scale_minmax(X):
     return X_scale
 
 
+def _sort_clusters_by_target(X_anova):
+    means = X_anova.groupby(['cluster']).mean().sort_values(by='target',ascending=True)
+    means['target'] = range(means.shape[0])
+    mapping = dict(means['target'])
+    mapping = dict(sorted(mapping.items(), key=lambda item: item[1]))
+    X_anova['cluster'] = pd.Categorical(X_anova['cluster'], list(mapping.keys()))
+
+    return X_anova
+
 
 def _anova_test(X, y, cluster_labels, thr_pvalue):
     """
@@ -108,9 +117,11 @@ def _anova_test(X, y, cluster_labels, thr_pvalue):
     X_anova.sort_values(by='p_value', axis=0, inplace=True)
     X_anova.drop('p_value', axis=1, inplace=True)
     
-    X_anova.sort_values(by=['cluster','target'], axis=1, inplace=True)
+    X_anova = X_anova.transpose()
+    X_anova = _sort_clusters_by_target(X_anova)
+    X_anova.sort_values(by=['cluster','target'], axis=0, inplace=True)
     
-    return X_anova.transpose()
+    return X_anova
     
     
     
@@ -142,7 +153,7 @@ def _plot_heatmap(output, X_anova):
     plot.set(title='Forest-Guided Clustering')
     plot.set_yticklabels(X_heatmap.columns, size = 6)
     plt.savefig('{}_heatmap.png'.format(output), bbox_inches='tight', dpi = 300)
-    #plt.close() 
+    plt.show()
     
     
     
@@ -171,6 +182,7 @@ def _plot_boxplots(output, X_anova):
     plot = sns.FacetGrid(X_boxplot, col='variable', height=3, sharey=False, col_wrap=num_cols)
     plot.map(sns.boxplot, 'cluster', 'value')
     plt.savefig('{}_boxplots.png'.format(output), bbox_inches='tight', dpi = 300)
+    plt.show()
     
 
 
