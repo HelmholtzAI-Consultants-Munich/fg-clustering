@@ -65,9 +65,6 @@ def forest_guided_clustering(output, model, data, target_column,
     else:
         raise ValueError(f'Do not recognize {str(type(model))}. Can only work with sklearn RandomForestRegressor or RandomForestClassifier.')
     
-    
-    X = data.drop(columns=[target_column]).to_numpy()
-    
     if type(target_column)==str:
         y = data.loc[:,target_column].to_numpy()
         X = data.drop(columns=[target_column]).to_numpy()

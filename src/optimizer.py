@@ -158,7 +158,7 @@ def _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(labels, ma
         indices = set(index_vector[labels == cluster])
         if mapping is not False:
             #translate from the bootstrapped indices to the original naming of the indices
-            indices = [mapping[index] for index in indices]
+            indices = set([mapping[index] for index in indices])
 
         indices_clusters[cluster] = indices
 
