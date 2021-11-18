@@ -157,7 +157,7 @@ def _plot_heatmap(output, X_anova):
     
     
     
-def _plot_boxplots(output, X_anova):
+def _plot_boxplots(output, X_anova, num_cols = 6):
     """
     Plot boxplots of significant features devided by clusters. 
     Parameters
@@ -172,10 +172,6 @@ def _plot_boxplots(output, X_anova):
         --- None ---
     """
     
-    num_cols = 6
-    if len(X_anova.cluster.unique()) > 4:
-        num_cols = 4
-    
     target_and_features = X_anova.columns[X_anova.columns != 'cluster']
     X_boxplot = pd.melt(X_anova, id_vars=['cluster'], value_vars=target_and_features)
     
@@ -184,8 +180,21 @@ def _plot_boxplots(output, X_anova):
     plt.savefig('{}_boxplots.png'.format(output), bbox_inches='tight', dpi = 300)
     plt.show()
     
+    
 
+def _feature_importance_clusterwise(X_anova):
+    
+    for feature in X_anova.columns:
+        if feature not in ['target','cluster']:
+            print(feature)
+            if isinstance(X_anova[feature].dtype, pd.api.types.CategoricalDtype):
+                print('True')
+            else:
+                print('False')
 
+        
+        
+    
     
 def plot_forest_guided_clustering(output, model, distanceMatrix, data, target_column, k, thr_pvalue, random_state):
     """
@@ -219,6 +228,9 @@ def plot_forest_guided_clustering(output, model, distanceMatrix, data, target_co
     cluster_labels = KMedoids(n_clusters=k, random_state=random_state).fit(distanceMatrix).labels_
     
     X_anova = _anova_test(X, y, cluster_labels, thr_pvalue)
+    
+    print(X_anova)
 
-    _plot_heatmap(output, X_anova)
-    _plot_boxplots(output, X_anova)
+    _feature_importance_clusterwise(X_anova)
+    #_plot_heatmap(output, X_anova)
+    #_plot_boxplots(output, X_anova)
