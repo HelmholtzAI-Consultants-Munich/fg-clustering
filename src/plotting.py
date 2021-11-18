@@ -7,10 +7,12 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from scipy.stats import f_oneway
+from scipy.stats import f_oneway, chisquare
 from sklearn_extra.cluster import KMedoids
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import MinMaxScaler
+
+from statsmodels.stats import multitest
 
 
 ############################################
@@ -98,30 +100,52 @@ def _anova_test(X, y, cluster_labels, thr_pvalue):
     """
     
     X['cluster'] = cluster_labels
-    X_anova = X.copy()
-    X_anova['target'] = y
-    X_anova.loc['p_value'] = None
+    X_test = X.copy()
+    X_test['target'] = y
+    p_value_of_features = dict()
 
     # anova test
     for feature in X.columns:
+        assert X[feature].astype("object").dtype != X[feature].dtype, "Feature is of type object. Please reformat to category or numeric type."
+
         df = pd.DataFrame({'cluster': X['cluster'], 'feature': X[feature]})
         list_of_df = [df.feature[df.cluster == cluster] for cluster in set(df.cluster)]
-        anova = f_oneway(*list_of_df)
-        X_anova.loc['p_value',feature] = anova.pvalue
+        
+        if isinstance(X_test[feature].dtype, pd.api.types.CategoricalDtype):
+            cat_vals = df.feature.unique()
 
-    X_anova.loc['p_value','target'] = -1
-    X_anova.loc['p_value','cluster'] = -1  
-    X_anova = X_anova.transpose()
-    X_anova = X_anova.loc[X_anova.p_value < thr_pvalue]
+            count_global = np.array([(df.feature == cat_val).sum() for cat_val in cat_vals])
+            count_global = count_global / count_global.sum()
+
+            p_values = []
+            for df_ in list_of_df:
+                counts_clusters = np.array([(df_ == cat_val).sum() for cat_val in cat_vals])
+                number_datapoints_in_cluster = counts_clusters.sum()
+                p_values.append(chisquare(counts_clusters, f_exp=count_global*number_datapoints_in_cluster).pvalue)
+
+            _, p_values = multitest.fdrcorrection(p_values)
+            p_value_of_features[feature] = min(p_values)
+            
+        else:        
+            anova = f_oneway(*list_of_df)
+            p_value_of_features[feature] = anova.pvalue
+
+    p_value_of_features['target'] = -1
+    p_value_of_features['cluster'] = -1
     
-    X_anova.sort_values(by='p_value', axis=0, inplace=True)
-    X_anova.drop('p_value', axis=1, inplace=True)
+    # sort features by p-value
+    features_sorted = [k for k, v in sorted(p_value_of_features.items(), key=lambda item: item[1])]
+    X_test = X_test.reindex(features_sorted, axis=1)
     
-    X_anova = X_anova.transpose()
-    X_anova = _sort_clusters_by_target(X_anova)
-    X_anova.sort_values(by=['cluster','target'], axis=0, inplace=True)
+    # drop insignificant values
+    for column in X_test.columns:
+        if p_value_of_features[column] > thr_pvalue:
+            X_test = X_test.drop(column, axis  = 1)
+            
+    X_test = _sort_clusters_by_target(X_test)
+    X_test.sort_values(by=['cluster','target'], axis=0, inplace=True)
     
-    return X_anova
+    return X_test
     
     
     
@@ -229,8 +253,5 @@ def plot_forest_guided_clustering(output, model, distanceMatrix, data, target_co
     
     X_anova = _anova_test(X, y, cluster_labels, thr_pvalue)
     
-    print(X_anova)
-
-    _feature_importance_clusterwise(X_anova)
-    #_plot_heatmap(output, X_anova)
-    #_plot_boxplots(output, X_anova)
+    _plot_heatmap(output, X_anova)
+    _plot_boxplots(output, X_anova)
