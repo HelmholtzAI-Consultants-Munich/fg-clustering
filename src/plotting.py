@@ -7,11 +7,13 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+from bisect import bisect
 from scipy.stats import f_oneway
+from sklearn.utils import resample
 from sklearn_extra.cluster import KMedoids
-from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
+import src.optimizer as opt
 
 ############################################
 # Plot forest-guided clustering results as heatmap
@@ -176,26 +178,99 @@ def _plot_boxplots(output, X_anova, num_cols = 6):
     X_boxplot = pd.melt(X_anova, id_vars=['cluster'], value_vars=target_and_features)
     
     plot = sns.FacetGrid(X_boxplot, col='variable', height=3, sharey=False, col_wrap=num_cols)
-    plot.map(sns.boxplot, 'cluster', 'value')
+    plot.map(sns.boxplot, 'cluster', 'value', color='darkgrey')
+    plot.set_axis_labels('Cluster', 'Feature Value')
+    plot.set_titles(col_template="Feature: {col_name}")
     plt.savefig('{}_boxplots.png'.format(output), bbox_inches='tight', dpi = 300)
     plt.show()
     
+
+def _calculate_p_value_categorical(y, y_all, cluster, cluster_size, bootstraps = 1000):
+
+    labels = [cluster]*cluster_size
+    y_impurity = opt.compute_balanced_average_impurity(y, labels)
+
+    bootstrapped_impurity = list()
+    for b in range(bootstraps):
+        bootstrapped_y = resample(y_all, replace = True, n_samples = cluster_size)
+        bootstrapped_impurity.append(opt.compute_balanced_average_impurity(bootstrapped_y, labels))
+        
+    bootstrapped_impurity = sorted(bootstrapped_impurity)
+    p_value = (bisect(bootstrapped_impurity, y_impurity)+1) / (bootstraps+1)
+    return p_value
+
+    
+def _calculate_p_value_continuous(y, y_all, cluster_size, bootstraps = 1000):
+    
+    bootstrap_samples = list()
+    for b in range(bootstraps):
+        sample = resample(y_all, replace = True, n_samples = cluster_size)
+        bootstrap_samples.append(sample.var())
+        
+    bootstrap_samples = sorted(bootstrap_samples)
+    p_value = (bisect(bootstrap_samples, y.var())+1) / (bootstraps+1)
+    return p_value
     
 
-def _feature_importance_clusterwise(X_anova):
+def _get_feature_importance_clusterwise(X_anova):
     
-    for feature in X_anova.columns:
-        if feature not in ['target','cluster']:
-            print(feature)
-            if isinstance(X_anova[feature].dtype, pd.api.types.CategoricalDtype):
-                print('True')
-            else:
-                print('False')
+    X_anova.loc[:,'CHAS'] = X_anova['CHAS'].astype('category')
+    
+    clusters = X_anova['cluster']
+    clusters_size = clusters.value_counts()
+    X_anova.drop('cluster', axis=1, inplace=True)
+    X_anova.drop('target', axis=1, inplace=True)
+    
+    X_categorical = X_anova.select_dtypes(include=['category'])
+    X_numeric = X_anova.select_dtypes(exclude=['category'])
+    
+    features = X_anova.columns.tolist()
+    var_tot = X_numeric.to_numpy().flatten().var()
+    
+    importance = pd.DataFrame(columns=clusters.unique(), index=features)
 
+    for feature in X_categorical.columns:
+        for cluster in clusters.unique():
+            y = X_categorical.loc[clusters == cluster, feature]
+            y_all = X_categorical[feature]
+            importance.loc[feature,cluster] = - np.log(_calculate_p_value_categorical(y, y_all, cluster, clusters_size.loc[cluster]))
+
+    for feature in X_numeric.columns:
+        X_numeric.loc[:,feature] = X_numeric[feature] / var_tot # normalize by total variance 
+        for cluster in clusters.unique():
+            y = X_numeric.loc[clusters == cluster, feature]
+            y_all = X_numeric[feature]
+            importance.loc[feature,cluster] = - np.log(_calculate_p_value_continuous(y, y_all, clusters_size.loc[cluster]))
+
+    return importance
+            
+
+def _plot_feature_importance(output, X_anova, num_cols = 6):
+
+    num_clusters = len(X_anova['cluster'].unique())
+    importance = _get_feature_importance_clusterwise(X_anova)
+
+    num_rows = int(num_clusters / num_cols) + (num_clusters % num_cols > 0)
+    fig = plt.figure()
+    fig.subplots_adjust(hspace=0.4, wspace=0.4)
+    fig.suptitle('Feature Importance per Cluster')
+
+    for i in range(num_clusters):
+        cluster = importance.columns[i]
+        importance.sort_values(by=[cluster], inplace = True)
+        X_plot = pd.DataFrame({'cluster': [cluster]*importance.shape[0], 'feature': importance.index, 'importance': importance[cluster]})
+
+        ax = fig.add_subplot(num_rows, num_cols, i+1)
+        #col = int(i/ num_cols)
+        #row = i - (num_cols * col)
         
+        sns.barplot(ax=ax, data=X_plot, x='importance', y='feature', order=X_plot.sort_values('importance',ascending = False).feature, color='darkgrey')
+
+    #fig.tight_layout()
+    plt.savefig('{}_feature_importance.png'.format(output), bbox_inches='tight', dpi = 300)
+    plt.show()
         
-    
-    
+
 def plot_forest_guided_clustering(output, model, distanceMatrix, data, target_column, k, thr_pvalue, random_state):
     """
     Plot forest-guided clustering results as heatmap but exclude feature that show no significant difference across clusters. 
@@ -228,9 +303,8 @@ def plot_forest_guided_clustering(output, model, distanceMatrix, data, target_co
     cluster_labels = KMedoids(n_clusters=k, random_state=random_state).fit(distanceMatrix).labels_
     
     X_anova = _anova_test(X, y, cluster_labels, thr_pvalue)
-    
-    print(X_anova)
 
-    _feature_importance_clusterwise(X_anova)
+    
     #_plot_heatmap(output, X_anova)
     #_plot_boxplots(output, X_anova)
+    _plot_feature_importance(output, X_anova.copy())
