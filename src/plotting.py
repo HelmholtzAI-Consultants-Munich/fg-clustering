@@ -297,8 +297,6 @@ def _calculate_p_value_continuous(y, y_all, cluster_size, bootstraps = 1000):
 
 def _get_feature_importance_clusterwise(X_anova):
     
-    X_anova.loc[:,'CHAS'] = X_anova['CHAS'].astype('category')
-    
     clusters = X_anova['cluster']
     clusters_size = clusters.value_counts()
     X_anova.drop('cluster', axis=1, inplace=True)
