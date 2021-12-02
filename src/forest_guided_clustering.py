@@ -82,7 +82,7 @@ def forest_guided_clustering(output, model, data, target_column,
         
     print(f"Visualizing forest guided clustering for {k} clusters")
     
-    pl.plot_forest_guided_clustering(output, model, distanceMatrix, data, target_column, k, thr_pvalue, random_state)
+    pl.plot_forest_guided_clustering(output, model, distanceMatrix, data, target_column, k, thr_pvalue, random_state, method)
     
     return k
 
