@@ -5,15 +5,21 @@
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 
 from bisect import bisect
 from scipy.stats import f_oneway
 from sklearn.utils import resample
+
+from scipy.stats import f_oneway, chisquare
 from sklearn_extra.cluster import KMedoids
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 import src.optimizer as opt
+from statsmodels.stats import multitest
+
 
 ############################################
 # Plot forest-guided clustering results as heatmap
@@ -100,34 +106,55 @@ def _anova_test(X, y, cluster_labels, thr_pvalue):
     """
     
     X['cluster'] = cluster_labels
-    X_anova = X.copy()
-    X_anova['target'] = y
-    X_anova.loc['p_value'] = None
+    X_test = X.copy()
+    X_test['target'] = y
+    p_value_of_features = dict()
 
     # anova test
     for feature in X.columns:
+        assert X[feature].astype("object").dtype != X[feature].dtype, "Feature is of type object. Please reformat to category or numeric type."
+
         df = pd.DataFrame({'cluster': X['cluster'], 'feature': X[feature]})
         list_of_df = [df.feature[df.cluster == cluster] for cluster in set(df.cluster)]
-        anova = f_oneway(*list_of_df)
-        X_anova.loc['p_value',feature] = anova.pvalue
+        
+        if isinstance(X_test[feature].dtype, pd.api.types.CategoricalDtype):
+            cat_vals = df.feature.unique()
 
-    X_anova.loc['p_value','target'] = -1
-    X_anova.loc['p_value','cluster'] = -1  
-    X_anova = X_anova.transpose()
-    X_anova = X_anova.loc[X_anova.p_value < thr_pvalue]
+            count_global = np.array([(df.feature == cat_val).sum() for cat_val in cat_vals])
+            count_global = count_global / count_global.sum()
+
+            p_values = []
+            for df_ in list_of_df:
+                counts_clusters = np.array([(df_ == cat_val).sum() for cat_val in cat_vals])
+                number_datapoints_in_cluster = counts_clusters.sum()
+                p_values.append(chisquare(counts_clusters, f_exp=count_global*number_datapoints_in_cluster).pvalue)
+
+            _, p_values = multitest.fdrcorrection(p_values)
+            p_value_of_features[feature] = min(p_values)
+            
+        else:        
+            anova = f_oneway(*list_of_df)
+            p_value_of_features[feature] = anova.pvalue
+
+    p_value_of_features['target'] = -1
+    p_value_of_features['cluster'] = -1
     
-    X_anova.sort_values(by='p_value', axis=0, inplace=True)
-    X_anova.drop('p_value', axis=1, inplace=True)
+    # sort features by p-value
+    features_sorted = [k for k, v in sorted(p_value_of_features.items(), key=lambda item: item[1])]
+    X_test = X_test.reindex(features_sorted, axis=1)
     
-    X_anova = X_anova.transpose()
-    X_anova = _sort_clusters_by_target(X_anova)
-    X_anova.sort_values(by=['cluster','target'], axis=0, inplace=True)
+    # drop insignificant values
+    for column in X_test.columns:
+        if p_value_of_features[column] > thr_pvalue:
+            X_test = X_test.drop(column, axis  = 1)
+            
+    X_test = _sort_clusters_by_target(X_test)
+    X_test.sort_values(by=['cluster','target'], axis=0, inplace=True)
     
-    return X_anova
+    return X_test
     
     
-    
-def _plot_heatmap(output, X_anova):
+def _plot_heatmap(output, X_anova, method):
     """
     Plot heatmap with significant features sorted by clusters. 
     Parameters
@@ -136,24 +163,80 @@ def _plot_heatmap(output, X_anova):
             Filename for heatmap plot.
         X_anova: Pandas DataFrame
             Feature matrix filtered by ANOVA p-value.
+        method: string
+            Model type of Random Forest model: classifier or regression.
 
     Returns
     -------
         --- None ---
     """
-    
+    target_values_original = X_anova['target']
+
+
     X_anova = _scale_minmax(X_anova)
+
+    target_values_normalized = X_anova['target']
+
+    number_of_samples = len(X_anova)
+    one_percent_of_number_of_samples = int(np.ceil(0.01*number_of_samples))
 
     X_heatmap = pd.DataFrame(columns = X_anova.columns)
     for cluster in X_anova.cluster.unique():
         X_heatmap = X_heatmap.append(X_anova[X_anova.cluster == cluster], ignore_index=True)
-        X_heatmap = X_heatmap.append(pd.DataFrame(np.nan, index = np.arange(5), columns = X_anova.columns), ignore_index=True)
+        X_heatmap = X_heatmap.append(pd.DataFrame(np.nan, 
+                                                  index = np.arange(one_percent_of_number_of_samples), #blank lines which are 1% of num samples
+                                                  columns = X_anova.columns), 
+                                     ignore_index=True)
     X_heatmap = X_heatmap[:-5]
     X_heatmap.drop('cluster', axis=1, inplace=True)
+
+    n_samples, n_features = X_heatmap.shape
+    heatmap_ = np.zeros((n_features,n_samples,4))
+
+    cmap_features = matplotlib.cm.get_cmap('coolwarm').copy()
+    cmap_target = matplotlib.cm.get_cmap('viridis') #gist_ncar
+
+
+    for feature in range(n_features):
+        for sample in range(n_samples):
+            if feature == 0:
+                heatmap_[feature,sample,:] = cmap_target(X_heatmap.iloc[sample, feature])
+            else:
+                heatmap_[feature,sample,:] = cmap_features(X_heatmap.iloc[sample, feature])
+
+    fig = plt.figure()
+
+    img = plt.imshow(heatmap_, interpolation='none', aspect='auto')
+
+    plt.xticks([], [])
+    plt.yticks(range(n_features), X_heatmap.columns)
+
+    # remove bounding box
+    for spine in plt.gca().spines.values():
+        spine.set_visible(False)
+    plt.title('Forest-Guided Clustering')
+
+    if method == "regression":
+        norm = matplotlib.colors.Normalize(vmin=target_values_original.min(), vmax=target_values_original.max())
+
+        cbar_target = plt.colorbar(matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap_target))
+        cbar_target.set_label('target')
+        
+    else:
+        legend_elements = [Patch(facecolor=cmap_target(tv_n), edgecolor=cmap_target(tv_n),
+                                 label=f'{tv_o}') for tv_n, tv_o in zip(target_values_normalized.unique(), target_values_original.unique())]
+
+        ll = plt.legend(handles=legend_elements,
+                        bbox_to_anchor=(0, 0), 
+                        loc='upper left', 
+                        ncol=min(6,len(legend_elements)),
+                        title="target") 
+        
+
+    norm = matplotlib.colors.Normalize(vmin=0, vmax=1)
+    cbar_features = plt.colorbar(matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap_features))
+    cbar_features.set_label('standardized feature values')
     
-    plot = sns.heatmap(X_heatmap.transpose(), xticklabels=False, yticklabels = 1, cmap='coolwarm', cbar_kws={'label': 'standardized feature values'})
-    plot.set(title='Forest-Guided Clustering')
-    plot.set_yticklabels(X_heatmap.columns, size = 6)
     plt.savefig('{}_heatmap.png'.format(output), bbox_inches='tight', dpi = 300)
     plt.show()
     
@@ -247,6 +330,7 @@ def _get_feature_importance_clusterwise(X_anova):
 
 def _plot_feature_importance(output, X_anova, num_cols = 6):
 
+    X_anova = X_anova.copy()
     num_clusters = len(X_anova['cluster'].unique())
     importance = _get_feature_importance_clusterwise(X_anova)
 
@@ -271,7 +355,8 @@ def _plot_feature_importance(output, X_anova, num_cols = 6):
     plt.show()
         
 
-def plot_forest_guided_clustering(output, model, distanceMatrix, data, target_column, k, thr_pvalue, random_state):
+
+def plot_forest_guided_clustering(output, model, distanceMatrix, data, target_column, k, thr_pvalue, random_state, method):
     """
     Plot forest-guided clustering results as heatmap but exclude feature that show no significant difference across clusters. 
     Parameters
@@ -292,6 +377,8 @@ def plot_forest_guided_clustering(output, model, distanceMatrix, data, target_co
             P-value threshold for feature filtering.
         random_state: int
             Seed number for random state.
+        method: string
+            Model type of Random Forest model: classifier or regression.
 
     Returns
     -------
@@ -303,8 +390,8 @@ def plot_forest_guided_clustering(output, model, distanceMatrix, data, target_co
     cluster_labels = KMedoids(n_clusters=k, random_state=random_state).fit(distanceMatrix).labels_
     
     X_anova = _anova_test(X, y, cluster_labels, thr_pvalue)
-
     
-    #_plot_heatmap(output, X_anova)
-    #_plot_boxplots(output, X_anova)
-    _plot_feature_importance(output, X_anova.copy())
+    _plot_heatmap(output, X_anova, method)
+    _plot_boxplots(output, X_anova)
+    _plot_feature_importance(output, X_anova)
+
