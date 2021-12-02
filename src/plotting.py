@@ -239,8 +239,7 @@ def _plot_heatmap(output, X_anova, method):
     norm = matplotlib.colors.Normalize(vmin=0, vmax=1)
     cbar_features = plt.colorbar(matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap_features))
     cbar_features.set_label('standardized feature values')
-
-    plt.show()
+    
     plt.savefig('{}_heatmap.png'.format(output), bbox_inches='tight', dpi = 300)
     plt.show()
     
