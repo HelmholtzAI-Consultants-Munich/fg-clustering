@@ -230,73 +230,7 @@ def _compute_jaccard_matrix(clusters, indices_bootstrap_clusters, indices_origin
 
 
 
-def compute_balanced_average_impurity(y, labels):
-    """
-    Compute balanced average impurity as score for Random Forest classifier clustering. 
-    Impurity score is an Gini Coefficient of the classes within each cluster. The class sizes are thereby balanced by
-    by rescaling with the inverse size of the class in the overall dataset.
-    
-    Parameters
-    ----------
-        y: Pandas Series
-            Target column.
-        labels: numpy array
-            Clustering labels.
 
-    Returns
-    -------
-        score: float
-            Score for clustering defined by balanced average purity .
-    """
-    
-    #compute the number of datapoints for each class to use it then for rescaling of the 
-    #class sizes within each cluster
-    class_rescaling_factor = {class_: 1/sum(y==class_) for class_ in np.unique(y)} #rescaling with inverse class size
-        
-    balanced_impurities = []
-    
-    for cluster in np.unique(labels):
-        y_cluster = y[labels == cluster]
-        
-        #compute balanced class probabilities (rescaled with overall class size)
-        class_probabilities_unnormalized = [sum(y_cluster==class_)*class_rescaling_factor[class_] for class_ in np.unique(y)]
-        class_probabilities_unnormalized = np.array(class_probabilities_unnormalized)
-        normalization_factor = class_probabilities_unnormalized.sum()
-        class_probabilities = class_probabilities_unnormalized / normalization_factor
-        
-        #compute (balanced) gini impurity
-        gini_impurity = 1 - np.sum(class_probabilities**2)
-        
-        balanced_impurities.append(gini_impurity)
-    
-    score = np.mean(balanced_impurities)
-    
-    return score
-
-
-
-def compute_total_within_cluster_variation(y, labels):
-    """
-    Compute total within cluster variation as score for Random Forest regression clustering. 
-    Parameters
-    ----------
-        y: Pandas Series
-            Target column.
-        labels: numpy array
-            Clustering labels.
-
-    Returns
-    -------
-        score: float
-            Score for clustering defined by total within cluster variation.
-    """
-    
-    score = 0
-    for cluster in np.unique(labels):
-        y_cluster = y[labels == cluster]
-        score += np.var(y_cluster)*len(y_cluster)
-        
-    return score
     
     
     

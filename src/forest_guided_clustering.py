@@ -12,11 +12,11 @@ import src.optimizer as opt
 ############################################
 
 
-def forest_guided_clustering(output, model, data, target_column,  
-                             max_K = 6, thr_pvalue = 0.05, 
-                             bootstraps = 300, max_iter_clustering = 300, discart_value = 0.6,
-                             number_of_clusters = None, random_state = 42):
-    
+def forest_guided_clustering(output, data, target_column, model,   
+                             max_K = 6, number_of_clusters = None, max_iter_clustering = 500,  
+                             bootstraps_JI = 300, discart_value_JI = 0.6,
+                             bootstraps_p_value = 10000, thr_pvalue = 0.05, random_state = 42):
+
     """
     This function runs forest-guided clustering algirthm for Random Forest Classifier or Regressor. 
     It computes the optimal number of clusters for a k-medoids clustering based on the distance matrix coputed from the Random Forest proximity matrix. 
@@ -66,23 +66,23 @@ def forest_guided_clustering(output, model, data, target_column,
         raise ValueError(f'Do not recognize {str(type(model))}. Can only work with sklearn RandomForestRegressor or RandomForestClassifier.')
     
     if type(target_column)==str:
-        y = data.loc[:,target_column].to_numpy()
-        X = data.drop(columns=[target_column]).to_numpy()
+        y = data.loc[:,target_column]
+        X = data.drop(columns=[target_column])
     else:
         y = target_column
-        X = data.to_numpy()
+        X = data
     
     
-    distanceMatrix = 1 - proximityMatrix(model, X)
+    distanceMatrix = 1 - proximityMatrix(model, X.to_numpy())
     
     if number_of_clusters is None:
-        k = opt.optimizeK(distanceMatrix, y, max_K, bootstraps, max_iter_clustering, discart_value, method, random_state)
+        k = opt.optimizeK(distanceMatrix, y.to_numpy(), max_K, bootstraps_JI, max_iter_clustering, discart_value_JI, method, random_state)
     else:
         k = number_of_clusters
         
     print(f"Visualizing forest guided clustering for {k} clusters")
     
-    pl.plot_forest_guided_clustering(output, model, distanceMatrix, data, target_column, k, thr_pvalue, random_state, method)
+    pl.plot_forest_guided_clustering(output, X, y, method, distanceMatrix, k, thr_pvalue, bootstraps_p_value, random_state)
     
     return k
 

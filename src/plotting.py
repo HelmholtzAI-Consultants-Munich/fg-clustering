@@ -2,18 +2,17 @@
 # imports
 ############################################
 
-#import sys
-#import numpy as np
-#import pandas as pd
-#import seaborn as sns
-#import matplotlib
-#import matplotlib.pyplot as plt
-#from matplotlib.patches import Patch
+import sys
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib
+import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 
-#from sklearn_extra.cluster import KMedoids
+from sklearn_extra.cluster import KMedoids
 
-#import src.optimizer as opt
-#import src.utils as utils
+import src.utils as utils
 import src.statistics as stats
 
 
@@ -105,8 +104,8 @@ def _plot_boxplots(output, X, num_cols = 6):
     :param num_cols: Number of plots in one row, defaults to 6.
     :type num_cols: int, optional
     '''    
-    target_and_features = X_anova.columns[X_anova.columns != 'cluster']
-    X_boxplot = pd.melt(X_anova, id_vars=['cluster'], value_vars=target_and_features)
+    target_and_features = X.columns[X.columns != 'cluster']
+    X_boxplot = pd.melt(X, id_vars=['cluster'], value_vars=target_and_features)
     
     plot = sns.FacetGrid(X_boxplot, col='variable', height=3, sharey=False, col_wrap=num_cols)
     plot.map(sns.boxplot, 'cluster', 'value', color='darkgrey')
@@ -116,37 +115,45 @@ def _plot_boxplots(output, X, num_cols = 6):
     plt.show()
     
 
-def _plot_feature_importance(output, X_anova, num_cols = 6):
+def _plot_feature_importance(output, X, bootstraps, num_cols = 4):
+    '''Plot feature importance to show the importance of each feature for each cluster, 
+    measured by variance and impurity of the feature within the cluster, i.e. the higher 
+    the feature importance, the lower the feature variance / impurity within the cluster.
 
-    importance = _get_feature_importance_clusterwise(X_anova)
+    :param output: Filename to save plot.
+    :type output: str
+    :param X: Feature matrix.
+    :type X: pandas.DataFrame
+    :param num_cols: Number of plots in one row, defaults to 4.
+    :type num_cols: int, optional
+    '''
+    importance = stats.get_feature_importance_clusterwise(X, bootstraps)
+    num_features = len(importance)
 
-    clusters = X_anova['cluster'].unique()
-    num_rows = int(len(clusters) / num_cols) + (len(clusters) % num_cols > 0)
+    X_barplot = pd.melt(importance , ignore_index=False)
+    X_barplot = X_barplot.rename_axis('feature').reset_index(level=0, inplace=False)
+    X_barplot = X_barplot.sort_values('value',ascending=False)
 
-    fig = plt.figure(figsize=(len(clusters)*5,5))
-    fig.subplots_adjust()
-    fig.suptitle('Feature Importance per Cluster')
+    height = max(5,int(np.ceil(5*num_features/25)))
+    num_cols = min(num_cols, len(importance.columns))
 
-    for i in range(len(clusters)):
-        importance.sort_values(by=[clusters[i]], inplace = True)
-        X_plot = pd.DataFrame({'feature': importance.index, 'importance': importance[clusters[i]]})
+    plot = sns.FacetGrid(X_barplot, col='variable', sharey=False, col_wrap=num_cols,height=height)
+    plot.map(sns.barplot, 'value', 'feature', color='darkgrey')
+    plot.set_axis_labels('importance', 'feature')
+    plot.set_titles(col_template="Cluster {col_name}")
+    plt.suptitle('Feature Importance per Cluster')
+    plt.tight_layout()
 
-        ax = fig.add_subplot(num_rows, num_cols, i+1)
-        sns.barplot(ax=ax, data=X_plot, x='importance', y='feature', 
-                    order=X_plot.sort_values('importance',ascending = False).feature, color='darkgrey').set_title('Cluster {}'.format(clusters[i]))
-
-    fig.tight_layout()
     plt.savefig('{}_feature_importance.png'.format(output), bbox_inches='tight', dpi = 300)
     plt.show()
         
 
-
-def plot_forest_guided_clustering(output, X, y, method, distanceMatrix, k, thr_pvalue, random_state):
+def plot_forest_guided_clustering(output, X, y, method, distanceMatrix, k, thr_pvalue, bootstraps, random_state):
     '''Plot results of forest-guided clustering. Rank and filter feature matrix based on staistical tests
-     (ANOVA for continuous featres, chi square for categorical features). Show feature distribution per cluster
-     in heatmap and boxplot. Plot feature importance to show the importance of each feature for each cluster, 
-     measured by variance and impurity of the feature within the cluster, i.e. the higher the feature importance,
-     the lower the feature variance / impurity within the cluster.
+    (ANOVA for continuous featres, chi square for categorical features). Show feature distribution per cluster
+    in heatmap and boxplot. Plot feature importance to show the importance of each feature for each cluster, 
+    measured by variance and impurity of the feature within the cluster, i.e. the higher the feature importance,
+    the lower the feature variance / impurity within the cluster.
 
     :param output: Filename to save plot.
     :type output: str
@@ -162,6 +169,8 @@ def plot_forest_guided_clustering(output, X, y, method, distanceMatrix, k, thr_p
     :type k: int
     :param thr_pvalue: P-value threshold for feature filtering.
     :type thr_pvalue: float
+    :param bootstraps: Number of bootstraps to be drawn for computation of p-value.
+    :type bootstraps: int, optional
     :param random_state: Seed number for random state.
     :type random_state: int
     '''
@@ -170,5 +179,5 @@ def plot_forest_guided_clustering(output, X, y, method, distanceMatrix, k, thr_p
     
     _plot_heatmap(output, X_ranked, method)
     _plot_boxplots(output, X_ranked)
-    _plot_feature_importance(output, X_ranked)
+    _plot_feature_importance(output, X_ranked, bootstraps)
 
