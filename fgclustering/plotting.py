@@ -12,12 +12,12 @@ from matplotlib.patches import Patch
 
 from sklearn_extra.cluster import KMedoids
 
-import src.utils as utils
-import src.statistics as stats
+import fgclustering.utils as utils
+import fgclustering.statistics as stats
 
 
 ############################################
-# Plot forest-guided clustering results as heatmap
+# functions
 ############################################
 
 def _plot_heatmap(output, X, method):
