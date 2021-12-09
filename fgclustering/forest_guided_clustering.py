@@ -22,7 +22,7 @@ def forest_guided_clustering(output, data, target_column, model,
     the importance of each feature for each cluster, measured by variance and impurity of the feature within the cluster, 
     i.e. the higher the feature importance, the lower the feature variance / impurity within the cluster.
 
-    :param output: [description]
+    :param output: Filename to save plot.
     :type output: str
     :param data: Input data with feature matrix. 
         If target_column is a string it has to be a column in the data.
