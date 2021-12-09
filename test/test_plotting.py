@@ -1,4 +1,4 @@
-from src.plotting import _scale_standard, _scale_minmax, _anova_test
+from fgclustering.plotting import _scale_standard, _scale_minmax, _anova_test
 import pandas as pd
 import joblib
 import numpy as np

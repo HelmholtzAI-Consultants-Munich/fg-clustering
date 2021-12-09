@@ -3,8 +3,8 @@ import pandas as pd
 import joblib
 import numpy as np
 
-from src.forest_guided_clustering import *
-from src.optimizer import _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster
+from fgclustering.forest_guided_clustering import *
+from fgclustering.optimizer import _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster
 
 def test_optimizeK():
     max_K = 4

@@ -124,6 +124,8 @@ def _plot_feature_importance(output, X, bootstraps, num_cols = 4):
     :type output: str
     :param X: Feature matrix.
     :type X: pandas.DataFrame
+    :param bootstraps: Number of bootstraps to be drawn for computation of p-value.
+    :type bootstraps: int
     :param num_cols: Number of plots in one row, defaults to 4.
     :type num_cols: int, optional
     '''
@@ -170,7 +172,7 @@ def plot_forest_guided_clustering(output, X, y, method, distanceMatrix, k, thr_p
     :param thr_pvalue: P-value threshold for feature filtering.
     :type thr_pvalue: float
     :param bootstraps: Number of bootstraps to be drawn for computation of p-value.
-    :type bootstraps: int, optional
+    :type bootstraps: int
     :param random_state: Seed number for random state.
     :type random_state: int
     '''

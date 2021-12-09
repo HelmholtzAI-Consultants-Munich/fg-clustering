@@ -1,7 +1,7 @@
 import pandas as pd
 import joblib
 
-from src.forest_guided_clustering import *
+from fgclustering.forest_guided_clustering import *
 
 
 def test_forest_guided_clustering():

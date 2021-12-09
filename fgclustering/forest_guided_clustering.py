@@ -4,8 +4,9 @@
 
 import numpy as np
 
-import src.plotting as pl
-import src.optimizer as opt
+import fgclustering.utils as utils
+import fgclustering.plotting as pl
+import fgclustering.optimizer as opt
 
 ############################################
 # Forest-guided Clustering
@@ -73,7 +74,7 @@ def forest_guided_clustering(output, data, target_column, model,
         X = data
     
     
-    distanceMatrix = 1 - proximityMatrix(model, X.to_numpy())
+    distanceMatrix = 1 - utils.proximityMatrix(model, X.to_numpy())
     
     if number_of_clusters is None:
         k = opt.optimizeK(distanceMatrix, y.to_numpy(), max_K, bootstraps_JI, max_iter_clustering, discart_value_JI, method, random_state)
@@ -88,35 +89,3 @@ def forest_guided_clustering(output, data, target_column, model,
 
 
 
-def proximityMatrix(model, X, normalize=True):  
-    """
-    Calculate proximity matrix of Random Forest model. 
-    Parameters
-    ----------
-        model: sklearn object
-            Trained Random Forest model.
-        X: DataFrame
-            Feature matrix.
-        normalize: Bool
-            Normalize proximity matrix by number of trees in the Random Forest. 
-
-    Returns
-    -------
-        proxMat: DataFrame
-            Proximity matrix of Random Forest model.
-    """
-
-    terminals = model.apply(X)
-    nTrees = terminals.shape[1]
-
-    a = 0
-    proxMat = 0
-
-    for i in range(nTrees):
-        a = terminals[:,i]
-        proxMat += np.equal.outer(a, a)
-
-    if normalize:
-        proxMat = proxMat / nTrees
-
-    return proxMat 

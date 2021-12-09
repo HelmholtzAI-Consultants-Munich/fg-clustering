@@ -24,8 +24,8 @@ def compute_balanced_average_impurity(categorical_values, cluster_labels):
 
     :param categorical_values: Values of categorical feature / target.
     :type categorical_values: pandas.Series
-    :param labels: Cluster labels for each value.
-    :type labels: numpy.ndarray
+    :param cluster_labels: Cluster labels for each value.
+    :type cluster_labels: numpy.ndarray
     :return: Impurity score.
     :rtype: float
     '''
@@ -57,8 +57,8 @@ def compute_total_within_cluster_variation(continuous_values, cluster_labels):
 
     :param continuous_values: Values of continuous feature / target.
     :type continuous_values: pandas.Series
-    :param labels: Cluster labels for each value.
-    :type labels: numpy.ndarray
+    :param cluster_labels: Cluster labels for each value.
+    :type cluster_labels: numpy.ndarray
     :return: Within cluster variation score.
     :rtype: float
     '''
