@@ -328,27 +328,29 @@ def _get_feature_importance_clusterwise(X_anova, epsilon = sys.float_info.min):
     return importance
             
 
-def _plot_feature_importance(output, X_anova, num_cols = 6):
+def _plot_feature_importance(output, X_anova, num_cols = 4):
 
     importance = _get_feature_importance_clusterwise(X_anova)
+    num_features = len(importance)
 
-    clusters = X_anova['cluster'].unique()
-    num_rows = int(len(clusters) / num_cols) + (len(clusters) % num_cols > 0)
+    X_barplot = pd.melt(importance , ignore_index=False)
+    X_barplot = X_barplot.rename_axis('feature').reset_index(level=0, inplace=False)
+    X_barplot = X_barplot.sort_values('value',ascending=False)
 
-    fig = plt.figure(figsize=(len(clusters)*5,5))
-    fig.subplots_adjust()
-    fig.suptitle('Feature Importance per Cluster')
 
-    for i in range(len(clusters)):
-        importance.sort_values(by=[clusters[i]], inplace = True)
-        X_plot = pd.DataFrame({'feature': importance.index, 'importance': importance[clusters[i]]})
 
-        ax = fig.add_subplot(num_rows, num_cols, i+1)
-        sns.barplot(ax=ax, data=X_plot, x='importance', y='feature', 
-                    order=X_plot.sort_values('importance',ascending = False).feature, color='darkgrey').set_title('Cluster {}'.format(clusters[i]))
+    height = max(5,int(np.ceil(5*num_features/25)))
+    num_cols = min(num_cols, len(importance.columns))
 
-    fig.tight_layout()
+    plot = sns.FacetGrid(X_barplot, col='variable', sharey=False, col_wrap=num_cols,height=height)
+    plot.map(sns.barplot, 'value', 'feature', color='darkgrey')
+    plot.set_axis_labels('importance', 'feature')
+    plot.set_titles(col_template="Cluster {col_name}")
+    plt.suptitle('Feature Importance per Cluster')
+    plt.tight_layout()
+
     plt.savefig('{}_feature_importance.png'.format(output), bbox_inches='tight', dpi = 300)
+
     plt.show()
         
 
