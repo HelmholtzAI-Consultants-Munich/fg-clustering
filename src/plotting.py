@@ -2,6 +2,7 @@
 # imports
 ############################################
 
+import sys
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -268,7 +269,7 @@ def _plot_boxplots(output, X_anova, num_cols = 6):
     plt.show()
     
 
-def _calculate_p_value_categorical(y, y_all, cluster, cluster_size, bootstraps = 1000):
+def _calculate_p_value_categorical(y, y_all, cluster, cluster_size, bootstraps = 10000):
 
     labels = [cluster]*cluster_size
     y_impurity = opt.compute_balanced_average_impurity(y, labels)
@@ -279,76 +280,74 @@ def _calculate_p_value_categorical(y, y_all, cluster, cluster_size, bootstraps =
         bootstrapped_impurity.append(opt.compute_balanced_average_impurity(bootstrapped_y, labels))
         
     bootstrapped_impurity = sorted(bootstrapped_impurity)
-    p_value = (bisect(bootstrapped_impurity, y_impurity)+1) / (bootstraps+1)
+    p_value = bisect(bootstrapped_impurity, y_impurity) / bootstraps
     return p_value
 
     
-def _calculate_p_value_continuous(y, y_all, cluster_size, bootstraps = 1000):
+def _calculate_p_value_continuous(y, y_all, cluster_size, bootstraps = 10000):
     
-    bootstrap_samples = list()
+    y_var = y.var()
+
+    bootstrapped_var = list()
     for b in range(bootstraps):
         sample = resample(y_all, replace = True, n_samples = cluster_size)
-        bootstrap_samples.append(sample.var())
+        bootstrapped_var.append(sample.var())
         
-    bootstrap_samples = sorted(bootstrap_samples)
-    p_value = (bisect(bootstrap_samples, y.var())+1) / (bootstraps+1)
+    bootstrapped_var = sorted(bootstrapped_var)
+    p_value = bisect(bootstrapped_var, y_var) / bootstraps
     return p_value
     
 
-def _get_feature_importance_clusterwise(X_anova):
+def _get_feature_importance_clusterwise(X_anova, epsilon = sys.float_info.min):
     
+    X_anova = X_anova.copy()
     clusters = X_anova['cluster']
     clusters_size = clusters.value_counts()
-    X_anova.drop('cluster', axis=1, inplace=True)
-    X_anova.drop('target', axis=1, inplace=True)
+    X_anova.drop(['cluster', 'target'], axis=1, inplace=True)
+
+    features = X_anova.columns.tolist()
+    importance = pd.DataFrame(columns=clusters.unique(), index=features)
     
     X_categorical = X_anova.select_dtypes(include=['category'])
     X_numeric = X_anova.select_dtypes(exclude=['category'])
-    
-    features = X_anova.columns.tolist()
     var_tot = X_numeric.to_numpy().flatten().var()
-    
-    importance = pd.DataFrame(columns=clusters.unique(), index=features)
 
     for feature in X_categorical.columns:
         for cluster in clusters.unique():
             y = X_categorical.loc[clusters == cluster, feature]
             y_all = X_categorical[feature]
-            importance.loc[feature,cluster] = - np.log(_calculate_p_value_categorical(y, y_all, cluster, clusters_size.loc[cluster]))
+            importance.loc[feature,cluster] = - np.log(_calculate_p_value_categorical(y, y_all, cluster, clusters_size.loc[cluster]) + epsilon)
 
     for feature in X_numeric.columns:
         X_numeric.loc[:,feature] = X_numeric[feature] / var_tot # normalize by total variance 
         for cluster in clusters.unique():
             y = X_numeric.loc[clusters == cluster, feature]
             y_all = X_numeric[feature]
-            importance.loc[feature,cluster] = - np.log(_calculate_p_value_continuous(y, y_all, clusters_size.loc[cluster]))
+            importance.loc[feature,cluster] = - np.log(_calculate_p_value_continuous(y, y_all, clusters_size.loc[cluster]) + epsilon)
 
     return importance
             
 
 def _plot_feature_importance(output, X_anova, num_cols = 6):
 
-    X_anova = X_anova.copy()
-    num_clusters = len(X_anova['cluster'].unique())
     importance = _get_feature_importance_clusterwise(X_anova)
 
-    num_rows = int(num_clusters / num_cols) + (num_clusters % num_cols > 0)
-    fig = plt.figure()
-    fig.subplots_adjust(hspace=0.4, wspace=0.4)
+    clusters = X_anova['cluster'].unique()
+    num_rows = int(len(clusters) / num_cols) + (len(clusters) % num_cols > 0)
+
+    fig = plt.figure(figsize=(len(clusters)*5,5))
+    fig.subplots_adjust()
     fig.suptitle('Feature Importance per Cluster')
 
-    for i in range(num_clusters):
-        cluster = importance.columns[i]
-        importance.sort_values(by=[cluster], inplace = True)
-        X_plot = pd.DataFrame({'cluster': [cluster]*importance.shape[0], 'feature': importance.index, 'importance': importance[cluster]})
+    for i in range(len(clusters)):
+        importance.sort_values(by=[clusters[i]], inplace = True)
+        X_plot = pd.DataFrame({'feature': importance.index, 'importance': importance[clusters[i]]})
 
         ax = fig.add_subplot(num_rows, num_cols, i+1)
-        #col = int(i/ num_cols)
-        #row = i - (num_cols * col)
-        
-        sns.barplot(ax=ax, data=X_plot, x='importance', y='feature', order=X_plot.sort_values('importance',ascending = False).feature, color='darkgrey')
+        sns.barplot(ax=ax, data=X_plot, x='importance', y='feature', 
+                    order=X_plot.sort_values('importance',ascending = False).feature, color='darkgrey').set_title('Cluster {}'.format(clusters[i]))
 
-    #fig.tight_layout()
+    fig.tight_layout()
     plt.savefig('{}_feature_importance.png'.format(output), bbox_inches='tight', dpi = 300)
     plt.show()
         
