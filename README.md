@@ -2,7 +2,7 @@
 
 This python package is about explainability of Random Forest models. Since standard methods are not suited in the presence of correlated features, the Forest-Guided Clustering package computes feature importance based on subgroups of instances that follow similar decision rules and returns the optimal value for k.
 
-For detailed documentation and usage examples, please visit the [Wiki](https://github.com/HelmholtzAI-Consultants-Munich/forest_guided_clustering/wiki).
+For detailed documentation and usage examples, please visit the [Documentation](https://forest-guided-clustering.readthedocs.io/en/latest/index.html).
 
 ## Installation
 
@@ -34,4 +34,4 @@ where
 
 The function will return the optimal number of clusters and plot the forest-guided clustering results as heatmap and boxplots.
 
-For a detailed tutorial see the IPython Notebook ```tutorial.ipynb```. 
+For a detailed tutorial see the IPython Notebook ```tutorial.ipynb```.
