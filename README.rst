@@ -7,7 +7,8 @@ This python package is about explainability of Random Forest models. Since stand
 
 For detailed documentation and usage examples, please visit the `documentation <https://forest-guided-clustering.readthedocs.io/>`_
 
-## Installation
+Installation
+-------------------------------
 
 The code has been implemented using Python 3.8. To install the package run:
 
@@ -20,7 +21,8 @@ pip install -e .        (Installation as python package: run inside directory)
 ``` 
 
 
-## Usage
+Usage
+-------------------------------
 
 To get explainability of your Random Forest model via Forest-Guided Clustering, you simply need to run the folloiwng command:
 
