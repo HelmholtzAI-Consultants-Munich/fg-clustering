@@ -1,3 +1,5 @@
+|Docs|
+
 # Forest-Guided Clustering - Explainability for Random Forest Models
 
 This python package is about explainability of Random Forest models. Since standard methods are not suited in the presence of correlated features, the Forest-Guided Clustering package computes feature importance based on subgroups of instances that follow similar decision rules and returns the optimal value for k.
@@ -35,3 +37,7 @@ where
 The function will return the optimal number of clusters and plot the forest-guided clustering results as heatmap and boxplots.
 
 For a detailed tutorial see the IPython Notebook ```tutorial.ipynb```.
+
+
+.. |Docs| image:: https://readthedocs.org/projects/scarches/badge/?version=latest
+   :target: https://scarches.readthedocs.io
