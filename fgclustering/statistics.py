@@ -295,5 +295,5 @@ def get_feature_importance_clusterwise(X, bootstraps, epsilon = sys.float_info.m
             X_feature_cluster = X_numeric.loc[clusters == cluster, feature]
             X_feature = X_numeric[feature]
             importance.loc[feature,cluster] = - np.log(_calculate_p_value_continuous(X_feature_cluster, X_feature, clusters_size.loc[cluster], bootstraps) + epsilon)
-
+    
     return importance

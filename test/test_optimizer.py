@@ -49,7 +49,7 @@ def test_optimizeK():
     distance_matrix = 1 - proximityMatrix(model, X)
     result = optimizeK(distance_matrix, y, max_K, bootstraps, max_iter_clustering, discart_value, method, random_state)
 
-    assert result == 5, "Error optimal number of Clusters for boston test case is not equal 5" #solution not 100% stable -> could also be 6
+    assert result == 5 or result == 6, "Error optimal number of Clusters for boston test case is not equal 5 or 6" 
 
 
 def test_compute_stability_indices():

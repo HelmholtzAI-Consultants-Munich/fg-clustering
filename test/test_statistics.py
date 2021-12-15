@@ -6,7 +6,10 @@ import joblib
 import numpy as np
 import pandas as pd
 
-from fgclustering.statistics import compute_balanced_average_impurity, compute_total_within_cluster_variation, feature_ranking
+from sklearn_extra.cluster import KMedoids
+
+from fgclustering.utils import *
+from fgclustering.statistics import compute_balanced_average_impurity, compute_total_within_cluster_variation, feature_ranking, get_feature_importance_clusterwise
 
 
 ############################################
@@ -52,11 +55,26 @@ def test_feature_ranking():
     assert set(result.columns) == set(['col_3', 'col_4', 'cluster', 'target'])
 
 
-def get_feature_importance_clusterwise():
+def test_get_feature_importance_clusterwise():
 
-    '''To Do
-    '''
-    assert True
+    k = 3
+    random_state = 42
+    thr_pvalue = 0.001
+    bootstraps = 100
+
+    data_iris = pd.read_csv('./data/data_iris.csv')
+    model = joblib.load(open('./data/random_forest_iris.joblib', 'rb'))
+    X = data_iris.drop(columns=['target'])
+    y = data_iris.loc[:,'target'].to_numpy()
+
+    distanceMatrix = 1 - proximityMatrix(model, X.to_numpy())
+
+    cluster_labels = KMedoids(n_clusters=k, random_state=random_state).fit(distanceMatrix).labels_
+    X_ranked = feature_ranking(X, y, cluster_labels, thr_pvalue)
+
+    importance = get_feature_importance_clusterwise(X_ranked, bootstraps)
+    
+    assert sum(importance < 10) == 3
 
 
 
