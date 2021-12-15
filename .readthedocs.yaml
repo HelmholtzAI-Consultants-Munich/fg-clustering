@@ -9,7 +9,7 @@ sphinx:
   fail_on_warning: true
   configuration: docs/source/conf.py
    
- python:
+python:
   # Install our python package before building the docs
   install:
     - method: pip
