@@ -7,7 +7,10 @@ build:
 
 sphinx:
   fail_on_warning: true
-
-# Build documentation in the docs/ directory with Sphinx
-sphinx:
-   configuration: docs/source/conf.py
+  configuration: docs/source/conf.py
+   
+ python:
+  # Install our python package before building the docs
+  install:
+    - method: pip
+      path: .
