@@ -38,7 +38,7 @@ def compute_balanced_average_impurity(categorical_values, cluster_labels):
         categorical_values_cluster = categorical_values[cluster_labels == cluster]
         
         #compute balanced class probabilities (rescaled with overall class size)
-        class_probabilities_unnormalized = [sum(categorical_values_cluster==class_)*class_rescaling_factor[class_] for class_ in np.unique(categorical_values)]
+        class_probabilities_unnormalized = [sum(categorical_values_cluster==class_)*rescaling_factor[class_] for class_ in np.unique(categorical_values)]
         class_probabilities_unnormalized = np.array(class_probabilities_unnormalized)
         normalization_factor = class_probabilities_unnormalized.sum()
         class_probabilities = class_probabilities_unnormalized / normalization_factor
@@ -64,8 +64,8 @@ def compute_total_within_cluster_variation(continuous_values, cluster_labels):
     '''
     score = 0
     for cluster in np.unique(cluster_labels):
-        continuous_values = categorical_values[cluster_labels == cluster]
-        score += np.var(continuous_values)*len(continuous_values)
+        continuous_values_cluster = continuous_values[cluster_labels == cluster]
+        score += np.var(continuous_values_cluster)*len(continuous_values_cluster)
         
     return score
 

@@ -7,6 +7,8 @@ from tqdm import tqdm
 
 from sklearn_extra.cluster import KMedoids
 
+import fgclustering.statistics as statistics
+
 ############################################
 # Optimize number of clusters k
 ############################################
@@ -181,10 +183,10 @@ def optimizeK(distance_matrix, y, max_K, bootstraps, max_iter_clustering, discar
         if min_index > discart_value:
             if method == "classifier":
                 # compute balanced purities
-                score = compute_balanced_average_impurity(y, labels)
+                score = statistics.compute_balanced_average_impurity(y, labels)
             elif method == "regression":
                 # compute the total within cluster variation
-                score = compute_total_within_cluster_variation(y, labels)
+                score = statistics.compute_total_within_cluster_variation(y, labels)
             if score<score_min:
                 optimal_k = k
                 score_min = score

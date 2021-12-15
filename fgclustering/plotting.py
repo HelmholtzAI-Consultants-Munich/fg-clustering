@@ -109,7 +109,7 @@ def _plot_boxplots(output, X, num_cols = 6):
     
     plot = sns.FacetGrid(X_boxplot, col='variable', height=3, sharey=False, col_wrap=num_cols)
     plot.map(sns.boxplot, 'cluster', 'value', color='darkgrey')
-    plot.set_axis_labels('Cluster', 'Feature Value')
+    plot.set_axis_labels('Cluster', 'Feature Value', clear_inner=False)
     plot.set_titles(col_template="Feature: {col_name}")
     plt.savefig('{}_boxplots.png'.format(output), bbox_inches='tight', dpi = 300)
     plt.show()
