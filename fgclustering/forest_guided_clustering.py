@@ -17,7 +17,7 @@ def forest_guided_clustering(output, data, target_column, model,
                              bootstraps_p_value = 10000, thr_pvalue = 0.05, random_state = 42):
     '''Run forest-guided clustering algirthm for Random Forest Classifier or Regressor. The optimal number of clusters 
     for a k-medoids clustering is computed, based on the distance matrix computed from the Random Forest proximity matrix. 
-    Features are ranked and filtered based on statistical tests (ANOVA for continuous featres, chi square for categorical features).
+    Features are ranked and filtered based on statistical tests (ANOVA for continuous features, chi square for categorical features).
     Feature distribution per cluster is shown in a heatmap and boxplots. Feature importance is plotted to show 
     the importance of each feature for each cluster, measured by variance and impurity of the feature within the cluster, 
     i.e. the higher the feature importance, the lower the feature variance / impurity within the cluster.
