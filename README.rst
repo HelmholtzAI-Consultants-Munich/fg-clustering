@@ -28,10 +28,10 @@ To get explainability of your Random Forest model via Forest-Guided Clustering, 
 
 where 
 
-- ```output='fgc'``` sets the name for the heatmap and boxplot,
-- ```model=rf``` is a Random Forest Classifier or Regressor object, 
-- ```data=data_boston``` is the dataset on which the Random Forest model was trained on and 
-- ```target_column='target'``` is the name of the target column in the provided dataset. 
+- :code:`output='fgc'` sets the name for the heatmap and boxplot,
+- :code:`model=rf` is a Random Forest Classifier or Regressor object, 
+- :code:`data=data_boston` is the dataset on which the Random Forest model was trained on and 
+- :code:`target_column='target'` is the name of the target column in the provided dataset. 
 
 The function will return the optimal number of clusters and plot the forest-guided clustering results as heatmap and boxplots.
 
