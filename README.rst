@@ -35,7 +35,7 @@ where
 
 The function will return the optimal number of clusters and plot the forest-guided clustering results as heatmap and boxplots.
 
-For a detailed tutorial see the IPython Notebook ```tutorial.ipynb```.
+For a detailed tutorial see the IPython Notebook :code:`tutorial.ipynb`.
 
 
 .. |Docs| image:: https://readthedocs.org/projects/forest-guided-clustering/badge/?version=latest
