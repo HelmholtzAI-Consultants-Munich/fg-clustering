@@ -12,9 +12,11 @@ Installation
 
 The code has been implemented using Python 3.8. To install the package run:
 
-:code:`
+:code:`result = (1 + x) * 32`
+
+```
 pip install .        (Installation as python package: run inside directory)
-`
+```
 
 or if you want to develop the package:
 
