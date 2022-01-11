@@ -12,7 +12,7 @@ Installation
 
 The code has been implemented using Python 3.8. To install the package run:
 
-:code:`result = (1 + x) * 32`
+:code:`pip install .        (Installation as python package: run inside directory)`
 
 ```
 pip install .        (Installation as python package: run inside directory)
