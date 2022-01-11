@@ -5,16 +5,16 @@ Forest-Guided Clustering - Explainability for Random Forest Models
 
 This python package is about explainability of Random Forest models. Since standard methods are not suited in the presence of correlated features, the Forest-Guided Clustering package computes feature importance based on subgroups of instances that follow similar decision rules and returns the optimal value for k.
 
-For detailed documentation and usage examples, please visit the `documentation <https://forest-guided-clustering.readthedocs.io/>`_
+For detailed documentation and usage examples, please visit the `documentation <https://forest-guided-clustering.readthedocs.io/>`_ .
 
 Installation
 -------------------------------
 
 The code has been implemented using Python 3.8. To install the package run:
 
-```
+:code:`
 pip install .        (Installation as python package: run inside directory)
-```
+`
 
 or if you want to develop the package:
 
