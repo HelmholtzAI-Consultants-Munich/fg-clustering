@@ -1,7 +1,9 @@
-|Stars| |Docs| 
+|Stars| |PyPI| |Docs| 
 
 .. |Stars| image:: https://img.shields.io/github/stars/HelmholtzAI-Consultants-Munich/forest_guided_clustering?logo=GitHub&color=yellow
    :target: https://github.com/HelmholtzAI-Consultants-Munich/forest_guided_clustering/stargazers
+.. |PyPI| image:: https://img.shields.io/pypi/v/fgclustering.svg
+   :target: https://pypi.org/project/fgclustering
 .. |Docs| image:: https://readthedocs.org/projects/forest-guided-clustering/badge/?version=latest
    :target: https://forest-guided-clustering.readthedocs.io
 
