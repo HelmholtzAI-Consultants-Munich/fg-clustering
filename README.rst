@@ -1,4 +1,11 @@
-|Docs|
+|Stars| |Docs| 
+
+.. |Stars| image:: https://img.shields.io/github/stars/HelmholtzAI-Consultants-Munich/forest_guided_clustering?logo=GitHub&color=yellow
+   :target: https://github.com/HelmholtzAI-Consultants-Munich/forest_guided_clustering/stargazers
+
+
+.. |Docs| image:: https://readthedocs.org/projects/forest-guided-clustering/badge/?version=latest
+   :target: https://forest-guided-clustering.readthedocs.io
 
 Forest-Guided Clustering - Explainability for Random Forest Models
 =========================================================================
@@ -78,11 +85,6 @@ Contributing
 -------------------------------
 
 Contributions are more than welcome! Everything from code to notebooks to examples and documentation are all equally valuable so please don't feel you can't contribute. To contribute please fork the project make your changes and submit a pull request. We will do our best to work through any issues with you and get your code merged into the main branch.
-
-
-
-.. |Docs| image:: https://readthedocs.org/projects/forest-guided-clustering/badge/?version=latest
-   :target: https://forest-guided-clustering.readthedocs.io
 
 
 
