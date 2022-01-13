@@ -2,7 +2,7 @@ from distutils.core import setup
 import setuptools
 
 setup(
-    name='ForestGuidedClustering',
+    name='fglustering',
     version='0.1.0',
     url='https://github.com/HelmholtzAI-Consultants-Munich/forest_guided_clustering',
     author='Lisa Barros de Andrade e Sousa, Dominik Thalmeier',
