@@ -32,7 +32,9 @@ All required packages are automatically installed if installation is done via :c
 
 PyPI install:
 
-:code:`pip install fgclustering`
+.. code:: bash
+
+    pip install fgclustering
 
 
 
