@@ -49,7 +49,7 @@ Usage
 
 To get explainability of your Random Forest model via Forest-Guided Clustering, you simply need to run the folloiwng command:
 
-:code:`forest_guided_clustering(output='fgc', data=data_boston, target_column='target', model=rf)`
+:code:`k = forest_guided_clustering(output='fgc', data=data_boston, target_column='target', model=rf)`
 
 where 
 
