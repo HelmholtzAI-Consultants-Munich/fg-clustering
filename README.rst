@@ -18,15 +18,9 @@ Installation
 **Requirements:**
 
 - Python 3.8 or greater
-- pandas
-- numpy
-- sklearn
-- scikit-learn-extra
-- scipy
-- statsmodels
-- tqdm
-- matplotlib
-- seaborn
+- pandas, numpy, tqdm
+- sklearn, scikit-learn-extra, scipy, statsmodels
+- matplotlib, seaborn
 
 All required packages are automatically installed if installation is done via :code:`pip` or :code:`conda`
 
