@@ -28,22 +28,10 @@ All required packages are automatically installed if installation is done via :c
 
 **Install Options:**
 
-To install the package run:
-
-:code:`pip install . (Installation as python package: run inside directory)`
-
-or if you want to develop the package:
-
-:code:`pip install -e . (Installation as python package: run inside directory)`
-
-
-Conda install (not yet working):
-
-:code:`conda install -c conda-forge fgclustering`
-
-PyPI install (not yet working):
+PyPI install:
 
 :code:`pip install fgclustering`
+
 
 
 Usage
