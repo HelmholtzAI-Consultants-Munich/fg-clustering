@@ -12,11 +12,8 @@ Installation
 
 The code has been implemented using Python 3.8. To install the package run:
 
-:code:`pip install .        (Installation as python package: run inside directory)`
+:code:`pip install fgclustering`
 
-or if you want to develop the package:
-
-:code:`pip install -e .        (Installation as python package: run inside directory)` 
 
 
 Usage
