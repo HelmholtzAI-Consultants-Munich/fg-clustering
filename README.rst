@@ -2,8 +2,6 @@
 
 .. |Stars| image:: https://img.shields.io/github/stars/HelmholtzAI-Consultants-Munich/forest_guided_clustering?logo=GitHub&color=yellow
    :target: https://github.com/HelmholtzAI-Consultants-Munich/forest_guided_clustering/stargazers
-
-
 .. |Docs| image:: https://readthedocs.org/projects/forest-guided-clustering/badge/?version=latest
    :target: https://forest-guided-clustering.readthedocs.io
 
@@ -52,27 +50,21 @@ PyPI install (not yet working):
 :code:`pip install fgclustering`
 
 
-
-
-
 Usage
 -------------------------------
 
 To get explainability of your Random Forest model via Forest-Guided Clustering, you simply need to run the folloiwng command:
 
-:code:`forest_guided_clustering(output='fgc', model=rf, data=data_boston, target_column='target')`
+:code:`forest_guided_clustering(output='fgc', data=data_boston, target_column='target', model=rf)`
 
 where 
 
-- :code:`output='fgc'` sets the name for the heatmap and boxplot,
-- :code:`model=rf` is a Random Forest Classifier or Regressor object, 
-- :code:`data=data_boston` is the dataset on which the Random Forest model was trained on and 
-- :code:`target_column='target'` is the name of the target column in the provided dataset. 
+- :code:`output='fgc'` prefix for plot names of heatmap, boxplots and feature importance plots,
+- :code:`data=data_boston` is the dataset on which the Random Forest model was trained on,
+- :code:`target_column='target'` is the name of the target column (i.e. *target*) in the provided dataset and 
+- :code:`model=rf` is a Random Forest Classifier or Regressor object. 
 
-The function will return the optimal number of clusters and plot the forest-guided clustering results as heatmap and boxplots.
-
-For a detailed tutorial see the IPython Notebook :code:`tutorial.ipynb`.
-
+The function call returns the optimal number of clusters and visualizes the forest-guided clustering results as heatmap, boxplots and feature importance plots. For a detailed tutorial see the IPython Notebook :code:`tutorial.ipynb`.
 
 
 License
