@@ -35,10 +35,10 @@ or if you want to develop the package:
 
 :code:`pip install -e . (Installation as python package: run inside directory)`
 
-
-Conda install:
-
-:code:`conda install -c conda-forge fgclustering`
+.. comment::
+   Conda install:
+.. comment::
+   :code:`conda install -c conda-forge fgclustering`
 
 PyPI install:
 
