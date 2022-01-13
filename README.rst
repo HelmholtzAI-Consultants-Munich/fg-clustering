@@ -10,9 +10,41 @@ For detailed documentation and usage examples, please visit the `documentation <
 Installation
 -------------------------------
 
-The code has been implemented using Python 3.8. To install the package run:
+**Requirements:**
+
+- Python 3.8 or greater
+- pandas
+- numpy
+- sklearn
+- scikit-learn-extra
+- scipy
+- statsmodels
+- tqdm
+- matplotlib
+- seaborn
+
+All required packages are automatically installed if installation is done via :code:`pip` or :code:`conda`
+
+**Install Options:**
+
+To install the package run:
+
+:code:`pip install . (Installation as python package: run inside directory)`
+
+or if you want to develop the package:
+
+:code:`pip install -e . (Installation as python package: run inside directory)`
+
+
+Conda install:
+
+:code:`conda install -c conda-forge fgclustering`
+
+PyPI install:
 
 :code:`pip install fgclustering`
+
+
 
 
 
