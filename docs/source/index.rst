@@ -17,6 +17,12 @@ PyPI install:
 .. code:: bash
 
     pip install fgclustering
+    
+.. toctree::
+   :maxdepth: 2
+   :caption: User Guide / Tutorial:
+
+   basicusage
 
 .. toctree::
    :maxdepth: 2
