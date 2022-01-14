@@ -23,7 +23,7 @@ PyPI install:
    :caption: User Guide / Tutorial:
 
    basicusage
-   ../../tutorial
+   ../tutorial
 
 .. toctree::
    :maxdepth: 2
