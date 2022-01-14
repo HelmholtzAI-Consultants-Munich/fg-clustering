@@ -10,6 +10,7 @@ Welcome to Forest Guided Clustering's documentation!
    :maxdepth: 2
    :caption: Contents:
    
+   introduction
    modules
 
 
