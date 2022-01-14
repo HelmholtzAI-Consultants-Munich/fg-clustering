@@ -20,7 +20,7 @@ def forest_guided_clustering(output, data, target_column, model,
     Features are ranked and filtered based on statistical tests (ANOVA for continuous features, chi square for categorical features).
     Feature distribution per cluster is shown in a heatmap and boxplots. Feature importance is plotted to show 
     the importance of each feature for each cluster, measured by variance and impurity of the feature within the cluster, 
-    i.e. the higher the feature importance, the lower the feature variance / impurity within the cluster.
+    i.e. the higher the feature importance, the lower the feature variance/impurity within the cluster.
 
     :param output: Filename to save plot.
     :type output: str
