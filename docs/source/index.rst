@@ -8,10 +8,7 @@ Welcome to Forest Guided Clustering's documentation!
 
 .. toctree::
    :maxdepth: 2
-   :caption: Background on Forest Guided Clustering:
-   
-   introduction
-   :caption: API Reference:
+   :caption: Contents:
    
    modules
 
