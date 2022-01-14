@@ -1,4 +1,4 @@
-fgclustering
+API Reference
 ============
 
 .. toctree::
