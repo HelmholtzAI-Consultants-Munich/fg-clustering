@@ -21,7 +21,7 @@ Installation
 
 **Requirements:**
 
-- Python 3.8 or greater
+- >= Python 3.8 
 - :code:`pandas`, :code:`numpy`, :code:`tqdm`
 - :code:`sklearn`, :code:`scikit-learn-extra`, :code:`scipy`, :code:`statsmodels`
 - :code:`matplotlib`, :code:`seaborn`
