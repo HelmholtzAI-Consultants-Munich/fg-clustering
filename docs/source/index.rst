@@ -30,6 +30,7 @@ PyPI install:
    :caption: Theoretical Background:
    
    introduction
+   general_algorithm
 
 .. toctree::
    :maxdepth: 2
