@@ -32,5 +32,9 @@ In this imaginary dataset alcohol consumption for woman alcohol consume is a hig
 Forest-guided clustering allows to find and understand these kinds of pattern buy grouping the data into subgroups that follow similar decision rules in the random forest model that was trained on the data.
 It works by defining a similarity metric on the data points based on the Random forest proximity matrix that indicates which data instances follow the same decision rules. Based on this similarity a k-medioids clustering is used to find subgroups of the dataset. For each of these subgroups, that follow similar decision paths in the random forest, the importance of the different features can be analysed separately.
 
+.. image:: ../fgclustering.png
+
 In the above example the forest guided clustering would separate men and women into different subgroups, not because sex is a predictor of the disease but because for men and women the random forest would look at different features in order to determine the risk.
 The grouping of the dataset using forest guided clustering is thus more fine grained than just the grouping that is done by the random forest. We do not just categorize the data set in a high and low risk group for the disease but into finder subgroups dependent on which factors are relevant for determining the risk.
+
+
