@@ -15,8 +15,9 @@ Forest guided clustering
 *cluster stability threshold*
 
 *error*
-+ classification
-+ regression
+
+- classification
+- regression
 
 
 Visualization
