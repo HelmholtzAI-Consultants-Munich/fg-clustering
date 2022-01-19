@@ -37,7 +37,7 @@ For **regression models** the mean target value of each cluster is treated as a 
 is thus defined as the total squared error for each value of :math:`k`.
 Then the clustering's are scored by which clustering has the lowest total squared error:
 
-:math:`TSE_k = \sum_i^k \sum_{y_i \elem C_j} \left( y_i - \mu_j \right)^2 `
+:math:`TSE_k = \sum_i^k \sum_{y_i \elem C_j} \left( y_i - \mu_j \right)^2`
 
 where :math:`y_i` is the target value of data point i and :math`\mu_j = \frac{1}{|C_j|}\sum_{y_i \elem C_j} y_i` is mean of the target values within cluster :math:`C_j`. It measures the compactness (i.e
 goodness) of the clustering with respect to the target and should be as small as possible.
