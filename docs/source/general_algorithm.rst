@@ -45,7 +45,7 @@ stability of each cluster :math:`i` in the clustering is measured by the average
 Similarity between the original cluster :math:`A` and :math:`n` bootstrapped clusters :math:`B_b`:
 
 ..math:
-  JS_i(A) = 
+  JS_i(A) = ll
 
 Jaccard similarity values > 0.6 are usually indicative of stable patterns in the
 data (*Hennig, 2008*). Only stable clusterings, i.e. clustering with low variance,
