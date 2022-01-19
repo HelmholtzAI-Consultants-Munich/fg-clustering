@@ -12,7 +12,7 @@ Forest-Guided Clustering - Explainability for Random Forest Models
 
 This python package is about explainability of Random Forest models. Standard explainability methods (e.g. feature importance) assume independence of model features and hence, are not suited in the presence of correlated features. The Forest-Guided Clustering algorithm does not assume independence of model features, because it computes the feature importance based on subgroups of instances that follow similar decision rules within the Random Forest model. Hence, this method is well suited for cases with high correlation among model features.
 
-.. image:: docs/fgclustering_overview.png
+.. image:: docs/fgclustering.png
 
 For detailed documentation and usage examples, please visit the `Read the Docs documentation <https://forest-guided-clustering.readthedocs.io/>`_.
 
@@ -21,7 +21,7 @@ Installation
 
 **Requirements:**
 
-- Python 3.8 or greater
+- >= Python 3.8 
 - :code:`pandas`, :code:`numpy`, :code:`tqdm`
 - :code:`sklearn`, :code:`scikit-learn-extra`, :code:`scipy`, :code:`statsmodels`
 - :code:`matplotlib`, :code:`seaborn`
@@ -43,9 +43,10 @@ Usage
 
 To get explainability of your Random Forest model via Forest-Guided Clustering, you simply need to run the folloiwng command:
 
-.. code:: bash
+.. code:: python
 
-   k_opt = forest_guided_clustering(output='fgc', data=data_boston, target_column='target', model=rf)
+   from fgclustering import fgclustering
+   k_opt = fgclustering(output='fgc', data=data_boston, target_column='target', model=rf)
 
 where 
 
