@@ -41,11 +41,11 @@ classification
 *Model variance*
 We restrict the model variance by discarding too complex models. We define
 the complexity of the clustering for each value of :math:`k` by its stability. The
-stability of each cluster i in the clustering is measured by the average Jaccard
+stability of each cluster :math:`i` in the clustering is measured by the average Jaccard
 Similarity between the original cluster :math:`A` and :math:`n` bootstrapped clusters :math:`B_b`:
 
 ..math:
-  JS_i(A|B)
+  JS_i(A) = 
 
 Jaccard similarity values > 0.6 are usually indicative of stable patterns in the
 data (*Hennig, 2008*). Only stable clusterings, i.e. clustering with low variance,
