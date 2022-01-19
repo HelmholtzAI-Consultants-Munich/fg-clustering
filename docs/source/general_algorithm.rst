@@ -38,7 +38,7 @@ The Jaccard Index measures how similar a clustering stays when data-set is boots
 
 We measure the Jaccard Index of each cluster: Average overlap of cluster A with its bootstrapped siblings   
 Only when all clusters are stable (Jaccard index > 0.6 [1]) a clustering with k clusters is considered valid
-
+:cite:p:`hennig2008dissolution`
 
 
 an discard any clustering with an Jaccard index :math:`>0.6` (see 
