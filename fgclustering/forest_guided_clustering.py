@@ -12,9 +12,9 @@ import fgclustering.plotting as plotting
 
 
 def fgclustering(output, data, target_column, model,   
-                             max_K = 6, number_of_clusters = None, max_iter_clustering = 500,  
-                             bootstraps_JI = 300, discart_value_JI = 0.6,
-                             bootstraps_p_value = 10000, thr_pvalue = 0.05, random_state = 42):
+                 max_K = 6, number_of_clusters = None, max_iter_clustering = 500,  
+                 bootstraps_JI = 300, discart_value_JI = 0.6,
+                 bootstraps_p_value = 10000, thr_pvalue = 0.05, random_state = 42):
     '''Run forest-guided clustering algirthm for Random Forest Classifier or Regressor. The optimal number of clusters 
     for a k-medoids clustering is computed, based on the distance matrix computed from the Random Forest proximity matrix. 
     Features are ranked and filtered based on statistical tests (ANOVA for continuous features, chi square for categorical features).
