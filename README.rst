@@ -43,9 +43,10 @@ Usage
 
 To get explainability of your Random Forest model via Forest-Guided Clustering, you simply need to run the folloiwng command:
 
-.. code:: bash
+.. code:: python
 
-   k_opt = forest_guided_clustering(output='fgc', data=data_boston, target_column='target', model=rf)
+   from fgclustering import fgclustering
+   k_opt = fgclustering(output='fgc', data=data_boston, target_column='target', model=rf)
 
 where 
 
