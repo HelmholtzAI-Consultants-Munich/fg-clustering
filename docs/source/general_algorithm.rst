@@ -15,10 +15,12 @@ We define the proximity matrix as
 
 
 .. math::
-  `M^{proximity}_{ij} = \frac{m_{i,j}{N}`
+  `M^{proximity}_{ij} = \frac{m_{i,j}}{N}`
 
 
-:math:`M^\text{proximity}_{ij} = \frac{m_{i,j}{N}`
+:math:`M^{proximity}_{ij} = \frac{m_{i,j}}{N}`
+
+:math:`M^\text{proximity}_{ij} = \frac{m_{i,j}}{N}`
 
 Define similarity of two datapoints by counting in how many trees they end up in same terminal nodes
 -> i.e. took same decision path
