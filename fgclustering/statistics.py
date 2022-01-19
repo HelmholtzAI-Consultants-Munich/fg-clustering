@@ -151,7 +151,8 @@ def _sort_clusters_by_target(X_ranked):
     means['target'] = range(means.shape[0])
     mapping = dict(means['target'])
     mapping = dict(sorted(mapping.items(), key=lambda item: item[1]))
-    X_ranked['cluster'] = pd.Categorical(X_ranked['cluster'], list(mapping.keys()))
+    X_ranked = X_ranked.replace({'cluster': mapping})
+    X_ranked['cluster'] = pd.Categorical(X_ranked['cluster'], sorted(X_ranked['cluster'].unique()))
 
     return X_ranked
 
