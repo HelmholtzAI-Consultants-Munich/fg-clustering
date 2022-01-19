@@ -47,10 +47,10 @@ The impurity score is a balanced Gini coefficient of the classes within each clu
 Given a classification problem with :math:`G` classes, each class :math:`g` with a frequency :math:`q_g` in the data set,
 the we define the impurity score as
     
-:math:`IS_k = \sum_i^k \left( 1- \sum_g^G b^2_{i,g} \right)` 
+:math:`IS_k = \sum_i^k \left( 1- \sum_{g=1}^G b^2_{i,g} \right)` 
 
 where the balanced per cluster frequency 
-:math:`b_{i,g} = \frac{1}{\sum_g^G \frac{p_{i,g}}{q_g}} \frac{p_{i,g}}{q_g}` of class :math:`g` in cluster :math:`i` is the normalized weighted frequency :math:`p_{i,g}` of class :math:`g` in cluster :math:`i` weighted by the total frequency :math:`q_g` of class :math:`g` 
+:math:`b_{i,g} = \frac{1}{\sum_{g=1}^G \frac{p_{i,g}}{q_g}} \frac{p_{i,g}}{q_g}` of class :math:`g` in cluster :math:`i` is the normalized weighted frequency :math:`p_{i,g}` of class :math:`g` in cluster :math:`i` weighted by the total frequency :math:`q_g` of class :math:`g` 
     
     
 
