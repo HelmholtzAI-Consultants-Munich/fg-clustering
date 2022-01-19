@@ -39,11 +39,20 @@ Then the clustering's are scored by which clustering has the lowest total square
 
 :math:`TSE_k = \sum_i^k \sum_{y_i \elem C_j} \left( y_i - \mu_j \right)^2`
 
-where :math:`y_i` is the target value of data point i and :math`\mu_j = \frac{1}{|C_j|}\sum_{y_i \elem C_j} y_i` is mean of the target values within cluster :math:`C_j`. It measures the compactness (i.e
+where :math:`y_i` is the target value of data point i and :math:`\mu_j = \frac{1}{|C_j|}\sum_{y_i \elem C_j} y_i` is mean of the target values within cluster :math:`C_j`. It measures the compactness (i.e
 goodness) of the clustering with respect to the target and should be as small as possible.
 
-For **classification models**, we define the model bias by the average balanced
-purity of the clustering for each value of k.
+For **classification models**, we define the model bias by the impurity score of the clustering for each value of k.
+The impurity score is a balanced Gini coefficient of the classes within each cluster. The class sizes are balanced by rescaling with the inverse size of the class in the overall dataset.
+Given a classification problem with :math:`G` classes, each class :math:`g` with a frequency :math:`q_g` in the data set,
+the we define the impurity score as
+    
+:math:`IS_k = \sum_i^k \left( 1- \sum_g^G pb^2_{i,g} \right)` 
+
+where the balanced per cluster frequency 
+:math:`pb_{i,g} = \frac{\frac{p_{i,g}}{q_g}}{\sum_g^G \frac{p_{i,g}}{q_g}}` of class g in cluster i is the normalized frequency :math:`p_{i,g}` of class g in cluster i weighted by the total frequency :math:`q_g` of class g 
+    
+    
 
 *Model variance*
 We restrict the model variance by discarding too complex models. We define
