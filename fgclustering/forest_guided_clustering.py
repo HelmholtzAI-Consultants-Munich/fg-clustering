@@ -11,7 +11,7 @@ import fgclustering.plotting as plotting
 ############################################
 
 
-def forest_guided_clustering(output, data, target_column, model,   
+def fgclustering(output, data, target_column, model,   
                              max_K = 6, number_of_clusters = None, max_iter_clustering = 500,  
                              bootstraps_JI = 300, discart_value_JI = 0.6,
                              bootstraps_p_value = 10000, thr_pvalue = 0.05, random_state = 42):
