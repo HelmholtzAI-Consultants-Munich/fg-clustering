@@ -5,13 +5,12 @@ Compute distance matrix between data points
 --------------------------------------------
 The first step in the algorithm is to define a distance matrix that measures the distance between the data points.
 
-A random forest consists of :math:`N` decision trees. Each datapoints for which a classification or prediction is made traverses each of these decision trees
-and ends up in a leave of the tree that specifies the prediction of the tree. 
-We say that two datapoints are similar, when they end up in the same leave of a tree.
-This similarity can be quantitively measured by counting the number of trees :math:`m_{i,j}` trees two data points :math:`i,j` end up.
-We define the proximity matrix as :math:`M^{proximity}_{ij} = \frac{m_{i,j}}{N}`.
-
-Based on this we can define a distance matrix as 
+The proximity measure between two instances i and j represents the
+frequency with which those instances occur in the same terminal nodes of a
+tree in the Random Forest(RF), intuitively defining how close those instances are in the RF
+model.
+We define the proximity matrix as :math:`M^{proximity}_{ij} = \frac{m_{i,j}}{N}`, where :math:`m_{i,j}` is the number of trees where the data-points i,j end up in the same terminal node and N is the total number of trees in the RF.
+According to *Breiman et al., 2003* the values :math:`1-M^{proximity}_{ij}` are square distances in a euclidean space and can therefore be used as distance measures:
 :math:`M^{distance}_{ij} = 1-M^{proximity}_{ij}`
 
 
@@ -24,36 +23,36 @@ but can be applied if only a matrix of the distances between the data points is 
 
 **Optimization of number of clusters**
 
-Similar to k-means, we still need to specify the number of clusters :math:`k` into which we want to divide our dataset.
+Similar to k-means clustering, k-medoids clustering requires setting the number of clusters :math:`k` into which we want to divide our dataset.
 We want the clusters that we find to be both stable and predictive for the target.
-Therefore we compute a clustering for a range of :math:`k` (specified by the user) and
-1. only allow clusterings that follow stability criterion
-2. minimize a cost that judges how well the clusters can be used to differentiate between the target values 
+We developed a scoring system to choose
+the optimal number of clusters :math:`k`, which minimizes the model bias while
+restricting the model complexity. The model bias measures how well the
+trained model (with a certain value of :math:`k`) approximates the expected model,
+while the variance is related to the model complexity, since complex models
+usually have a high variance and poor generalization capability.
 
-*Compute cluster stability*
-We measure the stability of the clustering using the Jaccard index.
-The Jaccard Index measures how similar a clustering stays when data-set is bootstrapped n-times.
+*Model bias*
 
+regression
 
-We measure the Jaccard Index of each cluster: Average overlap of cluster A with its bootstrapped siblings   
-Only when all clusters are stable (Jaccard index > 0.6 [1]) a clustering with k clusters is considered valid
-:cite:p:`hennig2008dissolution`
+classification
 
+*Model variance*
+We restrict the model variance by discarding too complex models. We define
+the complexity of the clustering for each value of :math:`k` by its stability. The
+stability of each cluster i in the clustering is measured by the average Jaccard
+Similarity between the original cluster :math:`A` and :math:`n` bootstrapped clusters :math:`B_b`:
 
-an discard any clustering with an Jaccard index :math:`>0.6` (see 
+..math:
+  JS_i(A|B)
 
-We compute a k-medioids clustering
+Jaccard similarity values > 0.6 are usually indicative of stable patterns in the
+data (*Hennig, 2008*). Only stable clusterings, i.e. clustering with low variance,
+are considered as clustering candidates. Hence, the optimal number of
+clusters :math:`k` is the one yielding the minimum model bias, while having a stable
+clustering.
 
-*Compute predictive power of clusters*
-For a classification problem we want to choose the 
-
-
-*cluster stability*
-
-*error*
-
-- classification
-- regression
 
 
 Visualization
