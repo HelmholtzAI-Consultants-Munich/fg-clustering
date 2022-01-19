@@ -5,7 +5,7 @@ To get explainability of your Random Forest model via Forest-Guided Clustering, 
 
 .. code:: python
 
-   from forest_guided_clustering import fgclustering
+   from fgclustering import fgclustering
    k_opt = fgclustering(output='fgc', data=data_boston, target_column='target', model=rf)
 
 where 
