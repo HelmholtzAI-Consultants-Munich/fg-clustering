@@ -50,7 +50,7 @@ the we define the impurity score as
 :math:`IS_k = \sum_i^k \left( 1- \sum_g^G b^2_{i,g} \right)` 
 
 where the balanced per cluster frequency 
-:math:`b_{i,g} = \frac{\frac{p_{i,g}}{q_g}}{\sum_g^G \frac{p_{i,g}}{q_g}}` of class :math:`g` in cluster :math:`i` is the normalized frequency :math:`p_{i,g}` of class :math:`g` in cluster :math:`i` weighted by the total frequency :math:`q_g` of class :math:`g` 
+:math:`b_{i,g} = \frac{1}{\sum_g^G \frac{p_{i,g}}{q_g}} \frac{p_{i,g}}{q_g}` of class :math:`g` in cluster :math:`i` is the normalized weighted frequency :math:`p_{i,g}` of class :math:`g` in cluster :math:`i` weighted by the total frequency :math:`q_g` of class :math:`g` 
     
     
 
