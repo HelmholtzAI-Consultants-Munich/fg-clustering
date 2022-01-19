@@ -33,7 +33,6 @@ Therefore we compute a clustering for a range of :math:`k` (specified by the use
 *Compute cluster stability*
 We measure the stability of the clustering using the Jaccard index.
 The Jaccard Index measures how similar a clustering stays when data-set is bootstrapped n-times.
-𝐽𝑎𝑐𝑐𝑎𝑟𝑑𝐼𝑛𝑑𝑒𝑥(𝐴)=(∑_(𝑏=1)^𝑛▒|𝐴∩𝐵_𝑏 |/|𝐴∪𝐵_𝑏 | )/𝑛
 
 
 We measure the Jaccard Index of each cluster: Average overlap of cluster A with its bootstrapped siblings   
