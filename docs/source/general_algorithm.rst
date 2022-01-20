@@ -72,7 +72,7 @@ clustering.
 
 Visualization
 ------------------------
-We visualize the clusters using three kinds of plots (for details see  :ref:`tutorial`):
+We visualize the clusters using three kinds of plots (for details see  :doc:`tutorial`):
 
 **heatmap**: 
 overview on target values attribution and feature enrichment / depletion for each cluster
