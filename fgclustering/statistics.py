@@ -282,7 +282,6 @@ def get_feature_importance_clusterwise(X, bootstraps, epsilon = sys.float_info.m
     
     X_categorical = X.select_dtypes(include=['category'])
     X_numeric = X.select_dtypes(exclude=['category'])
-    var_tot = X_numeric.to_numpy().flatten().var()
 
     for feature in X_categorical.columns:
         for cluster in clusters.unique():
@@ -291,7 +290,7 @@ def get_feature_importance_clusterwise(X, bootstraps, epsilon = sys.float_info.m
             importance.loc[feature,cluster] = 1 - (_calculate_p_value_categorical(X_feature_cluster, X_feature, cluster, clusters_size.loc[cluster], bootstraps) + epsilon)
 
     for feature in X_numeric.columns:
-        X_numeric.loc[:,feature] = X_numeric[feature] / var_tot # normalize by total variance 
+        X_numeric.loc[:,feature] = X_numeric[feature]
         for cluster in clusters.unique():
             X_feature_cluster = X_numeric.loc[clusters == cluster, feature]
             X_feature = X_numeric[feature]
