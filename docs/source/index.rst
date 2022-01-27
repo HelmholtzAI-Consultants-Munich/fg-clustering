@@ -31,6 +31,7 @@ PyPI install:
    
    introduction
    general_algorithm
+   feature_importance
 
 .. toctree::
    :maxdepth: 2
