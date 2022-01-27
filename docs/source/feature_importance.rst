@@ -1,11 +1,13 @@
 Feature Importance
 ===============
 
-For each cluster we want to figure out a in which features this cluster is significanlty different from the total data.
+We visualize the importance of each feature for each cluster. This feature importance allows to determine
+for each cluster in which features this cluster is significanlty different from the total data.
 
 For continuous features we check if the variance of a particular feature is signifiantly smaller for a cluster compared to the total data.
 For categorical features we look if the impurity score of a feature (see :doc:`general_algorithm` for the definition of the impurity score) is significantly lower for the cluster
 compared to the total data.
+
 We compute the p-value for the null hypothesis that the test statistic for this cluster is not smaller than the test statistics computed on the total dataset for this particular feature.
 A small p-value shows that the cluster is significantly different from the rest of the data regarding that feature. 
 We therefore define the feature importance as 1-p, where a high feature importance shows that this feature allows to discriminate this cluster from a randomly selected subset of the total dataset.
