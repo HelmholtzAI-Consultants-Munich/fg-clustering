@@ -25,7 +25,5 @@ The proportion of boostrapped subset for this the teststatistics :math:`T(X_{B_n
 p-value.
 
 Thus we get 
-
-:math:`\text{feature_importance} = 1-\frac{Inf(T(X_{B_n})<T(X_A))}{N}`,
-
+:math:`\text{feature_importance} = 1-\frac{Ind(T(X_{B_n})<T(X_A))}{N}`,
 with :math:`Ind()` being the indicator function that is equal one when its argument is true and zero otherwise.
