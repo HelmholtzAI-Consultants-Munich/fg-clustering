@@ -65,7 +65,7 @@ the complexity of the clustering for each value of :math:`k` by its stability. T
 stability of each cluster :math:`i` in the clustering is measured by the average Jaccard
 Similarity between the original cluster :math:`A` and :math:`n` bootstrapped clusters :math:`B_b`:
 
-:math:`JS_i(A|B) = \frac{\sum_{b=1}^n\frac{|A ∩ B_n|}{|A ∪ B_n|}}{n}`
+:math:`JS_i(A|B) = \frac{\sum_{b=1}^n\frac{|A ∩ B_b|}{|A ∪ B_b|}}{n}`
 
 Jaccard similarity values > 0.6 are usually indicative of stable patterns in the
 data (*Hennig, 2008*). Only stable clusterings, i.e. clustering with low variance,
