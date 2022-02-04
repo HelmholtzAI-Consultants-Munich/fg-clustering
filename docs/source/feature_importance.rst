@@ -25,9 +25,7 @@ X:
 To test if the statistics :math:`T(X_A)` allows to discriminate this cluster against the full dataset we boostrap n random subsets :math:`B_b` of size M (
 same size as the cluster A) from the full dataset.
 
-The proportion of boostrapped subset, for which :math:`T(X_{B_b})<T(X_A)`, is the estimate for the
-p-value.
-
+The p-value is then defined as the proportion of the boostrapped subsets for which :math:`T(X_{B_b})<T(X_A)`.
 Thus we get 
 :math:`\text{feature_importance} = 1-\frac{\sum_{b=1}^n Ind\left(T(X_{B_n})<T(X_A)\right)}{n}`,
 with :math:`Ind()` being the indicator function that is equal one when its argument is true and zero otherwise.
