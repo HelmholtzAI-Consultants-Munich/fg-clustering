@@ -27,5 +27,7 @@ same size as the cluster A) from the full dataset.
 
 The p-value is then defined as the proportion of the boostrapped subsets for which :math:`T(X_{B_b})<T(X_A)`.
 Thus we get 
+
 :math:`\text{feature_importance} = 1-\frac{\sum_{b=1}^n Ind\left(T(X_{B_n})<T(X_A)\right)}{n}`,
+
 with :math:`Ind()` being the indicator function that is equal one when its argument is true and zero otherwise.
