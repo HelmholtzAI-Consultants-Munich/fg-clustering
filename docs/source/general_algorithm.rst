@@ -3,11 +3,11 @@ General Algorithm
 
 Compute distance matrix between data points
 --------------------------------------------
-The first step in the algorithm is to define a distance matrix that measures the distance between the data points.
+The first step in the algorithm is to compute the distance matrix for the distances between the data points.
 
-The proximity measure between two instances i and j represents the
+This distance matrix is based on a proximity measure between two instances i and j, that represents the
 frequency with which those instances occur in the same terminal nodes of a
-tree in the Random Forest(RF), intuitively defining how close those instances are in the RF
+tree in the Random Forest(RF). Intuitively this defines how close those instances are in the RF
 model.
 We define the proximity matrix as :math:`M^{proximity}_{ij} = \frac{m_{i,j}}{N}`, where :math:`m_{i,j}` is the number of trees where the data-points i,j end up in the same terminal node and N is the total number of trees in the RF.
 According to *Breiman et al., 2003* the values :math:`1-M^{proximity}_{ij}` are square distances in a euclidean space and can therefore be used as distance measures:
@@ -18,10 +18,11 @@ Forest guided clustering
 ------------------------
 Having a distance matrix :math:`M^{distance}_{ij}` we can use  `k-medioids clustering <https://en.wikipedia.org/wiki/K-medoids>`_:
 to find subgroups of the data for which the data points follow similar decision paths in the random forest.
-In contrast to k-means, k-medioids does not require an embedding of the data points in a metric space
+We used k-medioids here, as, in contrast to k-means, it does not require an embedding of the data points in a metric space
 but can be applied if only a matrix of the distances between the data points is available.
 
-**Optimization of number of clusters**
+Optimization of number of clusters
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Similar to k-means clustering, k-medoids clustering requires setting the number of clusters :math:`k` into which we want to divide our dataset.
 We want the clusters that we find to be both stable and predictive for the target.
@@ -32,9 +33,11 @@ trained model (with a certain value of :math:`k`) approximates the expected mode
 while the variance is related to the model complexity, since complex models
 usually have a high variance and poor generalization capability.
 
-*Model bias*
-For **regression models** the mean target value of each cluster is treated as a predictor for the target and the model bias
-is thus defined as the total squared error for each value of :math:`k`.
+Model bias
+"""""""""""""
+
+For **regression models** the mean target value of each cluster is treated as the predictor for the target. The model bias
+is then defined as the total squared error of this prediction compared to the ground truth. We compute the model bias separately for each value of :math:`k`.
 Then the clustering's are scored by which clustering has the lowest total squared error:
 
 :math:`TSE_k = \sum_i^k \sum_{y_i \in C_j} \left( y_i - \mu_j \right)^2`
@@ -42,7 +45,7 @@ Then the clustering's are scored by which clustering has the lowest total square
 where :math:`y_i` is the target value of data point i and :math:`\mu_j = \frac{1}{|C_j|}\sum_{y_i \in C_j} y_i` is mean of the target values within cluster :math:`C_j`. It measures the compactness (i.e
 goodness) of the clustering with respect to the target and should be as small as possible.
 
-For **classification models**, we define the model bias by the impurity score of the clustering for each value of :math:`k`.
+For **classification models**, we define the model bias by the impurity score of the clustering. Analogous to the regression case the model bias is computed for each value of :math:`k` separately.
 The impurity score is a balanced Gini coefficient of the classes within each cluster. The class sizes are balanced by rescaling with the inverse size of the class in the overall dataset.
 Given a classification problem with :math:`G` classes, each class :math:`g` with a frequency :math:`q_g` in the data set,
 the we define the impurity score as
@@ -54,13 +57,15 @@ where the balanced per cluster frequency
     
     
 
-*Model variance*
+Model variance
+"""""""""""""""""
+
 We restrict the model variance by discarding too complex models. We define
 the complexity of the clustering for each value of :math:`k` by its stability. The
 stability of each cluster :math:`i` in the clustering is measured by the average Jaccard
 Similarity between the original cluster :math:`A` and :math:`n` bootstrapped clusters :math:`B_b`:
 
-:math:`JS_i(A|B) = \frac{\sum_{b=1}^n\frac{|A ∩ B_n|}{|A ∪ B_n|}}{n}`
+:math:`JS_i(A|B) = \frac{\sum_{b=1}^n\frac{|A ∩ B_b|}{|A ∪ B_b|}}{n}`
 
 Jaccard similarity values > 0.6 are usually indicative of stable patterns in the
 data (*Hennig, 2008*). Only stable clusterings, i.e. clustering with low variance,
