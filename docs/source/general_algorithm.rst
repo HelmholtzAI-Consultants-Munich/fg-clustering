@@ -21,7 +21,8 @@ to find subgroups of the data for which the data points follow similar decision 
 In contrast to k-means, k-medioids does not require an embedding of the data points in a metric space
 but can be applied if only a matrix of the distances between the data points is available.
 
-**Optimization of number of clusters**
+Optimization of number of clusters
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Similar to k-means clustering, k-medoids clustering requires setting the number of clusters :math:`k` into which we want to divide our dataset.
 We want the clusters that we find to be both stable and predictive for the target.
@@ -32,7 +33,9 @@ trained model (with a certain value of :math:`k`) approximates the expected mode
 while the variance is related to the model complexity, since complex models
 usually have a high variance and poor generalization capability.
 
-*Model bias*
+Model bias
+"""""""""""""
+
 For **regression models** the mean target value of each cluster is treated as a predictor for the target and the model bias
 is thus defined as the total squared error for each value of :math:`k`.
 Then the clustering's are scored by which clustering has the lowest total squared error:
@@ -54,7 +57,9 @@ where the balanced per cluster frequency
     
     
 
-*Model variance*
+Model variance
+"""""""""""""""""
+
 We restrict the model variance by discarding too complex models. We define
 the complexity of the clustering for each value of :math:`k` by its stability. The
 stability of each cluster :math:`i` in the clustering is measured by the average Jaccard
