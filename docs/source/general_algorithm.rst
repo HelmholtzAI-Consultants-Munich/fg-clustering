@@ -3,11 +3,11 @@ General Algorithm
 
 Compute distance matrix between data points
 --------------------------------------------
-The first step in the algorithm is to define a distance matrix that measures the distance between the data points.
+The first step in the algorithm is to compute the distance matrix for the distances between the data points.
 
-The proximity measure between two instances i and j represents the
+This distance matrix is based on a proximity measure between two instances i and j, that represents the
 frequency with which those instances occur in the same terminal nodes of a
-tree in the Random Forest(RF), intuitively defining how close those instances are in the RF
+tree in the Random Forest(RF). Intuitively this defines how close those instances are in the RF
 model.
 We define the proximity matrix as :math:`M^{proximity}_{ij} = \frac{m_{i,j}}{N}`, where :math:`m_{i,j}` is the number of trees where the data-points i,j end up in the same terminal node and N is the total number of trees in the RF.
 According to *Breiman et al., 2003* the values :math:`1-M^{proximity}_{ij}` are square distances in a euclidean space and can therefore be used as distance measures:
@@ -18,7 +18,7 @@ Forest guided clustering
 ------------------------
 Having a distance matrix :math:`M^{distance}_{ij}` we can use  `k-medioids clustering <https://en.wikipedia.org/wiki/K-medoids>`_:
 to find subgroups of the data for which the data points follow similar decision paths in the random forest.
-In contrast to k-means, k-medioids does not require an embedding of the data points in a metric space
+We used k-medioids here, as, in contrast to k-means, it does not require an embedding of the data points in a metric space
 but can be applied if only a matrix of the distances between the data points is available.
 
 Optimization of number of clusters
