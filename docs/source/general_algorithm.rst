@@ -36,8 +36,8 @@ usually have a high variance and poor generalization capability.
 Model bias
 """""""""""""
 
-For **regression models** the mean target value of each cluster is treated as a predictor for the target and the model bias
-is thus defined as the total squared error for each value of :math:`k`.
+For **regression models** the mean target value of each cluster is treated as the predictor for the target. The model bias
+is then defined as the total squared error of this prediction compared to the ground truth. We compute the model bias separately for each value of :math:`k`.
 Then the clustering's are scored by which clustering has the lowest total squared error:
 
 :math:`TSE_k = \sum_i^k \sum_{y_i \in C_j} \left( y_i - \mu_j \right)^2`
@@ -45,7 +45,7 @@ Then the clustering's are scored by which clustering has the lowest total square
 where :math:`y_i` is the target value of data point i and :math:`\mu_j = \frac{1}{|C_j|}\sum_{y_i \in C_j} y_i` is mean of the target values within cluster :math:`C_j`. It measures the compactness (i.e
 goodness) of the clustering with respect to the target and should be as small as possible.
 
-For **classification models**, we define the model bias by the impurity score of the clustering for each value of :math:`k`.
+For **classification models**, we define the model bias by the impurity score of the clustering. Analogous to the regression case the model bias is computed for each value of :math:`k` separately.
 The impurity score is a balanced Gini coefficient of the classes within each cluster. The class sizes are balanced by rescaling with the inverse size of the class in the overall dataset.
 Given a classification problem with :math:`G` classes, each class :math:`g` with a frequency :math:`q_g` in the data set,
 the we define the impurity score as
