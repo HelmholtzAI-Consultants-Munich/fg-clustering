@@ -18,11 +18,13 @@ def test_forest_guided_clustering():
     rf = joblib.load(open('./data/random_forest_breat_cancer.joblib', 'rb'))
     
     expected_output = 2
+    
+    # initialize and run fgclustering object
+    fgc = FgClustering(model=rf, data=data_breast_cancer, target_column='target')
+    fgc.run(max_K = 4, bootstraps_JI = 30, max_iter_clustering = 100, discart_value_JI = 0.6)
 
-    result = fgclustering(save=None, data=data_breast_cancer, target_column='target', model=rf,  
-                                     max_K = 4, max_iter_clustering = 100, 
-                                     bootstraps_JI = 30, discart_value_JI = 0.6, 
-                                     bootstraps_p_value = 100, thr_pvalue = 0.001, random_state = 42)
+    # obtain optimal number of clusters and vector that contains the cluster label of each data point
+    result = fgc.k
     
     assert result == expected_output
 
