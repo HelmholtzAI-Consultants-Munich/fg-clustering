@@ -27,8 +27,8 @@ def _plot_global_feature_importance(p_value_of_features, save):
     :type p_value_of_features: dict
     :param save: Filename to save plot.
     :type save: str
-    
     '''
+    
     importance = p_value_of_features.copy()
     importance.pop('target')
     importance.pop('cluster')
@@ -60,6 +60,7 @@ def _plot_local_feature_importance(X, bootstraps, save, num_cols):
     :param num_cols: Number of plots in one row.
     :type num_cols: int
     '''
+    
     importance = stats.get_feature_importance_clusterwise(X, bootstraps)
     num_features = len(importance)
 
@@ -93,6 +94,7 @@ def _plot_heatmap(X, method, save):
     :param save: Filename to save plot.
     :type save: str
     '''
+    
     X_scaled = utils.scale_minmax(X)
     X_heatmap = pd.DataFrame(columns = X_scaled.columns)
 
@@ -167,6 +169,7 @@ def _plot_boxplots(X, save, num_cols):
     :param num_cols: Number of plots in one row.
     :type num_cols: int
     '''    
+    
     target_and_features = X.columns[X.columns != 'cluster']
     X_boxplot = pd.melt(X, id_vars=['cluster'], value_vars=target_and_features)
     
@@ -206,6 +209,7 @@ def plot_forest_guided_clustering(save, X, y, method, distanceMatrix, k, thr_pva
     :param random_state: Seed number for random state.
     :type random_state: int
     '''
+    
     cluster_labels = KMedoids(n_clusters=k, random_state=random_state).fit(distanceMatrix).labels_
     X_ranked, p_value_of_features = stats.calculate_global_feature_importance(X, y, cluster_labels)
 
