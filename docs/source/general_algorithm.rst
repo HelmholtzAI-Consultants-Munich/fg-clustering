@@ -73,17 +73,3 @@ are considered as clustering candidates. Hence, the optimal number of
 clusters :math:`k` is the one yielding the minimum model bias, while having a stable
 clustering.
 
-
-
-Visualization
-------------------------
-We visualize the clusters using three kinds of plots (for details see  :doc:`tutorial`):
-
-**heatmap**: 
-overview on target values attribution and feature enrichment / depletion for each cluster
-
-**boxplot**: 
-distribution of target and feature values per cluster
-
-**barplot**: 
-feature importance per cluster
