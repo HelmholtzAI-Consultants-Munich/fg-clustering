@@ -52,13 +52,13 @@ To get explainability of your Random Forest model via Forest-Guided Clustering, 
    fgc.run()
    
    # visualize results
-   fgc.plot_heatmap()
-   fgc.plot_boxplots()
    fgc.plot_global_feature_importance()
    fgc.plot_local_feature_importance()
+   fgc.plot_heatmap()
+   fgc.plot_boxplots()
    
    # obtain optimal number of clusters and vector that contains the cluster label of each data point
-   optimal_number_of_clusters = fgc.get_number_of_clusters()
+   optimal_number_of_clusters = fgc.k
    cluster_labels = fgc.cluster_labels
 
 where 
