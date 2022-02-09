@@ -6,7 +6,7 @@ Global Feature Importance
 We determine if a particular feature is actually varying between the clusters.
 For continuous variable we apply an Anova test for continuous variables, to test if the means of the feature is significantly varying between the clusters.
 For categorical variables we use a Chi-Square test.
-For feature visualization we only consider features that are below a significance threshold that is adjustable by the user (default value is :math:`p<0.01`).
+For feature visualization we only consider features that are below a significance threshold that is adjustable by the user (default value is :math:`p\leq 0.01`).
 
 Since a small p-value indicates a relevant feature, we define the global feature importance as
 :math:`\text{local_feature_importance} = 1-p`
