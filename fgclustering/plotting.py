@@ -20,7 +20,34 @@ import fgclustering.statistics as stats
 # functions
 ############################################
 
-def _plot_feature_importance(X, bootstraps, save, num_cols):
+def _plot_global_feature_importance(p_value_of_features, save):
+    '''[summary]
+
+    :param p_value_of_features: [description]
+    :type p_value_of_features: [type]
+    :param save: [description]
+    :type save: [type]
+    '''
+    importance = p_value_of_features.copy()
+    importance.pop('target')
+    importance.pop('cluster')
+    importance = pd.DataFrame(importance, index=[0])
+    importance = pd.melt(importance)
+    importance.sort_values(by='value', ascending=True, inplace=True)
+    importance.value = 1 - importance.value
+
+    plot = sns.barplot(data=importance, x='value', y='variable', color='darkgrey')
+    plot.set_xlabel('importance')
+    plot.set_ylabel('feature')
+    plt.title('Global Feature Importance')
+    plt.tight_layout()
+    plt.show()
+
+    if save is not None:
+        plt.savefig('{}_global_feature_importance.png'.format(save), bbox_inches='tight', dpi = 300)
+    
+
+def _plot_local_feature_importance(X, bootstraps, save, num_cols):
     '''Plot feature importance to show the importance of each feature for each cluster, 
     measured by variance and impurity of the feature within the cluster, i.e. the higher 
     the feature importance, the lower the feature variance / impurity within the cluster.
@@ -53,7 +80,7 @@ def _plot_feature_importance(X, bootstraps, save, num_cols):
     plt.show()
 
     if save is not None:
-        plt.savefig('{}_feature_importance.png'.format(save), bbox_inches='tight', dpi = 300)
+        plt.savefig('{}_local_feature_importance.png'.format(save), bbox_inches='tight', dpi = 300)
     
 
 def _plot_heatmap(X, method, save):

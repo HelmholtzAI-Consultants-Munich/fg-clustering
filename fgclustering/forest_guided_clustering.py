@@ -91,10 +91,15 @@ class FgClustering():
             self.k = number_of_clusters
 
         self.cluster_labels = KMedoids(n_clusters=self.k, random_state=self.random_state).fit(self.distance_matrix).labels_
-        self._X_ranked, self.p_value_of_features = stats.calculate_global_feature_importance(self.X, self.y, cluster_labels)
+        self._X_ranked, self.p_value_of_features = stats.calculate_global_feature_importance(self.X, self.y, self.cluster_labels)
 
-    def plot_global_feature_importance(self):
-        return 0
+    def plot_global_feature_importance(self, save = None):
+        '''[summary]
+
+        :param save: [description], defaults to None
+        :type save: [type], optional
+        '''
+        plotting._plot_global_feature_importance(self.p_value_of_features, save)
 
     def plot_local_feature_importance(self, bootstraps_p_value = 1000, thr_pvalue = 0.01, save = None, num_cols = 4):
         '''Plot local feature importance to show the importance of each feature for each cluster, 
@@ -111,11 +116,12 @@ class FgClustering():
         :type num_cols: int, optional
         '''
         # drop insignificant values
-        for column in X.columns:
+        X_ranked = self._X_ranked.copy()
+        for column in X_ranked.columns:
             if self.p_value_of_features[column] > thr_pvalue:
-                X.drop(column, axis  = 1, inplace=True)
+                X_ranked.drop(column, axis  = 1, inplace=True) 
 
-        _plot_feature_importance(self.X_ranked, bootstraps_p_value, save, num_cols)
+        plotting._plot_local_feature_importance(X_ranked, bootstraps_p_value, save, num_cols)
 
     def plot_heatmap(self, thr_pvalue = 0.01, save = None):
         '''Plot feature heatmap sorted by clusters, where features are filtered and ranked 
@@ -127,11 +133,12 @@ class FgClustering():
         :type save: str, optional
         '''
         # drop insignificant values
-        for column in X.columns:
+        X_ranked = self._X_ranked.copy()
+        for column in X_ranked.columns:
             if self.p_value_of_features[column] > thr_pvalue:
-                X.drop(column, axis  = 1, inplace=True)    
+                X_ranked.drop(column, axis  = 1, inplace=True)    
 
-        _plot_heatmap(self.X_ranked, self.method, save)
+        plotting._plot_heatmap(X_ranked, self.method, save)
 
     def plot_boxplots(self, thr_pvalue = 0.01, save = None, num_cols = 6):
         '''Plot feature boxplots divided by clusters, where features are filtered and ranked 
@@ -145,11 +152,12 @@ class FgClustering():
         :type num_cols: int, optional
         '''
         # drop insignificant values
-        for column in X.columns:
+        X_ranked = self._X_ranked.copy()
+        for column in X_ranked.columns:
             if self.p_value_of_features[column] > thr_pvalue:
-                X.drop(column, axis  = 1, inplace=True)
+                X_ranked.drop(column, axis  = 1, inplace=True) 
 
-        _plot_boxplots(self.X_ranked, save, num_cols)
+        plotting._plot_boxplots(X_ranked, save, num_cols)
 
 
 
