@@ -20,16 +20,16 @@ import fgclustering.statistics as stats
 # functions
 ############################################
 
-def _plot_heatmap(output, X, method):
+def _plot_heatmap(X, method, save):
     '''Plot feature heatmap sorted by clusters, where features are filtered and ranked 
     with statistical tests (ANOVA for continuous featres, chi square for categorical features). 
 
-    :param output: Filename to save plot.
-    :type output: str
     :param X: Feature matrix.
     :type X: pandas.DataFrame
     :param method: Model type of Random Forest model: classifier or regression.
     :type method: str
+    :param save: Filename to save plot.
+    :type save: str
     '''
     X_scaled = utils.scale_minmax(X)
     X_heatmap = pd.DataFrame(columns = X_scaled.columns)
@@ -88,19 +88,21 @@ def _plot_heatmap(output, X, method):
     norm = matplotlib.colors.Normalize(vmin=0, vmax=1)
     cbar_features = plt.colorbar(matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap_features))
     cbar_features.set_label('standardized feature values')
-    
-    plt.savefig('{}_heatmap.png'.format(output), bbox_inches='tight', dpi = 300)
     plt.show()
     
+    if save is not None:
+        plt.savefig('{}_heatmap.png'.format(save), bbox_inches='tight', dpi = 300)
+    
+    
 
-def _plot_boxplots(output, X, num_cols = 6):
+def _plot_boxplots(X, save, num_cols = 6):
     '''Plot feature boxplots divided by clusters, where features are filtered and ranked 
     with statistical tests (ANOVA for continuous featres, chi square for categorical features).
 
-    :param output: Filename to save plot.
-    :type output: str
     :param X: Feature matrix.
     :type X: pandas.DataFrame
+    :param save: Filename to save plot.
+    :type save: str
     :param num_cols: Number of plots in one row, defaults to 6.
     :type num_cols: int, optional
     '''    
@@ -111,21 +113,24 @@ def _plot_boxplots(output, X, num_cols = 6):
     plot.map(sns.boxplot, 'cluster', 'value', color='darkgrey')
     plot.set_axis_labels('Cluster', 'Feature Value', clear_inner=False)
     plot.set_titles(col_template="Feature: {col_name}")
-    plt.savefig('{}_boxplots.png'.format(output), bbox_inches='tight', dpi = 300)
     plt.show()
+
+    if save is not None:
+        plt.savefig('{}_boxplots.png'.format(save), bbox_inches='tight', dpi = 300)
+    
     
 
-def _plot_feature_importance(output, X, bootstraps, num_cols = 4):
+def _plot_feature_importance(X, bootstraps, save, num_cols = 4):
     '''Plot feature importance to show the importance of each feature for each cluster, 
     measured by variance and impurity of the feature within the cluster, i.e. the higher 
     the feature importance, the lower the feature variance / impurity within the cluster.
 
-    :param output: Filename to save plot.
-    :type output: str
     :param X: Feature matrix.
     :type X: pandas.DataFrame
     :param bootstraps: Number of bootstraps to be drawn for computation of p-value.
     :type bootstraps: int
+    :param save: Filename to save plot.
+    :type save: str
     :param num_cols: Number of plots in one row, defaults to 4.
     :type num_cols: int, optional
     '''
@@ -145,20 +150,22 @@ def _plot_feature_importance(output, X, bootstraps, num_cols = 4):
     plot.set_titles(col_template="Cluster {col_name}")
     plt.suptitle('Feature Importance per Cluster')
     plt.tight_layout()
-
-    plt.savefig('{}_feature_importance.png'.format(output), bbox_inches='tight', dpi = 300)
     plt.show()
+
+    if save is not None:
+        plt.savefig('{}_feature_importance.png'.format(save), bbox_inches='tight', dpi = 300)
+    
         
 
-def plot_forest_guided_clustering(output, X, y, method, distanceMatrix, k, thr_pvalue, bootstraps, random_state):
+def plot_forest_guided_clustering(save, X, y, method, distanceMatrix, k, thr_pvalue, bootstraps, random_state):
     '''Plot results of forest-guided clustering. Rank and filter feature matrix based on staistical tests
     (ANOVA for continuous featres, chi square for categorical features). Show feature distribution per cluster
     in heatmap and boxplot. Plot feature importance to show the importance of each feature for each cluster, 
     measured by variance and impurity of the feature within the cluster, i.e. the higher the feature importance,
     the lower the feature variance / impurity within the cluster.
 
-    :param output: Filename to save plot.
-    :type output: str
+    :param save: Filename to save plot.
+    :type save: str
     :param X: Feature matrix.
     :type X: pandas.DataFrame
     :param y: Target column.
@@ -177,9 +184,14 @@ def plot_forest_guided_clustering(output, X, y, method, distanceMatrix, k, thr_p
     :type random_state: int
     '''
     cluster_labels = KMedoids(n_clusters=k, random_state=random_state).fit(distanceMatrix).labels_
-    X_ranked = stats.feature_ranking(X, y, cluster_labels, thr_pvalue)
-    
-    _plot_heatmap(output, X_ranked, method)
-    _plot_boxplots(output, X_ranked)
-    _plot_feature_importance(output, X_ranked, bootstraps)
+    X_ranked, p_value_of_features = stats.calculate_global_feature_importance(X, y, cluster_labels)
+
+    # drop insignificant values
+    for column in X.columns:
+        if p_value_of_features[column] > thr_pvalue:
+            X.drop(column, axis  = 1, inplace=True)
+
+    _plot_heatmap(X_ranked, method, save)
+    _plot_boxplots(X_ranked, save)
+    _plot_feature_importance(X_ranked, bootstraps, save)
 

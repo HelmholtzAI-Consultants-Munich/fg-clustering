@@ -108,7 +108,7 @@ def _chisquare_test(df, list_of_df):
     return min(p_values)
 
 
-def _rank_and_filter_features(X, y, p_value_of_features, thr_pvalue):
+def _rank_features(X, y, p_value_of_features):
     '''Filter feature by p-value threshold and rank the remaining features by lowest p-value.
 
     :param X: Feature matrix.
@@ -117,9 +117,7 @@ def _rank_and_filter_features(X, y, p_value_of_features, thr_pvalue):
     :type y: pandas.Series  
     :param p_value_of_features: Computed p-values of all features.
     :type p_value_of_features: dict
-    :param thr_pvalue: P-value threshold for feature filtering.
-    :type thr_pvalue: float
-    :return: Filtered and ranked feature matrix.
+    :return: Ranked feature matrix.
     :rtype: pandas.DataFrame
     '''
     X_ranked = X.copy()
@@ -130,11 +128,6 @@ def _rank_and_filter_features(X, y, p_value_of_features, thr_pvalue):
     # sort features by p-value
     features_sorted = [k for k, v in sorted(p_value_of_features.items(), key=lambda item: item[1])]
     X_ranked = X_ranked.reindex(features_sorted, axis=1)
-    
-    # drop insignificant values
-    for column in X_ranked.columns:
-        if p_value_of_features[column] > thr_pvalue:
-            X_ranked.drop(column, axis  = 1, inplace=True)
 
     return X_ranked
 
@@ -157,7 +150,7 @@ def _sort_clusters_by_target(X_ranked):
     return X_ranked
 
 
-def feature_ranking(X, y, cluster_labels, thr_pvalue):
+def calculate_global_feature_importance(X, y, cluster_labels):
     '''Selecting significantly different features across clusters with an ANOVA test.
 
     :param X: Feature matrix.
@@ -166,8 +159,6 @@ def feature_ranking(X, y, cluster_labels, thr_pvalue):
     :type y: pandas.Series
     :param cluster_labels: Clustering labels.
     :type cluster_labels: numpy.ndarray
-    :param thr_pvalue: P-value threshold for feature filtering.
-    :type thr_pvalue: float
     :return: Feature matrix ranked and filtered by p-value of 
         statistical test (ANOVA for continuous and chi-square for categorical features).
     :rtype: pandas.DataFrame
@@ -190,11 +181,11 @@ def feature_ranking(X, y, cluster_labels, thr_pvalue):
             anova_p_value = _anova_test(list_of_df)
             p_value_of_features[feature] = anova_p_value
 
-    X_ranked = _rank_and_filter_features(X, y, p_value_of_features, thr_pvalue)
+    X_ranked = _rank_features(X, y, p_value_of_features)
     X_ranked = _sort_clusters_by_target(X_ranked)
     X_ranked.sort_values(by=['cluster','target'], axis=0, inplace=True)
     
-    return X_ranked
+    return X_ranked, p_value_of_features
 
 
 def _calculate_p_value_categorical(X_feature_cluster, X_feature, cluster, cluster_size, bootstraps):

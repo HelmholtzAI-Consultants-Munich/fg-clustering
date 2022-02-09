@@ -11,7 +11,85 @@ import fgclustering.plotting as plotting
 ############################################
 
 
-def fgclustering(output, data, target_column, model,   
+class FgClustering():
+    def __init__(self, model, data, target_column, random_state = 42):
+
+        self.random_state = random_state
+
+        # check if random forest is regressor or classifier
+        is_regressor = 'RandomForestRegressor' in str(type(model))
+        is_classifier = 'RandomForestClassifier' in str(type(model))
+        
+        if is_regressor is True:
+            self.method = "regression"
+            print("Interpreting RandomForestRegressor")
+        elif is_classifier is True:
+            self.method = "classifier"
+            print("Interpreting RandomForestClassifier")
+        else:
+            raise ValueError(f'Do not recognize {str(type(model))}. Can only work with sklearn RandomForestRegressor or RandomForestClassifier.')
+
+        if type(target_column)==str:
+            self.y = data.loc[:,target_column]
+            self.X = data.drop(columns=[target_column])
+        else:
+            self.y = target_column
+            self.X = data
+        
+        self.proximity_matrix = utils.proximityMatrix(model, self.X.to_numpy())
+        self.distanceMatrix = 1 - self.proximity_matrix
+        self.k = None
+        self.cluster_labels = None
+
+    def run(self, number_of_clusters = None, max_K = 8, bootstraps_JI = 300, max_iter_clustering = 500, discart_value_JI = 0.6):
+        if number_of_clusters is None:
+            self.k = optimizer.optimizeK(self.distanceMatrix, 
+                                    self.y.to_numpy(), 
+                                    max_K, 
+                                    bootstraps_JI, 
+                                    max_iter_clustering, 
+                                    discart_value_JI, 
+                                    self.method, 
+                                    self.random_state)
+            print(f"Optimal number of cluster is: {k}")
+        else:
+            self.k = number_of_clusters
+
+        self.cluster_labels = KMedoids(n_clusters=k, random_state=random_state).fit(distanceMatrix).labels_
+        self._X_ranked, self.p_value_of_features = stats.calculate_global_feature_importance(X, y, cluster_labels)
+
+    def plot_global_feature_importance(self):
+        return 0
+
+    def plot_local_feature_importance(self, bootstraps_p_value = 1000, thr_pvalue = 0.01, save = None, num_cols = 4):
+        # drop insignificant values
+        for column in X.columns:
+            if self.p_value_of_features[column] > thr_pvalue:
+                X.drop(column, axis  = 1, inplace=True)
+
+        _plot_feature_importance(self.X_ranked, bootstraps_p_value, save, num_cols)
+
+    def plot_heatmap(self, thr_pvalue = 0.01, save = None):
+        # drop insignificant values
+        for column in X.columns:
+            if self.p_value_of_features[column] > thr_pvalue:
+                X.drop(column, axis  = 1, inplace=True)    
+
+        _plot_heatmap(self.X_ranked, self.method, save)
+
+    def plot_boxplots(self, thr_pvalue = 0.01, save = None, num_cols = 6):
+        # drop insignificant values
+        for column in X.columns:
+            if self.p_value_of_features[column] > thr_pvalue:
+                X.drop(column, axis  = 1, inplace=True)
+
+        _plot_boxplots(self.X_ranked, save, num_cols)
+
+    def get_number_of_clusters(self):
+        return self.k
+
+
+def fgclustering(save, data, target_column, model,   
                  max_K = 8, number_of_clusters = None, max_iter_clustering = 500,  
                  bootstraps_JI = 300, discart_value_JI = 0.6,
                  bootstraps_p_value = 1000, thr_pvalue = 0.01, random_state = 42):
@@ -22,8 +100,8 @@ def fgclustering(output, data, target_column, model,
     the importance of each feature for each cluster, measured by variance and impurity of the feature within the cluster, 
     i.e. the higher the feature importance, the lower the feature variance/impurity within the cluster.
 
-    :param output: Filename to save plot.
-    :type output: str
+    :param save: Filename to save plot.
+    :type save: str
     :param data: Input data with feature matrix. 
         If target_column is a string it has to be a column in the data.
     :type data: pandas.DataFrame
@@ -79,6 +157,6 @@ def fgclustering(output, data, target_column, model,
         k = number_of_clusters
         
     print(f"Visualizing forest guided clustering for {k} clusters")
-    plotting.plot_forest_guided_clustering(output, X, y, method, distanceMatrix, k, thr_pvalue, bootstraps_p_value, random_state)
+    plotting.plot_forest_guided_clustering(save, X, y, method, distanceMatrix, k, thr_pvalue, bootstraps_p_value, random_state)
     
     return k

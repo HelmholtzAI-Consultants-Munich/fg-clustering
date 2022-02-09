@@ -1,1 +1,1 @@
-from .forest_guided_clustering import fgclustering
+from .forest_guided_clustering import fgclustering, FgClustering
