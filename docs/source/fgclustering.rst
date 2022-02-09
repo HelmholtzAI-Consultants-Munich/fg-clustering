@@ -1,9 +1,6 @@
 fgclustering package
 ====================
 
-Submodules
-----------
-
 fgclustering.forest\_guided\_clustering module
 ----------------------------------------------
 
