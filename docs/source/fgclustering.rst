@@ -17,14 +17,6 @@ fgclustering.optimizer module
    :undoc-members:
    :show-inheritance:
 
-fgclustering.plotting module
-----------------------------
-
-.. automodule:: fgclustering.plotting
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 fgclustering.statistics module
 ------------------------------
 
