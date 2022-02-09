@@ -20,6 +20,42 @@ import fgclustering.statistics as stats
 # functions
 ############################################
 
+def _plot_feature_importance(X, bootstraps, save, num_cols):
+    '''Plot feature importance to show the importance of each feature for each cluster, 
+    measured by variance and impurity of the feature within the cluster, i.e. the higher 
+    the feature importance, the lower the feature variance / impurity within the cluster.
+
+    :param X: Feature matrix.
+    :type X: pandas.DataFrame
+    :param bootstraps: Number of bootstraps to be drawn for computation of p-value.
+    :type bootstraps: int
+    :param save: Filename to save plot.
+    :type save: str
+    :param num_cols: Number of plots in one row.
+    :type num_cols: int
+    '''
+    importance = stats.get_feature_importance_clusterwise(X, bootstraps)
+    num_features = len(importance)
+
+    X_barplot = pd.melt(importance , ignore_index=False)
+    X_barplot = X_barplot.rename_axis('feature').reset_index(level=0, inplace=False)
+    X_barplot = X_barplot.sort_values('value',ascending=False)
+
+    height = max(5,int(np.ceil(5*num_features/25)))
+    num_cols = min(num_cols, len(importance.columns))
+
+    plot = sns.FacetGrid(X_barplot, col='variable', sharey=False, col_wrap=num_cols,height=height)
+    plot.map(sns.barplot, 'value', 'feature', color='darkgrey')
+    plot.set_axis_labels('importance', 'feature')
+    plot.set_titles(col_template="Cluster {col_name}")
+    plt.suptitle('Feature Importance per Cluster')
+    plt.tight_layout()
+    plt.show()
+
+    if save is not None:
+        plt.savefig('{}_feature_importance.png'.format(save), bbox_inches='tight', dpi = 300)
+    
+
 def _plot_heatmap(X, method, save):
     '''Plot feature heatmap sorted by clusters, where features are filtered and ranked 
     with statistical tests (ANOVA for continuous featres, chi square for categorical features). 
@@ -93,9 +129,8 @@ def _plot_heatmap(X, method, save):
     if save is not None:
         plt.savefig('{}_heatmap.png'.format(save), bbox_inches='tight', dpi = 300)
     
-    
 
-def _plot_boxplots(X, save, num_cols = 6):
+def _plot_boxplots(X, save, num_cols):
     '''Plot feature boxplots divided by clusters, where features are filtered and ranked 
     with statistical tests (ANOVA for continuous featres, chi square for categorical features).
 
@@ -103,8 +138,8 @@ def _plot_boxplots(X, save, num_cols = 6):
     :type X: pandas.DataFrame
     :param save: Filename to save plot.
     :type save: str
-    :param num_cols: Number of plots in one row, defaults to 6.
-    :type num_cols: int, optional
+    :param num_cols: Number of plots in one row.
+    :type num_cols: int
     '''    
     target_and_features = X.columns[X.columns != 'cluster']
     X_boxplot = pd.melt(X, id_vars=['cluster'], value_vars=target_and_features)
@@ -117,44 +152,6 @@ def _plot_boxplots(X, save, num_cols = 6):
 
     if save is not None:
         plt.savefig('{}_boxplots.png'.format(save), bbox_inches='tight', dpi = 300)
-    
-    
-
-def _plot_feature_importance(X, bootstraps, save, num_cols = 4):
-    '''Plot feature importance to show the importance of each feature for each cluster, 
-    measured by variance and impurity of the feature within the cluster, i.e. the higher 
-    the feature importance, the lower the feature variance / impurity within the cluster.
-
-    :param X: Feature matrix.
-    :type X: pandas.DataFrame
-    :param bootstraps: Number of bootstraps to be drawn for computation of p-value.
-    :type bootstraps: int
-    :param save: Filename to save plot.
-    :type save: str
-    :param num_cols: Number of plots in one row, defaults to 4.
-    :type num_cols: int, optional
-    '''
-    importance = stats.get_feature_importance_clusterwise(X, bootstraps)
-    num_features = len(importance)
-
-    X_barplot = pd.melt(importance , ignore_index=False)
-    X_barplot = X_barplot.rename_axis('feature').reset_index(level=0, inplace=False)
-    X_barplot = X_barplot.sort_values('value',ascending=False)
-
-    height = max(5,int(np.ceil(5*num_features/25)))
-    num_cols = min(num_cols, len(importance.columns))
-
-    plot = sns.FacetGrid(X_barplot, col='variable', sharey=False, col_wrap=num_cols,height=height)
-    plot.map(sns.barplot, 'value', 'feature', color='darkgrey')
-    plot.set_axis_labels('importance', 'feature')
-    plot.set_titles(col_template="Cluster {col_name}")
-    plt.suptitle('Feature Importance per Cluster')
-    plt.tight_layout()
-    plt.show()
-
-    if save is not None:
-        plt.savefig('{}_feature_importance.png'.format(save), bbox_inches='tight', dpi = 300)
-    
         
 
 def plot_forest_guided_clustering(save, X, y, method, distanceMatrix, k, thr_pvalue, bootstraps, random_state):

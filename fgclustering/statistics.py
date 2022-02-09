@@ -109,7 +109,7 @@ def _chisquare_test(df, list_of_df):
 
 
 def _rank_features(X, y, p_value_of_features):
-    '''Filter feature by p-value threshold and rank the remaining features by lowest p-value.
+    '''Rank features by lowest p-value.
 
     :param X: Feature matrix.
     :type X: pandas.DataFrame
@@ -151,7 +151,9 @@ def _sort_clusters_by_target(X_ranked):
 
 
 def calculate_global_feature_importance(X, y, cluster_labels):
-    '''Selecting significantly different features across clusters with an ANOVA test.
+    '''Calculate global feature importance for each feature. 
+    The higher the importance for a feature, the lower the p-value obtained by 
+    an ANOVA (continuous feature) or chi-square (categorical feature) test.
 
     :param X: Feature matrix.
     :type X: pandas.DataFrame
@@ -159,9 +161,9 @@ def calculate_global_feature_importance(X, y, cluster_labels):
     :type y: pandas.Series
     :param cluster_labels: Clustering labels.
     :type cluster_labels: numpy.ndarray
-    :return: Feature matrix ranked and filtered by p-value of 
-        statistical test (ANOVA for continuous and chi-square for categorical features).
-    :rtype: pandas.DataFrame
+    :return: Feature matrix ranked by p-value of statistical test and 
+        dictionary with computed p-values of all features.
+    :rtype: pandas.DataFrame and dict
     ''' 
     X['cluster'] = cluster_labels
     p_value_of_features = dict()
@@ -250,7 +252,7 @@ def _calculate_p_value_continuous(X_feature_cluster, X_feature, cluster_size, bo
     
 
 def get_feature_importance_clusterwise(X, bootstraps, epsilon = sys.float_info.min):
-    '''Calculate importance of each feature within each cluster. 
+    '''Calculate local importance of each feature within each cluster. 
     The higher the importance for a feature, the lower the variance (continuous feature) 
     or impurity (categorical feature) of that feature within the cluster.
 
