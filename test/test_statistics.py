@@ -9,7 +9,7 @@ import pandas as pd
 from sklearn_extra.cluster import KMedoids
 
 from fgclustering.utils import *
-from fgclustering.statistics import compute_balanced_average_impurity, compute_total_within_cluster_variation, feature_ranking, get_feature_importance_clusterwise
+from fgclustering.statistics import compute_balanced_average_impurity, compute_total_within_cluster_variation, calculate_global_feature_importance, get_feature_importance_clusterwise
 
 
 ############################################
@@ -40,19 +40,19 @@ def test_compute_total_within_cluster_variation():
     assert expected_result == result
 
 
-def test_feature_ranking():
+def test_calculate_global_feature_importance():
     
     # test if anova test filters out features 1 and 2 which are the same in both clusters and 
     # leaves features 3 and 4 which are clearly different in both clusters
     
-    X = pd.DataFrame.from_dict({'col_1': [1,0.9,1,1,1,1], 'col_2': [1,1,1,1,0.9,1], 'col_3': [1,1,1,0,0,0], 'col_4': [0,0,0,1,1,1]})
+    X = pd.DataFrame.from_dict({'col_1': [1,1,1,1,1,0.9], 'col_2': [1,1,1,1,0.9,0.5], 'col_3': [1,1,1,0,0,1], 'col_4': [0,0,0,1,1,1]})
     y = pd.Series([0,0,0,0,0,0])
     cluster_labels = np.array([0,0,0,1,1,1])
-    thr_pvalue = 0.05
     
-    result = feature_ranking(X, y, cluster_labels, thr_pvalue)
+    X_ranked, p_value_of_features = calculate_global_feature_importance(X, y, cluster_labels)
     
-    assert set(result.columns) == set(['col_3', 'col_4', 'cluster', 'target'])
+    X_ranked.drop('cluster', axis  = 1, inplace=True)
+    assert list(X_ranked.columns) == ['target', 'col_4', 'col_3', 'col_2', 'col_1']
 
 
 def test_get_feature_importance_clusterwise():
@@ -70,7 +70,10 @@ def test_get_feature_importance_clusterwise():
     distanceMatrix = 1 - proximityMatrix(model, X.to_numpy())
 
     cluster_labels = KMedoids(n_clusters=k, random_state=random_state).fit(distanceMatrix).labels_
-    X_ranked = feature_ranking(X, y, cluster_labels, thr_pvalue)
+    X_ranked, p_value_of_features = calculate_global_feature_importance(X, y, cluster_labels)
+    for column in X.columns:
+        if p_value_of_features[column] > thr_pvalue:
+            X.drop(column, axis  = 1, inplace=True)    
 
     importance = get_feature_importance_clusterwise(X_ranked, bootstraps)
     
