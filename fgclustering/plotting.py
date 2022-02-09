@@ -21,12 +21,13 @@ import fgclustering.statistics as stats
 ############################################
 
 def _plot_global_feature_importance(p_value_of_features, save):
-    '''[summary]
+    '''Plot global feature importance based on p-values given as input.
 
-    :param p_value_of_features: [description]
-    :type p_value_of_features: [type]
-    :param save: [description]
-    :type save: [type]
+    :param p_value_of_features: dictionary where keys are names of features and values are p-values of these features
+    :type p_value_of_features: dict
+    :param save: Filename to save plot.
+    :type save: str
+    
     '''
     importance = p_value_of_features.copy()
     importance.pop('target')
@@ -48,9 +49,7 @@ def _plot_global_feature_importance(p_value_of_features, save):
     
 
 def _plot_local_feature_importance(X, bootstraps, save, num_cols):
-    '''Plot feature importance to show the importance of each feature for each cluster, 
-    measured by variance and impurity of the feature within the cluster, i.e. the higher 
-    the feature importance, the lower the feature variance / impurity within the cluster.
+    '''Plot local feature importance to show the importance of each feature for each cluster. 
 
     :param X: Feature matrix.
     :type X: pandas.DataFrame
