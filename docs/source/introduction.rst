@@ -23,7 +23,7 @@ Consider for instance a dataset where gender, alcohol and tobacco consumption ar
 
 Briefly, the algorithm computes a similarity metric between data points based on the Random Forest proximity matrix that indicates, which data instances follow the same decision path in the model. The computed similarity matrix is used as input for a k-medioids clustering, to find subgroups within the dataset. For each of these subgroups, following similar decision paths in the Random Forest, the importance of the different features can be analysed separately.
 
-.. image:: ../fgclustering.png
+.. image:: ../FGC_workflow.png
 
 In the above example, the Forest-Guided Clustering would separate men and women into different subgroups, not because gender is a predictor of the disease, but because the Random Forest model considers different features for men and women, in order to determine the risk. The grouping of the dataset using Forest-Guided Clustering is thus more fine grained than the grouping of the Random Forest model. We do not only categorize the datapoints in a high and low risk group for the disease but into finer subgroups dependent on which factors are relevant for determining the risk.
 
