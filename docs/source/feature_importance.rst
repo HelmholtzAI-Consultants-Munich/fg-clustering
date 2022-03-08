@@ -3,13 +3,11 @@ Feature Importance
 
 Global Feature Importance
 --------------------------
-We determine if a particular feature is actually varying between the clusters.
-For continuous variable we apply an Anova test for continuous variables, to test if the means of the feature is significantly varying between the clusters.
-For categorical variables we use a Chi-Square test.
-For feature visualization we only consider features that are below a significance threshold that is adjustable by the user (default value is :math:`p\leq 0.01`).
+We measure the global feature importance by the significance of the difference between cluster-wise feature distributions. Features, which have significantly different distributions across clusters, have a high feature importance, while features, which have a similar feature distribution across clusters have a low feature importance. Those features are considered to be less important in the decision making process of the Random Forest model, because no clear rules can be derived from those features.
 
-Since a small p-value indicates a relevant feature, we define the global feature importance as
-:math:`\text{local_feature_importance} = 1-p`
+For continuous variables, we apply an Anova test to test if the cluster-wise feature mean is varying significantly between the clusters. For categorical variables, we use a Chi-Square test to test if there is a relation of the feature across clusters. For feature visualization we only consider features that are below a significance threshold that is adjustable by the user (default value is :math:`p\leq 0.01`).
+
+Since a small p-value indicates a relevant feature, we define the global feature importance as :math:`\text{local_feature_importance} = 1-p`
 
 
 Local Feature Importance
