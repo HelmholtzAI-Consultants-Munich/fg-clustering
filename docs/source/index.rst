@@ -12,8 +12,6 @@ This python package is about explainability of Random Forest models. Standard ex
 
 **Installation:**
 
-PyPI install:
-
 .. code:: bash
 
     pip install fgclustering
@@ -34,7 +32,7 @@ PyPI install:
    feature_importance
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: API Reference:
    
    modules
