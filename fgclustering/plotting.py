@@ -42,10 +42,10 @@ def _plot_global_feature_importance(p_value_of_features, save):
     plot.set_ylabel('feature')
     plt.title('Global Feature Importance')
     plt.tight_layout()
-    plt.show()
 
     if save is not None:
         plt.savefig('{}_global_feature_importance.png'.format(save), bbox_inches='tight', dpi = 300)
+    plt.show()
     
 
 def _plot_local_feature_importance(X, bootstraps, save, num_cols):
@@ -77,10 +77,10 @@ def _plot_local_feature_importance(X, bootstraps, save, num_cols):
     plot.set_titles(col_template="Cluster {col_name}")
     plt.suptitle('Feature Importance per Cluster')
     plt.tight_layout()
-    plt.show()
 
     if save is not None:
         plt.savefig('{}_local_feature_importance.png'.format(save), bbox_inches='tight', dpi = 300)
+    plt.show()
     
 
 def _plot_heatmap(X, method, save):
@@ -152,10 +152,10 @@ def _plot_heatmap(X, method, save):
     norm = matplotlib.colors.Normalize(vmin=0, vmax=1)
     cbar_features = plt.colorbar(matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap_features))
     cbar_features.set_label('standardized feature values')
-    plt.show()
     
     if save is not None:
         plt.savefig('{}_heatmap.png'.format(save), bbox_inches='tight', dpi = 300)
+    plt.show()
     
 
 def _plot_boxplots(X, save, num_cols):
@@ -177,8 +177,8 @@ def _plot_boxplots(X, save, num_cols):
     plot.map(sns.boxplot, 'cluster', 'value', color='darkgrey')
     plot.set_axis_labels('Cluster', 'Feature Value', clear_inner=False)
     plot.set_titles(col_template="Feature: {col_name}")
-    plt.show()
 
     if save is not None:
         plt.savefig('{}_boxplots.png'.format(save), bbox_inches='tight', dpi = 300)
+    plt.show()
         
