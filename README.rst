@@ -26,7 +26,7 @@ Installation
 - :code:`sklearn`, :code:`scikit-learn-extra`, :code:`scipy`, :code:`statsmodels`
 - :code:`matplotlib`, :code:`seaborn`
 
-All required packages are automatically installed if installation is done via :code:`pip` or :code:`conda`
+All required packages are automatically installed if installation is done via :code:`pip`.
 
 **Install Options:**
 
