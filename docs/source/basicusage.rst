@@ -23,8 +23,8 @@ To get explainability of your Random Forest model via Forest-Guided Clustering, 
 
 where 
 
-- :code:`data=data_boston` is the dataset on which the Random Forest model was trained on,
-- :code:`target_column='target'` is the name of the target column (i.e. *target*) in the provided dataset and 
-- :code:`model=rf` is a Random Forest Classifier or Regressor object. 
+- :code:`model=rf` is a Random Forest Classifier or Regressor object,
+- :code:`data=data_boston` is the dataset on which the Random Forest model was trained on, e.g. boston housing dataset, and
+- :code:`target_column='target'` is the name of the target column (i.e. *target*) in the provided dataset. 
 
-For a detailed tutorial see the IPython Notebook :code:`tutorial.ipynb`.
+For a detailed tutorial see the IPython Notebook :code:`tutorial.ipynb` or Forest-Guided Clustering Tutorial.
