@@ -3,9 +3,7 @@ General Algorithm
 
 Compute distance matrix between data points
 --------------------------------------------
-The first step in the algorithm is the computation of the distances between the data points. This distance matrix is based on a proximity measure between two instances i and j, that represents the frequency with which those instances occur in the same terminal nodes of a tree in the Random Forest (RF) model. Intuitively, this defines how close those instances are in the RF model.
-
-We define the proximity matrix as 
+The first step in the algorithm is the computation of the distances between the data points. This distance matrix is based on a proximity measure between two instances i and j, that represents the frequency with which those instances occur in the same terminal nodes of a tree in the Random Forest (RF) model. Intuitively, this defines how close those instances are in the RF model. We define the proximity matrix as 
 
 :math:`M^{proximity}_{ij} = \frac{m_{i,j}}{N}`
 
