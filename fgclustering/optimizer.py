@@ -193,8 +193,6 @@ def optimizeK(distance_matrix, y, max_K, bootstraps, max_iter_clustering, discar
             print('For number of cluster {} the score is {}'.format(k,score))
         else:
             print('Clustering is instable, no score computed!')
-            
-    print(f"The optimal number of clusters is {optimal_k}")
 
     return optimal_k
 
