@@ -12,31 +12,30 @@ where :math:`m_{i,j}` is the number of trees where the data-points i,j end up in
 
 Optimize number of clusters
 ------------------------
-Having a distance matrix :math:`M^{distance}_{ij}` we can use  `k-medioids clustering <https://en.wikipedia.org/wiki/K-medoids>`_: to find subgroups for which the data points follow similar decision paths in the RF model. We use k-medioids, as, in contrast to k-means, it does not require an embedding of the data points in a metric space but can be applied directly to a distance matrix.
+Having a distance matrix :math:`M^{distance}_{ij}` we can use  `k-medoids clustering <https://en.wikipedia.org/wiki/K-medoids>`_: to find subgroups for which the data points follow similar decision paths in the RF model. We use k-medoids, as, in contrast to k-means, it does not require an embedding of the data points in a metric space but can be applied directly to a distance matrix.
 
-Similar to k-means clustering, k-medoids clustering requires setting the number of clusters :math:`k` into which we want to divide our dataset in advance. We want the resulting clusters to be both, stable and predictive of the target. We developed a scoring system to choose the optimal number of clusters :math:`k`, which minimizes the model bias while restricting the model complexity. The model bias measures how well the trained model (FGC with a certain value of :math:`k`) approximates the expected model, while the variance is related to the model complexity, since complex models usually have a high variance and poor generalization capability.
+Similar to k-means clustering, k-medoids clustering requires setting the number of clusters :math:`k` into which we want to divide our dataset in advance. We want the resulting clusters to be both, stable and predictive of the target. We developed a scoring system to choose the optimal number of clusters :math:`k`, which minimizes the model bias while restricting the model complexity. The model bias measures how well the clustering (FGC with a certain value of :math:`k`) approximates the expected model, while the variance is related to the model complexity, since complex models usually have a high variance and poor generalization capability.
 
 Model bias
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-For **regression models**, the mean target value of each cluster is treated as the prediction values for each data point in the cluster. The model bias is then defined as the total squared error of this prediction compared to the ground truth. We compute the model bias separately for each value of :math:`k`. Then the clustering's are scored by the lowest total squared error:
-
-:math:`TSE_k = \sum_i^k \sum_{y_i \in C_j} \left( y_i - \mu_j \right)^2`
-
-where :math:`y_i` is the target value of data point i and :math:`\mu_j = \frac{1}{|C_j|}\sum_{y_i \in C_j} y_i` is mean of the target values within cluster :math:`C_j`. It measures the compactness (i.e goodness) of the clustering with respect to the target and should be as small as possible.
 
 For **classification models**, we define the model bias by the impurity score of the clustering. Analogous to the regression case the model bias is computed for each value of :math:`k` separately. The impurity score is a balanced Gini coefficient of the classes within each cluster. The class sizes are balanced by rescaling the class size with the inverse size of the class in the overall dataset. Given a classification problem with :math:`G` classes, we define the impurity score as:
     
 :math:`IS_k = \sum_i^k \left( 1- \sum_{g=1}^G b^2_{i,g} \right)` 
 
 where the balanced per cluster frequency :math:`b_{i,g} = \frac{1}{\sum_{g=1}^G \frac{p_{i,g}}{q_g}} \frac{p_{i,g}}{q_g}` of class :math:`g` in cluster :math:`i` is the normalized frequency :math:`p_{i,g}` of class :math:`g` in cluster :math:`i`, weighted by the total frequency :math:`q_g` of class :math:`g` in the data set.
-    
-    
+
+For **regression models**, the target value of each cluster is treated as the mean prediction values for each data point in the cluster. The model bias is then defined as the total squared error of this prediction compared to the ground truth. We compute the model bias separately for each value of :math:`k`. Then the clustering's are scored by the lowest total squared error:
+
+:math:`TSE_k = \sum_i^k \sum_{y_i \in C_j} \left( y_i - \mu_j \right)^2`
+
+where :math:`y_i` is the target value of data point i and :math:`\mu_j = \frac{1}{|C_j|}\sum_{y_i \in C_j} y_i` is mean of the target values within cluster :math:`C_j`. It measures the compactness (i.e goodness) of the clustering with respect to the target and should be as small as possible.
+
 
 Model variance
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-We restrict the model variance by discarding too complex models. We define the complexity of the clustering for each value of :math:`k` by its stability. The
+We limit the model variance by discarding too complex models. We define the complexity of the clustering for each value of :math:`k` by its stability. The
 stability of each cluster :math:`i` in the clustering is measured by the average Jaccard Similarity between the original cluster :math:`A` and :math:`n` bootstrapped clusters :math:`B_b`:
 
 :math:`JS_i(A|B) = \frac{\sum_{b=1}^n\frac{|A ∩ B_b|}{|A ∪ B_b|}}{n}`
