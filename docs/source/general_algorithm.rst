@@ -12,7 +12,7 @@ where :math:`m_{i,j}` is the number of trees where the data-points i,j end up in
 
 Optimize number of clusters
 ------------------------
-Having a distance matrix :math:`M^{distance}_{ij}` we can use  `k-medoids clustering <https://en.wikipedia.org/wiki/K-medoids>`_: to find subgroups for which the data points follow similar decision paths in the RF model. We use k-medoids, as, in contrast to k-means, it does not require an embedding of the data points in a metric space but can be applied directly to a distance matrix.
+Having a distance matrix :math:`M^{distance}_{ij}` we can use  `k-medoids clustering <https://en.wikipedia.org/wiki/K-medoids>` to find subgroups for which the data points follow similar decision paths in the RF model. We use k-medoids, as, in contrast to k-means, it does not require an embedding of the data points in a metric space but can be applied directly to a distance matrix.
 
 Similar to k-means clustering, k-medoids clustering requires setting the number of clusters :math:`k` into which we want to divide our dataset in advance. We want the resulting clusters to be both, stable and predictive of the target. We developed a scoring system to choose the optimal number of clusters :math:`k`, which minimizes the model bias while restricting the model complexity. The model bias measures how well the clustering (FGC with a certain value of :math:`k`) approximates the expected model, while the variance is related to the model complexity, since complex models usually have a high variance and poor generalization capability.
 
