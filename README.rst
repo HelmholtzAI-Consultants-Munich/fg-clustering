@@ -16,7 +16,7 @@ This python package is about explainability of Random Forest models. Standard ex
 
 .. image:: docs/FGC_workflow.png
 
-For detailed documentation and usage examples, please visit the `Read the Docs documentation <https://forest-guided-clustering.readthedocs.io/>`_. If Forest-Guided Clustering is useful for your research, consider citing the package via `DOI: 10.5281/zenodo.6445529 <https://zenodo.org/badge/latestdoi/397931780>`_.
+For detailed documentation and usage examples, please visit the `Read the Docs documentation <https://forest-guided-clustering.readthedocs.io/>`_. 
 
 
 Installation
@@ -83,3 +83,24 @@ Contributing
 -------------------------------
 
 Contributions are more than welcome! Everything from code to notebooks to examples and documentation are all equally valuable so please don't feel you can't contribute. To contribute please fork the project make your changes and submit a pull request. We will do our best to work through any issues with you and get your code merged into the main branch.
+
+How to cite
+-------------------------------
+
+If Forest-Guided Clustering is useful for your research, consider citing the package:
+
+.. code:: bash
+
+   @software{lisa_sousa_2022_6445529,
+     author       = {Lisa Barros de Andrade e Sousa and
+                     Dominik Thalmeier,
+                     Helena Pelin,
+                     Marie Piraud},
+     title        = {{Forest-Guided Clustering - Explainability for Random Forest Models}},
+     month        = april,
+     year         = 2022,
+     publisher    = {Zenodo},
+     version      = {v0.2.0},
+     doi          = {10.5281/zenodo.6445529},
+     url          = {https://doi.org/10.5281/zenodo.6445529}
+   }
