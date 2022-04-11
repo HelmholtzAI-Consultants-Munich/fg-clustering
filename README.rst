@@ -16,6 +16,11 @@ This python package is about explainability of Random Forest models. Standard ex
 
 For detailed documentation and usage examples, please visit the `Read the Docs documentation <https://forest-guided-clustering.readthedocs.io/>`_.
 
+**Citation**:
+.. image:: https://zenodo.org/badge/397931780.svg
+   :target: https://zenodo.org/badge/latestdoi/397931780
+
+
 Installation
 -------------------------------
 
@@ -80,7 +85,3 @@ Contributing
 -------------------------------
 
 Contributions are more than welcome! Everything from code to notebooks to examples and documentation are all equally valuable so please don't feel you can't contribute. To contribute please fork the project make your changes and submit a pull request. We will do our best to work through any issues with you and get your code merged into the main branch.
-
-
-
-
