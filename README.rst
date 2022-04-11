@@ -1,4 +1,4 @@
-|Stars| |PyPI| |Docs| 
+|Stars| |PyPI| |Docs| |Cite|
 
 .. |Stars| image:: https://img.shields.io/github/stars/HelmholtzAI-Consultants-Munich/forest_guided_clustering?logo=GitHub&color=yellow
    :target: https://github.com/HelmholtzAI-Consultants-Munich/forest_guided_clustering/stargazers
@@ -6,6 +6,8 @@
    :target: https://pypi.org/project/fgclustering
 .. |Docs| image:: https://readthedocs.org/projects/forest-guided-clustering/badge/?version=latest
    :target: https://forest-guided-clustering.readthedocs.io
+.. |Cite| image:: https://zenodo.org/badge/397931780.svg
+   :target: https://zenodo.org/badge/latestdoi/397931780
 
 Forest-Guided Clustering - Explainability for Random Forest Models
 =========================================================================
@@ -16,9 +18,7 @@ This python package is about explainability of Random Forest models. Standard ex
 
 For detailed documentation and usage examples, please visit the `Read the Docs documentation <https://forest-guided-clustering.readthedocs.io/>`_.
 
-**Citation**:
-.. image:: https://zenodo.org/badge/397931780.svg
-   :target: https://zenodo.org/badge/latestdoi/397931780
+**Citation**: |Cite|
 
 
 Installation
