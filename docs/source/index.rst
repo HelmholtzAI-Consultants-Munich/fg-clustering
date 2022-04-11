@@ -16,6 +16,9 @@ This python package is about explainability of Random Forest models. Standard ex
 
     pip install fgclustering
     
+**Citation:** If Forest-Guided Clustering is useful for your research, consider citing the package via `DOI: 10.5281/zenodo.6445529 <https://zenodo.org/badge/latestdoi/397931780>`_.
+
+    
 .. toctree::
    :maxdepth: 2
    :caption: User Guide / Tutorial:
