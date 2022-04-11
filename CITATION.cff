@@ -1,13 +1,46 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
 cff-version: 1.2.0
-message: "If you use this software, please cite it as below."
+title: >-
+  Forest-Guided Clustering - Explainability for
+  Random Forest Models
+message: >-
+  "If you use this software, please cite it as
+  below."
+type: software
 authors:
-  - family-names: Barros de Andrade e Sousa
-    given-names: Lisa
-    orcid: https://orcid.org/0000-0001-7702-9782
-authors:
-  - family-names: Thalmeier
-    given-names: Dominik
-    orcid: https://orcid.org/0000-0000-0000-0000
-title: Forest-Guided Clustering - Explainability for Random Forest Models
+  - given-names: Lisa
+    family-names: Barros de Andrade e Sousa
+    email: lisa.barros.andrade.sousa@gmail.com
+    affiliation: Helmholtz AI
+    orcid: 'https://orcid.org/0000-0001-7702-9782'
+  - given-names: Dominik
+    family-names: Thailmeier
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.6445529
+repository-code: >-
+  https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering
+url: >-
+  https://forest-guided-clustering.readthedocs.io/en/latest/
+abstract: >-
+  This python package is about explainability of
+  Random Forest models. Standard explainability
+  methods (e.g. feature importance) assume
+  independence of model features and hence, are not
+  suited in the presence of correlated features. The
+  Forest-Guided Clustering algorithm does not assume
+  independence of model features, because it computes
+  the feature importance based on subgroups of
+  instances that follow similar decision rules within
+  the Random Forest model. Hence, this method is well
+  suited for cases with high correlation among model
+  features.
+keywords:
+  - XAI
+  - explainable machine learning
+  - Random Forest
+license: MIT
 version: v0.2
-date-released: 2022-04-11
+date-released: '2022-04-11'
