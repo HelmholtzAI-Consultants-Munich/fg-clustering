@@ -17,6 +17,10 @@ authors:
     orcid: 'https://orcid.org/0000-0001-7702-9782'
   - given-names: Dominik
     family-names: Thailmeier
+  - given-names: Helena
+    family-names: Pelin
+  - given-names: Marie
+    family-names: Piraud
 identifiers:
   - type: doi
     value: 10.5281/zenodo.6445529
