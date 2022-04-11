@@ -16,7 +16,7 @@ This python package is about explainability of Random Forest models. Standard ex
 
 .. image:: docs/FGC_workflow.png
 
-For detailed documentation and usage examples, please visit the `Read the Docs documentation <https://forest-guided-clustering.readthedocs.io/>`_. If Forest-Guided Clustering is useful for your research, consider citing |Cite| .
+For detailed documentation and usage examples, please visit the `Read the Docs documentation <https://forest-guided-clustering.readthedocs.io/>`_. If Forest-Guided Clustering is useful for your research, consider citing with https://zenodo.org/badge/latestdoi/397931780 .
 
 
 Installation
