@@ -89,7 +89,7 @@ How to cite
 
 If Forest-Guided Clustering is useful for your research, consider citing the package:
 
-.. code:: bash
+.. code:: 
 
    @software{lisa_sousa_2022_6445529,
      author       = {Lisa Barros de Andrade e Sousa and
