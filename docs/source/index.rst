@@ -13,7 +13,7 @@ This python package is about explainability of Random Forest models. Standard ex
 .. image:: ../FGC_workflow.png
 
 Quick Start
--------------------------------
+==================
 
 **Installation:**
 
@@ -52,7 +52,7 @@ where
 For a detailed tutorial see the IPython Notebook :code:`tutorial.ipynb` or Forest-Guided Clustering Tutorial.
 
 Table of Content
--------------------------------
+==================
 
 .. toctree::
    :maxdepth: 2
