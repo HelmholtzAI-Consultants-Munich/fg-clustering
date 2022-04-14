@@ -92,7 +92,7 @@ If Forest-Guided Clustering is useful for your research, consider citing the pac
 .. code:: 
 
    @software{lisa_sousa_2022_6445529,
-     author       = {Lisa Barros de Andrade e Sousa,
+     author       = {Lisa Barros de Andrade e Sousa and
                      Dominik Thalmeier,
                      Helena Pelin,
                      Marie Piraud},
