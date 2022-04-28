@@ -3,7 +3,6 @@
 ############################################
 
 from sklearn_extra.cluster import KMedoids
-
 import fgclustering.utils as utils
 import fgclustering.optimizer as optimizer
 import fgclustering.plotting as plotting
@@ -86,12 +85,16 @@ class FgClustering():
                                     self.method, 
                                     self.random_state)
             print(f"Optimal number of cluster is: {self.k}")
+            if self.k == 1:
+                print("WARNING: no stable clusters were found")
+                return
         else:
             self.k = number_of_clusters
             print(f"Use {self.k} as number of cluster")
 
         self.cluster_labels = KMedoids(n_clusters=self.k, random_state=self.random_state).fit(self.distance_matrix).labels_
         self._X_ranked, self.p_value_of_features = stats.calculate_global_feature_importance(self.X, self.y, self.cluster_labels)
+
 
     def plot_global_feature_importance(self, save = None):
         '''Plot global feature importance based on p-values given as input, the p-values are computed using an Anova (for continuous
