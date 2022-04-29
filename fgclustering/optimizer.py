@@ -6,6 +6,7 @@ import numpy as np
 from tqdm import tqdm
 
 from sklearn_extra.cluster import KMedoids
+from joblib import Parallel, delayed
 
 import fgclustering.statistics as statistics
 
@@ -141,8 +142,45 @@ def _compute_stability_indices(distance_matrix, cluster_method, labels, bootstra
     index_per_cluster = {cluster: index_per_cluster[cluster]/bootstraps for cluster in clusters}
         
     return index_per_cluster
-    
-    
+
+
+def _optimizeKloop(k, distance_matrix, y, random_state, max_iter_clustering, bootstraps, discart_value, method):
+    '''
+    TBA
+    :param k:
+    :param distance_matrix:
+    :param random_state:
+    :param max_iter_clustering:
+    :param bootstraps:
+    :param discart_value:
+    :return:
+    '''
+    # compute clusters
+    print(f'Checking number of clusters k={k}')
+    cluster_method = lambda X: KMedoids(n_clusters=k, random_state=random_state, init='build', method="pam",
+                                        max_iter=max_iter_clustering).fit(X).labels_
+    labels = cluster_method(distance_matrix)
+
+    # compute jaccard indices
+    index_per_cluster = _compute_stability_indices(distance_matrix, cluster_method, labels, bootstraps, random_state)
+    min_index = min([index_per_cluster[cluster] for cluster in index_per_cluster.keys()])
+
+    # only continue if jaccard indices are all larger 0.6 (thus all clusters are stable)
+    print('For number of cluster {} the Jaccard Index is {}'.format(k, min_index))
+    if min_index > discart_value:
+        if method == "classifier":
+            # compute balanced purities
+            score = statistics.compute_balanced_average_impurity(y, labels)
+        elif method == "regression":
+            # compute the total within cluster variation
+            score = statistics.compute_total_within_cluster_variation(y, labels)
+        print('For number of cluster {} the score is {}'.format(k, score))
+        return {k: score}
+    else:
+        print('Clustering is instable, no score computed!')
+        return {k: np.nan}
+
+
 def optimizeK(distance_matrix, y, max_K, bootstraps, max_iter_clustering, discart_value, method, random_state):
     '''Compute the optimal number of clusters for k-medoids clustering (trade-off between cluster purity and cluster stability). 
 
@@ -164,34 +202,14 @@ def optimizeK(distance_matrix, y, max_K, bootstraps, max_iter_clustering, discar
     :type random_state: int
     :return: Optimal number of clusters.
     :rtype: int
-    '''    
-    score_min = np.inf
-    optimal_k = 1
-    
-    for k in tqdm(range(2, max_K)):
-        #compute clusters        
-        cluster_method = lambda X: KMedoids(n_clusters=k, random_state=random_state, init = 'build', method = "pam", max_iter=max_iter_clustering).fit(X).labels_
-        labels = cluster_method(distance_matrix)
+    '''
 
-        # compute jaccard indices
-        index_per_cluster = _compute_stability_indices(distance_matrix, cluster_method, labels, bootstraps, random_state)
-        min_index = min([index_per_cluster[cluster] for cluster in index_per_cluster.keys()])
-        
-        # only continue if jaccard indices are all larger 0.6 (thus all clusters are stable)
-        print('For number of cluster {} the Jaccard Index is {}'.format(k, min_index))
-        if min_index > discart_value:
-            if method == "classifier":
-                # compute balanced purities
-                score = statistics.compute_balanced_average_impurity(y, labels)
-            elif method == "regression":
-                # compute the total within cluster variation
-                score = statistics.compute_total_within_cluster_variation(y, labels)
-            if score<score_min:
-                optimal_k = k
-                score_min = score
-            print('For number of cluster {} the score is {}'.format(k,score))
-        else:
-            print('Clustering is instable, no score computed!')
+    results = Parallel(n_jobs=2)(
+        delayed(_optimizeKloop)(k, distance_matrix, y, random_state, max_iter_clustering, bootstraps, discart_value, method) for k
+        in range(2, max_K))
+    # Flat to dictionary:
+    results = dict(sum(map(list, map(dict.items, results)), []))
+    optimal_k, score = min(results.items(), key=lambda k: k[1])  # optimal k is the one with minimum impurity/within cluster variation score
 
     return optimal_k
 
