@@ -91,7 +91,7 @@ def _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(labels, ma
     return indices_clusters
 
 
-def _compute_stability_indices(distance_matrix, cluster_method, bootstraps, random_state):
+def _compute_stability_indices(distance_matrix, cluster_method, labels, bootstraps, random_state):
     '''Compute stability of each cluster via Jaccard Index of bootstraped vs original clustering.
 
     :param distance_matrix: Proximity matrix of Random Forest model.
@@ -110,8 +110,7 @@ def _compute_stability_indices(distance_matrix, cluster_method, bootstraps, rand
     matrix_shape = distance_matrix.shape
     assert len(matrix_shape) == 2, "error distance_matrix is not a matrix"
     assert matrix_shape[0] == matrix_shape[1], "error distance matrix is not square"
-    
-    labels = cluster_method(distance_matrix)
+
     clusters = np.unique(labels)
     number_datapoints = len(labels)
     index_vector = np.arange(number_datapoints)
@@ -175,7 +174,7 @@ def optimizeK(distance_matrix, y, max_K, bootstraps, max_iter_clustering, discar
         labels = cluster_method(distance_matrix)
 
         # compute jaccard indices
-        index_per_cluster = _compute_stability_indices(distance_matrix, cluster_method, bootstraps, random_state)
+        index_per_cluster = _compute_stability_indices(distance_matrix, cluster_method, labels, bootstraps, random_state)
         min_index = min([index_per_cluster[cluster] for cluster in index_per_cluster.keys()])
         
         # only continue if jaccard indices are all larger 0.6 (thus all clusters are stable)
