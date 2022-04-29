@@ -181,7 +181,7 @@ def _optimizeKloop(k, distance_matrix, y, random_state, max_iter_clustering, boo
         return {k: np.nan}
 
 
-def optimizeK(distance_matrix, y, max_K, bootstraps, max_iter_clustering, discart_value, method, random_state):
+def optimizeK(distance_matrix, y, max_K, bootstraps, max_iter_clustering, discart_value, method, random_state, n_jobs):
     '''Compute the optimal number of clusters for k-medoids clustering (trade-off between cluster purity and cluster stability). 
 
     :param distance_matrix: Proximity matrix of Random Forest model.
@@ -202,9 +202,11 @@ def optimizeK(distance_matrix, y, max_K, bootstraps, max_iter_clustering, discar
     :type random_state: int
     :return: Optimal number of clusters.
     :rtype: int
+    :param n_jobs: number of jobs to run in parallel when optimizing the number of clusters. The default is 2, if 1 is given, no parallel computing is used at all
+    :type n_jobs: int, optional
     '''
 
-    results = Parallel(n_jobs=2)(
+    results = Parallel(n_jobs=n_jobs)(
         delayed(_optimizeKloop)(k, distance_matrix, y, random_state, max_iter_clustering, bootstraps, discart_value, method) for k
         in range(2, max_K))
     # Flat to dictionary:
