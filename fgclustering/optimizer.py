@@ -158,7 +158,7 @@ def _optimizeKloop(k, distance_matrix, y, random_state, max_iter_clustering, boo
     '''
     # compute clusters
     print(f'Checking number of clusters k={k}')
-    cluster_method = lambda X: KMedoids(n_clusters=k, random_state=random_state, init='build', method="pam",
+    cluster_method = lambda X: KMedoids(n_clusters=k, random_state=random_state, init='random', method="pam",
                                         max_iter=max_iter_clustering).fit(X).labels_
     labels = cluster_method(distance_matrix)
 

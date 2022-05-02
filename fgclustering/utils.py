@@ -74,4 +74,4 @@ def proximityMatrix(model, X, normalize=True):
     if normalize:
         proxMat = proxMat / nTrees
 
-    return proxMat 
+    return proxMat
