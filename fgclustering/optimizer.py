@@ -59,6 +59,7 @@ def _bootstrap_matrix(M):
     '''    
     lm = len(M)
     bootstrapped_samples = np.random.choice(np.arange(lm), lm)
+    bootstrapped_samples = np.sort(bootstrapped_samples)
     M_bootstrapped = M[:,bootstrapped_samples][bootstrapped_samples,:]
     
     mapping_bootstrapped_indices_to_original_indices = {bootstrapped : original for bootstrapped, original in enumerate(bootstrapped_samples)}
