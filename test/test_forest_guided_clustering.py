@@ -6,8 +6,9 @@ import joblib
 import pandas as pd
 import sys
 import os
-sys.path.append(os.path.dirname('/Users/helena.pelin/Desktop/Workmap/Vouchers/FGClustering/Code/fg-clustering/'))
+sys.path.append(os.path.dirname('/Users/helena.pelin/Desktop/Workmap/Projects/FGC/Code/fg-clustering/'))
 from fgclustering.forest_guided_clustering import *
+import matplotlib.pyplot as plt
 
 
 ############################################
