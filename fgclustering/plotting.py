@@ -6,6 +6,7 @@ import sys
 import numpy as np
 import pandas as pd
 import seaborn as sns
+sns.set_theme(style='whitegrid')
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
@@ -19,6 +20,22 @@ import fgclustering.statistics as stats
 ############################################
 # functions
 ############################################
+
+def _set_fontsize(number_of_features):
+    
+    '''Sets the fontsize for the plots based on number of features
+    :param number_of_features: number of features that need to be plotted
+    :type param: int
+    '''
+    # If there are less or eq than 30 features, fontsize = 10
+    if number_of_features <= 30:
+        fontsize = 10
+    elif number_of_features > 30 and number_of_features <= 40:
+        fontsize = 8
+    else:
+        fontsize = 6
+
+    return fontsize
 
 def _plot_global_feature_importance(p_value_of_features, save):
     '''Plot global feature importance based on p-values given as input.
@@ -37,9 +54,18 @@ def _plot_global_feature_importance(p_value_of_features, save):
     importance.sort_values(by='value', ascending=True, inplace=True)
     importance.value = 1 - importance.value
 
-    plot = sns.barplot(data=importance, x='value', y='variable', color='darkgrey')
+    # If there are more than 50 features, cut to 50:
+    if importance.shape[0] > 50:
+        importance = importance[:50,:]  
+
+    # set the fontsize:
+    fontsize = _set_fontsize(importance.shape[0])
+    
+    plot = sns.barplot(data=importance, x='value', y='variable',  palette = "crest")
     plot.set_xlabel('importance')
     plot.set_ylabel('feature')
+    # Decreasing the font size:
+    plot.set_yticklabels(plot.get_ymajorticklabels(), fontsize = fontsize)
     plt.title('Global Feature Importance')
     plt.tight_layout()
 
@@ -72,7 +98,7 @@ def _plot_local_feature_importance(X, bootstraps, save, num_cols):
     num_cols = min(num_cols, len(importance.columns))
 
     plot = sns.FacetGrid(X_barplot, col='variable', sharey=False, col_wrap=num_cols,height=height)
-    plot.map(sns.barplot, 'value', 'feature', color='darkgrey')
+    plot.map(sns.barplot, 'value', 'feature', color='darkgrey', palette = "crest")
     plot.set_axis_labels('importance', 'feature')
     plot.set_titles(col_template="Cluster {col_name}")
     plt.suptitle('Feature Importance per Cluster')
@@ -113,9 +139,11 @@ def _plot_heatmap(X, method, save):
 
     n_samples, n_features = X_heatmap.shape
     heatmap_ = np.zeros((n_features,n_samples,4))
-
     cmap_features = matplotlib.cm.get_cmap('coolwarm').copy()
     cmap_target = matplotlib.cm.get_cmap('viridis') #gist_ncar
+
+    # set the fontsize:
+    fontsize = _set_fontsize(n_features)
 
     for feature in range(n_features):
         for sample in range(n_samples):
@@ -123,13 +151,14 @@ def _plot_heatmap(X, method, save):
                 heatmap_[feature,sample,:] = cmap_target(X_heatmap.iloc[sample, feature])
             else:
                 heatmap_[feature,sample,:] = cmap_features(X_heatmap.iloc[sample, feature])
-
+    
     fig = plt.figure()
     img = plt.imshow(heatmap_, interpolation='none', aspect='auto')
 
     plt.title('Forest-Guided Clustering')
     plt.xticks([], [])
-    plt.yticks(range(n_features), X_heatmap.columns)
+    plt.yticks(range(n_features), X_heatmap.columns, fontsize=fontsize)
+    
 
     # remove bounding box
     for spine in plt.gca().spines.values():

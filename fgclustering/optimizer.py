@@ -176,6 +176,7 @@ def _optimizeKloop(k, distance_matrix, y, random_state, max_iter_clustering, boo
         elif method == "regression":
             # compute the total within cluster variation
             score = statistics.compute_total_within_cluster_variation(y, labels)
+        print('For number of cluster {} the score is {}'.format(k, score))
         return {k: score}
     else:
         print('Clustering is instable, no score computed!')
