@@ -10,10 +10,9 @@
    :target: https://zenodo.org/badge/latestdoi/397931780
    
 
-   
 .. raw:: html
 
-   <img src="docs/FGC_Logo.png" align="center" width="200px" alt="">
+   <img align="center" width="200" height="200" src="docs/FGC_Logo.png">
    
 
 Forest-Guided Clustering - Explainability for Random Forest Models
