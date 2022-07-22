@@ -10,6 +10,7 @@
    :target: https://zenodo.org/badge/latestdoi/397931780
    
 .. image:: docs/FGC_Logo.png
+   :width: 200
 
 Forest-Guided Clustering - Explainability for Random Forest Models
 =========================================================================
