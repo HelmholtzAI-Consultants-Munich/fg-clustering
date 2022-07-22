@@ -12,7 +12,9 @@
 
 .. raw:: html
 
-   <img align="center" width="200" height="200" src="docs/FGC_Logo.png">
+   <div align="center">
+      <a href="#readme"><img src="docs/FGC_Logo.png" width="200"></a>
+   </div>
    
 
 Forest-Guided Clustering - Explainability for Random Forest Models
