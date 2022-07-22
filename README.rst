@@ -13,7 +13,7 @@
 .. raw:: html
 
    <div align="center">
-      <a href="#readme"><img src="docs/FGC_Logo.png" width="200"></a>
+      <a href="#readme"><img src="docs/source/FGC_Logo.png" width="200"></a>
    </div>
    
 
