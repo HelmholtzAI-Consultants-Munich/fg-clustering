@@ -11,6 +11,7 @@
    
 .. image:: docs/FGC_Logo.png
    :width: 200
+   :align: center
 
 Forest-Guided Clustering - Explainability for Random Forest Models
 =========================================================================
