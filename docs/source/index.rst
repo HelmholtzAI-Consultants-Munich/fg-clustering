@@ -10,7 +10,7 @@ This python package is about explainability of Random Forest models. Standard ex
 
 **Citation:** If Forest-Guided Clustering is useful for your research, consider citing the package via `DOI: 10.5281/zenodo.6445529 <https://zenodo.org/badge/latestdoi/397931780>`_.
 
-.. image:: ../FGC_workflow.png
+.. image:: ./FGC_workflow.png
 
 Quick Start
 ==================
