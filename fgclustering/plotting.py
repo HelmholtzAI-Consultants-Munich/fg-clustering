@@ -181,8 +181,6 @@ def _plot_boxplots(X, save, num_cols):
 
     categ_features = X.drop('cluster', axis=1, inplace=False).select_dtypes(exclude='float').columns
     numeric_features = X.drop('cluster', axis=1, inplace=False).select_dtypes(exclude=['int','category']).columns
-    print(categ_features)
-    print(numeric_features)
     assert(len(numeric_features) + len(categ_features) == X.shape[1] - 1)
 
     variables_to_plot = X.drop([ 'target', 'cluster' ], axis=1, inplace=False).columns.to_list()
@@ -190,8 +188,6 @@ def _plot_boxplots(X, save, num_cols):
     variables_to_plot = [ 'target' ] + variables_to_plot
 
     num_rows = int(np.ceil(len(variables_to_plot) / num_cols))
-    print(num_rows*num_cols)
-    print(len(variables_to_plot))
     plt.figure(figsize=(30, 15)) # 20, 12
     plt.tight_layout()
     plt.subplots_adjust(hspace=0.8, wspace=0.8)
