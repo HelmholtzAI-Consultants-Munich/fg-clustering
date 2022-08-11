@@ -7,6 +7,9 @@ import fgclustering.utils as utils
 import fgclustering.optimizer as optimizer
 import fgclustering.plotting as plotting
 import fgclustering.statistics as stats
+import matplotlib.pyplot as plt
+
+import fgclustering.utils as utils
 
 ############################################
 # Forest-guided Clustering
@@ -77,6 +80,7 @@ class FgClustering():
         :param n_jobs: number of jobs to run in parallel when optimizing the number of clusters. The default is 2, if 1 is given, no parallel computing is used at all
         :type n_jobs: int, optional
         '''
+
         if number_of_clusters is None:
             self.k = optimizer.optimizeK(self.distance_matrix, 
                                     self.y.to_numpy(), 
@@ -130,7 +134,8 @@ class FgClustering():
             if self.p_value_of_features[column] > thr_pvalue:
                 X_ranked.drop(column, axis  = 1, inplace=True) 
 
-        plotting._plot_local_feature_importance(X_ranked, bootstraps_p_value, save, num_cols)
+        plotting._plot_local_feature_importance(X_ranked, bootstraps_p_value, thr_pvalue, save, num_cols)
+
 
     def plot_heatmap(self, thr_pvalue = 0.01, save = None):
         '''Plot feature heatmap sorted by clusters, where features are filtered and ranked 
@@ -145,9 +150,10 @@ class FgClustering():
         X_ranked = self._X_ranked.copy()
         for column in X_ranked.columns:
             if self.p_value_of_features[column] > thr_pvalue:
-                X_ranked.drop(column, axis  = 1, inplace=True)    
+                X_ranked.drop(column, axis  = 1, inplace=True)         
+        
+        plotting._plot_heatmap(X_ranked, self.method, thr_pvalue, save)
 
-        plotting._plot_heatmap(X_ranked, self.method, save)
 
     def plot_boxplots(self, thr_pvalue = 0.01, save = None, num_cols = 6):
         '''Plot feature boxplots divided by clusters, where features are filtered and ranked 
@@ -164,6 +170,39 @@ class FgClustering():
         X_ranked = self._X_ranked.copy()
         for column in X_ranked.columns:
             if self.p_value_of_features[column] > thr_pvalue:
-                X_ranked.drop(column, axis  = 1, inplace=True) 
+                X_ranked.drop(column, axis  = 1, inplace=True)         
+        
+        plotting._plot_boxplots(X_ranked, thr_pvalue, save, num_cols)
 
-        plotting._plot_boxplots(X_ranked, save, num_cols)
+
+    def plot_decision_paths(self, distributions=True, heatmap=True, thr_pvalue = 0.01, save=None, num_cols=6):
+        '''Plot decision paths of the random forest.
+        If distributions is true, the function plots the feature boxplots (for continuous features) or barplots (for categorical features) divided by clusters.
+        If heatmap is true, the function plots the feature heatmap sorted by clusters.
+        On both plots, features are filtered and ranked with statistical tests (ANOVA for continuous features, chi square for categorical features).
+
+        :param distributions: Indicator whether the distributions of features are plotted
+        :type distributions: boolean, optional
+        :param heatmap: Indicator whether the heatmap is plotted
+        :type heatmap: boolean, optional
+        :param thr_pvalue: P-value threshold for feature filtering, defaults to 0.01
+        :type thr_pvalue: float, optional
+        :param save: Filename to save plot, if None the figure is not saved, defaults to None
+        :type save: str, optional
+        :param num_cols: Number of plots in one row for the distributions plot, defaults to 6.
+        :type num_cols: int, optional
+        '''
+        # drop insignificant values
+        X_ranked = self._X_ranked.copy()
+        for column in X_ranked.columns:
+            if self.p_value_of_features[column] > thr_pvalue:
+                X_ranked.drop(column, axis  = 1, inplace=True)    
+
+        if heatmap:
+            plotting._plot_heatmap(X_ranked, self.method, thr_pvalue, save)
+
+        if distributions:
+            plotting._plot_boxplots(X_ranked, thr_pvalue, save, num_cols)
+
+
+            

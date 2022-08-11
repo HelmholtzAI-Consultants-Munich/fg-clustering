@@ -93,11 +93,13 @@ def _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(labels, ma
     return indices_clusters
 
 
-def _compute_stability_indices(distance_matrix, cluster_method, bootstraps, random_state):
+def _compute_stability_indices(distance_matrix, labels, cluster_method, bootstraps, random_state):
     '''Compute stability of each cluster via Jaccard Index of bootstraped vs original clustering.
 
     :param distance_matrix: Proximity matrix of Random Forest model.
     :type distance_matrix: pandas.DataFrame
+    :param labels: original cluster labels
+    :type labels: numpy array
     :param cluster_method: Lambda function wrapping the k-mediods clustering function.
     :type cluster_method: object
     :param bootstraps: Number of bootstraps to compute the Jaccard Index, defaults to 300
@@ -107,16 +109,12 @@ def _compute_stability_indices(distance_matrix, cluster_method, bootstraps, rand
     :return: Dictionary with cluster labels as keys and Jaccard Indices as values.
     :rtype: dict
     '''
+
     np.random.seed = random_state
-    
-    matrix_shape = distance_matrix.shape
-    assert len(matrix_shape) == 2, "error distance_matrix is not a matrix"
-    assert matrix_shape[0] == matrix_shape[1], "error distance matrix is not square"
-    
-    labels = cluster_method(distance_matrix)
+
     clusters = np.unique(labels)
-    number_datapoints = len(labels)
-    index_vector = np.arange(number_datapoints)
+    # number_datapoints = len(labels) # This is not used at all here - TODO: Delete
+    # index_vector = np.arange(number_datapoints) # This is not used at all here - TODO: Delete
     
     indices_original_clusters = _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(labels)
     index_per_cluster = {cluster: 0 for cluster in clusters}
@@ -147,15 +145,21 @@ def _compute_stability_indices(distance_matrix, cluster_method, bootstraps, rand
     
 
 def _optimizeKloop(k, distance_matrix, y, random_state, max_iter_clustering, bootstraps, discart_value, method):
-    '''
-    TBA
-    :param k:
-    :param distance_matrix:
-    :param random_state:
-    :param max_iter_clustering:
-    :param bootstraps:
-    :param discart_value:
-    :return:
+    '''Compute the optimal number of clusters for k-medoids clustering - loop that is being paralelized in the optimizeK function
+    :param k: number of clusters for the K-medoids call
+    :type k: int
+    :param distance_matrix: Proximity matrix of Random Forest model.
+    :type distance_matrix: pandas.DataFrame
+    :param random_state: Seed number for random state
+    :type random_state: int
+    :param max_iter_clustering: Number of iterations for k-medoids clustering
+    :type max_iter_clustering: int, optional
+    :param bootstraps_JI: Number of bootstraps to compute the Jaccard Index
+    :type bootstraps_JI: int, optional
+    :param discart_value: Minimum Jaccard Index for cluster stability, defaults to 0.6
+    :type discart_value: float
+    :param method: Model type of Random Forest model: classifier or regression.
+    :type method: str
     '''
     # compute clusters
     print(f'Checking number of clusters k={k}')
@@ -164,7 +168,7 @@ def _optimizeKloop(k, distance_matrix, y, random_state, max_iter_clustering, boo
     labels = cluster_method(distance_matrix)
 
     # compute jaccard indices
-    index_per_cluster = _compute_stability_indices(distance_matrix, cluster_method, bootstraps, random_state)
+    index_per_cluster = _compute_stability_indices(distance_matrix, labels, cluster_method, bootstraps, random_state)
     min_index = min([index_per_cluster[cluster] for cluster in index_per_cluster.keys()])
 
     # only continue if jaccard indices are all larger 0.6 (thus all clusters are stable)
@@ -207,6 +211,11 @@ def optimizeK(distance_matrix, y, max_K, bootstraps, max_iter_clustering, discar
     :param n_jobs: number of jobs to run in parallel when optimizing the number of clusters. The default is 2, if 1 is given, no parallel computing is used at all
     :type n_jobs: int, optional
     '''
+
+    # Check distance matrix:
+    matrix_shape = distance_matrix.shape
+    assert len(matrix_shape) == 2, "error distance_matrix is not a matrix"
+    assert matrix_shape[ 0 ] == matrix_shape[ 1 ], "error distance matrix is not square"
 
     results = Parallel(n_jobs=n_jobs)(
         delayed(_optimizeKloop)(k, distance_matrix, y, random_state, max_iter_clustering, bootstraps, discart_value, method) for k

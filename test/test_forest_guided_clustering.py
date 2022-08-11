@@ -6,7 +6,6 @@ import joblib
 import pandas as pd
 import sys
 import os
-sys.path.append(os.path.dirname('/Users/helena.pelin/Desktop/Workmap/Projects/FGC/Code/fg-clustering/'))
 from fgclustering.forest_guided_clustering import *
 import matplotlib.pyplot as plt
 
@@ -16,7 +15,7 @@ import matplotlib.pyplot as plt
 ############################################
 
 def test_forest_guided_clustering():
-
+    
     data_breast_cancer = pd.read_csv('./data/data_breast_cancer.csv')
     rf = joblib.load(open('./data/random_forest_breat_cancer.joblib', 'rb'))
     
@@ -30,3 +29,4 @@ def test_forest_guided_clustering():
     result = fgc.k
     
     assert result == expected_output
+

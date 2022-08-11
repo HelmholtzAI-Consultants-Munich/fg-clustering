@@ -46,7 +46,7 @@ def compute_balanced_average_impurity(categorical_values, cluster_labels):
         #compute (balanced) gini impurity
         gini_impurity = 1 - np.sum(class_probabilities**2)
         balanced_impurities.append(gini_impurity)
-    
+
     score = np.mean(balanced_impurities)
     
     return score
@@ -140,6 +140,10 @@ def _sort_clusters_by_target(X_ranked):
     :return: Filtered and ranked feature matrix with ordered clusters.
     :rtype: pandas.DataFrame
     '''
+    # Turn to int so that mean can be calculated for the sake of sorting
+    if str(X_ranked.target.dtype) == 'category':
+        X_ranked.target = X_ranked.target.astype('int')
+    
     means = X_ranked.groupby(['cluster']).mean().sort_values(by='target',ascending=True)
     means['target'] = range(means.shape[0])
     mapping = dict(means['target'])
@@ -170,7 +174,7 @@ def calculate_global_feature_importance(X, y, cluster_labels):
 
     # statistical test for each feature
     for feature in X.columns:
-        assert X[feature].astype("object").dtype != X[feature].dtype, "Feature is of type object. Please reformat to category or numeric type."
+        assert str(X[feature].astype("object").dtype) != str(X[feature].dtype), "Feature is of type object. Please reformat to category or numeric type."
 
         df = pd.DataFrame({'cluster': X['cluster'], 'feature': X[feature]})
         list_of_df = [df.feature[df.cluster == cluster] for cluster in set(df.cluster)]
@@ -179,7 +183,7 @@ def calculate_global_feature_importance(X, y, cluster_labels):
             chisquare_p_value = _chisquare_test(df, list_of_df)
             p_value_of_features[feature] = chisquare_p_value
             
-        else:  
+        else:
             anova_p_value = _anova_test(list_of_df)
             p_value_of_features[feature] = anova_p_value
 
