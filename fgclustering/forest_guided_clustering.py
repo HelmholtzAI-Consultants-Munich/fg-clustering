@@ -123,7 +123,7 @@ class FgClustering():
             if self.p_value_of_features[column] > thr_pvalue:
                 X_ranked.drop(column, axis  = 1, inplace=True) 
 
-        plotting._plot_local_feature_importance(X_ranked, bootstraps_p_value, save, num_cols)
+        plotting._plot_local_feature_importance(X_ranked, bootstraps_p_value, thr_pvalue, save, num_cols)
 
     def plot_decision_paths(self, distributions=True, heatmap=True, thr_pvalue=0.01, save=None, num_cols=6):
         '''Plot decision paths of the random forest.

@@ -3,13 +3,13 @@
 ############################################
 
 import sys
-from turtle import color
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
+from turtle import color
 
 import fgclustering.utils as utils
 import fgclustering.statistics as stats
@@ -27,18 +27,21 @@ def _plot_global_feature_importance(p_value_of_features, save):
     :param save: Filename to save plot.
     :type save: str
     '''
-    sns.set_theme(style='whitegrid')
-
     importance = p_value_of_features.copy()
     importance.pop('target')
     importance.pop('cluster')
-    importance = pd.DataFrame(importance, index=[ 0 ])
+    importance = pd.DataFrame(importance, index=[0])
     importance = pd.melt(importance)
     importance.sort_values(by='value', ascending=True, inplace=True)
     importance.value = 1 - importance.value
 
     n_features = importance.shape[0]
-    figure_size = n_features*0.7 if n_features < 10 else n_features*0.3 #TODO: other idea?
+    ### TODO: Test the three options on bigger dataset
+    #figure_size = n_features*0.7 if n_features < 10 else n_features*0.3
+    #figure_size = max(6.5, 3*np.log(n_features)) #other alternative
+    figure_size = max(6.5, int(np.ceil(5 * n_features / 25)))
+
+    sns.set_theme(style='whitegrid')
     plt.figure(figsize=(6.5, figure_size))  # keep width default, change height depending on the number of features
     plot = sns.barplot(data=importance, x='value', y='variable', color='lightblue')
     plot.set_xlabel('importance')
@@ -63,19 +66,22 @@ def _plot_local_feature_importance(X, bootstraps, thr_pvalue, save, num_cols):
     :param num_cols: Number of plots in one row.
     :type num_cols: int
     '''
-    sns.set_theme(style='whitegrid')
-
     importance = stats.get_feature_importance_clusterwise(X, bootstraps)
-    num_features = len(importance)
 
     X_barplot = pd.melt(importance, ignore_index=False)
     X_barplot = X_barplot.rename_axis('feature').reset_index(level=0, inplace=False)
     X_barplot = X_barplot.sort_values('value', ascending=False)
 
-    height = max(5, int(np.ceil(5 * num_features / 25)))
+
+    n_features = importance.shape[0]
+    ### TODO: Test the three options on bigger dataset
+    #figure_size = n_features*0.7 if n_features < 10 else n_features*0.3
+    #figure_size = max(6.5, 3*np.log(n_features)) #other alternative
+    figure_size = max(6.5, int(np.ceil(5 * n_features / 25)))
     num_cols = min(num_cols, len(importance.columns))
 
-    plot = sns.FacetGrid(X_barplot, col='variable', sharey=False, col_wrap=num_cols, height=height)
+    sns.set_theme(style='whitegrid')
+    plot = sns.FacetGrid(X_barplot, col='variable', sharey=False, col_wrap=num_cols, height=figure_size)
     plot.map(sns.barplot, 'value', 'feature', color='lightblue')
     plot.set_axis_labels('importance', 'feature')
     plot.set_titles(col_template="Cluster {col_name}")
@@ -98,8 +104,6 @@ def _plot_heatmap(X, method, thr_pvalue, save):
     :param save: Filename to save plot.
     :type save: str
     '''
-    sns.set_theme(style='white')
-
     X_scaled = utils.scale_minmax(X)
     X_heatmap = pd.DataFrame(columns=X_scaled.columns)
 
@@ -129,8 +133,12 @@ def _plot_heatmap(X, method, thr_pvalue, save):
             else:
                 heatmap_[ feature, sample, : ] = cmap_features(X_heatmap.iloc[ sample, feature ])
 
-    figure_size = n_features*0.7 if n_features < 10 else n_features*0.3 # TODO: This I decided based on some tests with different nr. of feautres. Feel free to change
-
+    ### TODO: Test the three options on bigger dataset
+    #figure_size = n_features*0.7 if n_features < 10 else n_features*0.3
+    #figure_size = max(6.5, 3*np.log(n_features)) #other alternative
+    figure_size = max(6.5, int(np.ceil(5 * n_features / 25)))
+    
+    sns.set_theme(style='white')
     fig = plt.figure(figsize=(figure_size, figure_size))
     img = plt.imshow(heatmap_, interpolation='none', aspect='auto')
 
@@ -179,6 +187,7 @@ def _plot_distributions(X, thr_pvalue, save, num_cols):
     :type num_cols: int
     '''
     X = X.copy()
+    #### TODO: change categorical features to feature with < 5 unique values.
     categ_features = X.drop('cluster', axis=1, inplace=False).select_dtypes(exclude='float').columns
     numeric_features = X.drop('cluster', axis=1, inplace=False).select_dtypes(exclude=[ 'int', 'category' ]).columns
     assert (len(numeric_features) + len(categ_features) == X.shape[ 1 ] - 1)
@@ -188,8 +197,7 @@ def _plot_distributions(X, thr_pvalue, save, num_cols):
     variables_to_plot = [ 'target' ] + variables_to_plot
 
     num_rows = int(np.ceil(len(variables_to_plot) / num_cols))
-    figure_size = len(variables_to_plot)*0.9
-    plt.figure(figsize=(20, figure_size))  # TODO: again, playing around with this, did not test how it looks like with a lot of features
+    plt.figure(figsize=(num_cols * 4.5, num_rows * 4.5)) 
     plt.tight_layout()
     plt.subplots_adjust(hspace=0.8, wspace=0.8)
     plt.suptitle(f'Distribution of feature values across subgroups with significance < {thr_pvalue}', fontsize=14)
