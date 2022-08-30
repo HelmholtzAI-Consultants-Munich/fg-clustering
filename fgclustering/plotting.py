@@ -199,7 +199,10 @@ def _plot_distributions(X, thr_pvalue, save, num_cols):
     # adding target, to plot it first
     variables_to_plot = [ 'target' ] + variables_to_plot
 
-    num_rows = int(np.ceil(len(variables_to_plot) / num_cols))
+    n_features = len(variables_to_plot)
+    num_cols = min(num_cols, n_features)
+    num_rows = int(np.ceil(n_features / num_cols))
+
     plt.figure(figsize=(num_cols * 4.5, num_rows * 4.5)) 
     plt.tight_layout()
     plt.subplots_adjust(hspace=0.8, wspace=0.8)
