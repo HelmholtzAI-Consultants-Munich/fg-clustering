@@ -139,7 +139,10 @@ def _plot_heatmap(X, method, thr_pvalue, save):
     figure_size = max(6.5, int(np.ceil(5 * n_features / 25)))
     
     sns.set_theme(style='white')
-    fig = plt.figure(figsize=(figure_size, figure_size))
+    if method == "regression":
+        fig = plt.figure(figsize=(figure_size + 2, figure_size))
+    else:
+        fig = plt.figure(figsize=(figure_size, figure_size))
     img = plt.imshow(heatmap_, interpolation='none', aspect='auto')
 
     plt.suptitle('Subgroups of instances that follow similar decision paths in the RF model', fontsize=12)
