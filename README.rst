@@ -106,6 +106,6 @@ If Forest-Guided Clustering is useful for your research, consider citing the pac
      year         = 2022,
      publisher    = {Zenodo},
      version      = {v0.2.0},
-     doi          = {10.5281/zenodo.6445529},
-     url          = {https://doi.org/10.5281/zenodo.6445529}
+     doi          = {10.5281/zenodo.7085465},
+     url          = {https://doi.org/10.5281/zenodo.7085465}
    }
