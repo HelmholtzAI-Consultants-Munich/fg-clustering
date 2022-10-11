@@ -168,7 +168,9 @@ def calculate_global_feature_importance(X, y, cluster_labels):
     :return: Feature matrix ranked by p-value of statistical test and 
         dictionary with computed p-values of all features.
     :rtype: pandas.DataFrame and dict
-    ''' 
+    '''
+    
+    X = X.copy()
     X['cluster'] = cluster_labels
     p_value_of_features = dict()
 
