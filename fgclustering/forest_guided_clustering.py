@@ -114,6 +114,7 @@ class FgClustering():
         '''
         plotting._plot_global_feature_importance(self.p_value_of_features, save)
 
+
     def plot_local_feature_importance(self, bootstraps_p_value = 1000, thr_pvalue = 0.01, save = None, num_cols = 4):
         '''Plot local feature importance to show the importance of each feature for each cluster, 
         measured by variance and impurity of the feature within the cluster, i.e. the higher 
@@ -135,44 +136,6 @@ class FgClustering():
                 X_ranked.drop(column, axis  = 1, inplace=True) 
 
         plotting._plot_local_feature_importance(X_ranked, bootstraps_p_value, thr_pvalue, save, num_cols)
-
-
-    def plot_heatmap(self, thr_pvalue = 0.01, save = None):
-        '''Plot feature heatmap sorted by clusters, where features are filtered and ranked 
-        with statistical tests (ANOVA for continuous featres, chi square for categorical features). 
-
-        :param thr_pvalue: P-value threshold for feature filtering, defaults to 0.01
-        :type thr_pvalue: float, optional
-        :param save: Filename to save plot, if None the figure is not saved, defaults to None
-        :type save: str, optional
-        '''
-        # drop insignificant values
-        X_ranked = self._X_ranked.copy()
-        for column in X_ranked.columns:
-            if self.p_value_of_features[column] > thr_pvalue:
-                X_ranked.drop(column, axis  = 1, inplace=True)         
-        
-        plotting._plot_heatmap(X_ranked, self.method, thr_pvalue, save)
-
-
-    def plot_boxplots(self, thr_pvalue = 0.01, save = None, num_cols = 6):
-        '''Plot feature boxplots divided by clusters, where features are filtered and ranked 
-        with statistical tests (ANOVA for continuous featres, chi square for categorical features).
-
-        :param thr_pvalue: P-value threshold for feature filtering, defaults to 0.01
-        :type thr_pvalue: float, optional
-        :param save: Filename to save plot, if None the figure is not saved, defaults to None
-        :type save: str, optional
-        :param num_cols: Number of plots in one row, defaults to 6.
-        :type num_cols: int, optional
-        '''
-        # drop insignificant values
-        X_ranked = self._X_ranked.copy()
-        for column in X_ranked.columns:
-            if self.p_value_of_features[column] > thr_pvalue:
-                X_ranked.drop(column, axis  = 1, inplace=True)         
-        
-        plotting._plot_boxplots(X_ranked, thr_pvalue, save, num_cols)
 
 
     def plot_decision_paths(self, distributions=True, heatmap=True, thr_pvalue = 0.01, save=None, num_cols=6):
@@ -202,7 +165,7 @@ class FgClustering():
             plotting._plot_heatmap(X_ranked, self.method, thr_pvalue, save)
 
         if distributions:
-            plotting._plot_boxplots(X_ranked, thr_pvalue, save, num_cols)
+            plotting._plot_distributions(X_ranked, thr_pvalue, save, num_cols)
 
 
             
