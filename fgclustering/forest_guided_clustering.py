@@ -100,7 +100,8 @@ class FgClustering():
             self.k = number_of_clusters
             print(f"Use {self.k} as number of cluster")
 
-        self.cluster_labels = KMedoids(n_clusters=self.k, random_state=self.random_state, init='random', max_iter=max_iter_clustering).fit(self.distance_matrix).labels_
+        self.cluster_labels = KMedoids(n_clusters=self.k, random_state=self.random_state, init='random', method='pam',
+                                       max_iter=max_iter_clustering).fit(self.distance_matrix).labels_
         self._X_ranked, self.p_value_of_features = stats.calculate_global_feature_importance(self.X, self.y, self.cluster_labels)
 
 
