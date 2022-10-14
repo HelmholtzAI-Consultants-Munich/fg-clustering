@@ -62,7 +62,7 @@ class FgClustering():
         self.k = None
         self.cluster_labels = None
 
-    def run(self, number_of_clusters = None, max_K = 8, bootstraps_JI = 300, max_iter_clustering = 500, discart_value_JI = 0.6, n_jobs = 1):
+    def run(self, number_of_clusters = None, max_K = 8, bootstraps_JI = 300, max_iter_clustering = 100, discart_value_JI = 0.6, n_jobs = 1):
         '''Runs the forest-guided clustering model. The optimal number of clusters for a k-medoids clustering is computed, 
         based on the distance matrix computed from the Random Forest proximity matrix.
 
