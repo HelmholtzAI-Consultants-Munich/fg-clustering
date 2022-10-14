@@ -58,11 +58,12 @@ def test_compute_stability_indices():
     distance_matrix = np.kron(np.eye(3,dtype=int),np.ones([10,10]))
     bootstraps = 10
     random_state = 42
+    n_jobs = 3
     
     #test 1: test if 3 different clusters are found and have maximal stability
     cluster_method = lambda X: KMedoids(n_clusters=3, random_state=42, init = 'build', method = "pam", max_iter=100).fit(X).labels_
     labels = cluster_method(distance_matrix)
-    result = _compute_stability_indices(distance_matrix, labels, cluster_method, bootstraps, random_state)
+    result = _compute_stability_indices(distance_matrix, labels, cluster_method, bootstraps, random_state, n_jobs)
 
     
     assert result[0] == 1., "Clusters that should be stable are found to be unstable"
@@ -73,7 +74,7 @@ def test_compute_stability_indices():
     #test 2: test if 3 different clusters are found and have maximal stability
     cluster_method = lambda X: KMedoids(n_clusters=2, random_state=42, init = 'build', method = "pam", max_iter=100).fit(X).labels_
     labels = cluster_method(distance_matrix)
-    result = _compute_stability_indices(distance_matrix, labels, cluster_method, bootstraps, random_state)
+    result = _compute_stability_indices(distance_matrix, labels, cluster_method, bootstraps, random_state, n_jobs)
     
     assert min(result[0], result[1]) < 1., "Clusters that should be unstable are found to be stable"
 
