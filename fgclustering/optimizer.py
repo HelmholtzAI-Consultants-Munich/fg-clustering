@@ -59,7 +59,6 @@ def _bootstrap_matrix(M, seed_int):
     :rtype: pandas.DataFrame, dict
     '''
 
-    np.random.seed(seed_int)
     lm = len(M)
     bootstrapped_samples = np.random.choice(np.arange(lm), lm)
     bootstrapped_samples = np.sort(bootstrapped_samples)
@@ -97,6 +96,23 @@ def _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(labels, ma
 
 
 def _optimizeJaccardloop(bootstrap_index, distance_matrix, cluster_method, clusters, indices_original_clusters):
+    '''Compute stability of each cluster via Jaccard Index of one bootstraped sample. Function that parallelizes the
+    bootstrapping loop in the compute_stability_indices function.
+
+       :param bootstrap_index: Index of a bootstrap sample to compute the Jaccard Index for.
+       :type bootstrap_index: int
+       :param distance_matrix: Proximity matrix of Random Forest model.
+       :type distance_matrix: pandas.DataFrame
+       :param cluster_method: Lambda function wrapping the k-mediods clustering function.
+       :type cluster_method: object
+       :param clusters: possible clusters (unique cluster labels)
+       :type clusters: numpy array
+       :param indices_original_clusters:  dictionary that maps indices to cluster labels
+       :type indices_original_clusters: dict
+       :return: Dictionary with Jaccard scores for each cluster in the given boostrap sample
+       :rtype: dict
+       '''
+
     bootstrapped_distance_matrix, mapping_bootstrapped_indices_to_original_indices = _bootstrap_matrix(distance_matrix, bootstrap_index)
     bootstrapped_labels = cluster_method(bootstrapped_distance_matrix)
 
@@ -116,7 +132,6 @@ def _optimizeJaccardloop(bootstrap_index, distance_matrix, cluster_method, clust
 
         original_cluster = clusters[original_cluster_number]
         index_per_cluster[original_cluster] += best_index
-    #print(f'From parallel loop {index_per_cluster}')
 
     return index_per_cluster
 
@@ -138,54 +153,19 @@ def _compute_stability_indices(distance_matrix, labels, cluster_method, bootstra
     '''
 
     np.random.seed(random_state)
-
     clusters = np.unique(labels)
-    # number_datapoints = len(labels) # This is not used at all here - TODO: Delete
-    # index_vector = np.arange(number_datapoints) # This is not used at all here - TODO: Delete
     
     indices_original_clusters = _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(labels)
-    index_per_cluster = {cluster: 0 for cluster in clusters}
 
     index_per_cluster = Parallel(n_jobs=n_jobs)(
         delayed(_optimizeJaccardloop)(bootstrap_index, distance_matrix, cluster_method, clusters,
                                       indices_original_clusters) for bootstrap_index in range(bootstraps))
-    print(f'Nr bootstraps {bootstraps}')
-    print(f'NEW --> {index_per_cluster}')
     # Sum values of the same keys across dictionaries:
     index_per_cluster = dict(functools.reduce(operator.add,
                                    map(collections.Counter, index_per_cluster)))
-    print(f'NEW final result: {index_per_cluster}')
-    # Normalise:
+    # normalize:
     index_per_cluster = {cluster: index_per_cluster[cluster]/bootstraps for cluster in clusters}
-    print(f'NEW normalizes final result: {index_per_cluster}')
 
-    # for i in range(bootstraps):
-    #     bootstrapped_distance_matrix, mapping_bootstrapped_indices_to_original_indices = _bootstrap_matrix(distance_matrix, seed_int = int(i))
-    #     bootstrapped_labels = cluster_method(bootstrapped_distance_matrix)
-    #
-    #     # now compute the indices for the different clusters
-    #     indices_bootstrap_clusters = _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(bootstrapped_labels, mapping = mapping_bootstrapped_indices_to_original_indices)
-    #     jaccard_matrix = _compute_jaccard_matrix(clusters, indices_bootstrap_clusters, indices_original_clusters)
-    #
-    #     # compute optimal jaccard index for each cluster -> choose maximum possible jaccard index first
-    #     for cluster_round in range(len(jaccard_matrix)):
-    #         best_index = jaccard_matrix.max(axis=1).max()
-    #         original_cluster_number = jaccard_matrix.max(axis=1).argmax()
-    #         bootstrapped_cluster_number = jaccard_matrix[original_cluster_number].argmax()
-    #         jaccard_matrix[original_cluster_number] = -np.inf
-    #         jaccard_matrix[:,bootstrapped_cluster_number] = -np.inf
-    #
-    #         original_cluster = clusters[original_cluster_number]
-    #         index_per_cluster[original_cluster] += best_index
-    #         #if i < 3 :
-    #             #print(f'original cluster {original_cluster}')
-    #             #print(f'best index {best_index}')
-    #             #print(f'From the loop {index_per_cluster}')
-    #     #print(f'Index per cluster from bootstrap sample {i}: {index_per_cluster}')
-    # print(f'Index per cluster all bootstraps: {index_per_cluster}')
-    # # normalize
-    # index_per_cluster = {cluster: index_per_cluster[cluster]/bootstraps for cluster in clusters}
-    # print(f'Index per cluster normalized: {index_per_cluster}')
     return index_per_cluster
     
 
