@@ -37,8 +37,8 @@ def test_make_classif_fgc():
     data_1['cluster_labels'] = fgc.cluster_labels
 
     # Save the original plot and the plot with fg clustering output:
-    plot_results(data_1['X1'], data_1['X2'], data_1['target'], data_1['cluster_labels'],  
-    './test/make_classification_1.jpg', "One informative feature, one cluster per class.")
+    #plot_results(data_1['X1'], data_1['X2'], data_1['target'], data_1['cluster_labels'],
+    #'./test/make_classification_1.jpg', "One informative feature, one cluster per class.")
 
     print(f'True number of clusters is {2}, and the fgc-optimized number of clusters is {fgc.k}')
 
