@@ -208,7 +208,7 @@ def optimizeK(distance_matrix, y, max_K, bootstraps, max_iter_clustering, init_c
         labels = cluster_method(distance_matrix)
 
         # compute jaccard indices
-        index_per_cluster = _compute_stability_indices(distance_matrix, cluster_method, bootstraps, random_state)
+        index_per_cluster = _compute_stability_indices_parallel(distance_matrix, labels, cluster_method, bootstraps, n_jobs)
         min_index = min([index_per_cluster[cluster] for cluster in index_per_cluster.keys()])
         
         # only continue if jaccard indices are all larger 0.6 (thus all clusters are stable)
