@@ -169,14 +169,13 @@ def calculate_global_feature_importance(X, y, cluster_labels):
         dictionary with computed p-values of all features.
     :rtype: pandas.DataFrame and dict
     '''
-    
     X = X.copy()
     X['cluster'] = cluster_labels
     p_value_of_features = dict()
 
     # statistical test for each feature
     for feature in X.columns:
-        assert str(X[feature].astype("object").dtype) != str(X[feature].dtype), "Feature is of type object. Please reformat to category or numeric type."
+        assert X[feature].astype("object").dtype != X[feature].dtype, "Feature is of type object. Please reformat to category or numeric type."
 
         df = pd.DataFrame({'cluster': X['cluster'], 'feature': X[feature]})
         list_of_df = [df.feature[df.cluster == cluster] for cluster in set(df.cluster)]
