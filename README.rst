@@ -63,8 +63,7 @@ To get explainability of your Random Forest model via Forest-Guided Clustering, 
    # visualize results
    fgc.plot_global_feature_importance()
    fgc.plot_local_feature_importance()
-   fgc.plot_heatmap()
-   fgc.plot_boxplots()
+   fgc.plot_decision_paths()
    
    # obtain optimal number of clusters and vector that contains the cluster label of each data point
    optimal_number_of_clusters = fgc.k
@@ -107,6 +106,6 @@ If Forest-Guided Clustering is useful for your research, consider citing the pac
      year         = 2022,
      publisher    = {Zenodo},
      version      = {v0.2.0},
-     doi          = {10.5281/zenodo.6445529},
-     url          = {https://doi.org/10.5281/zenodo.6445529}
+     doi          = {10.5281/zenodo.7085465},
+     url          = {https://doi.org/10.5281/zenodo.7085465}
    }

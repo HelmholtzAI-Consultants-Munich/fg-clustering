@@ -176,5 +176,3 @@ class FgClustering():
         if distributions:
             plotting._plot_distributions(X_ranked, thr_pvalue, save, num_cols)
 
-
-            

@@ -165,7 +165,7 @@ def _plot_heatmap(X, method, thr_pvalue, save):
     if save is not None:
         plt.savefig('{}_heatmap.png'.format(save), bbox_inches='tight', dpi=300)
     plt.show()
-
+    
 
 def _plot_distributions(X, thr_pvalue, save, num_cols):
     '''Plot feature boxplots (for continuous features) or barplots (for categorical features) divided by clusters,

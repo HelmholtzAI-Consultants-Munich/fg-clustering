@@ -27,9 +27,9 @@ where the balanced per cluster frequency :math:`b_{i,g} = \frac{1}{\sum_{g=1}^G 
 
 For **regression models**, the target value of each cluster is treated as the mean prediction values for each data point in the cluster. The model bias is then defined as the total squared error of this prediction compared to the ground truth. We compute the model bias separately for each value of :math:`k`. Then the clustering's are scored by the lowest total squared error:
 
-:math:`TSE_k = \sum_i^k \sum_{y_i \in C_j} \left( y_i - \mu_j \right)^2`
+:math:`TSE_k = \sum_i^k \sum_{y_j \in C_i} \left( y_j - \mu_i \right)^2`
 
-where :math:`y_i` is the target value of data point i and :math:`\mu_j = \frac{1}{|C_j|}\sum_{y_i \in C_j} y_i` is mean of the target values within cluster :math:`C_j`. It measures the compactness (i.e goodness) of the clustering with respect to the target and should be as small as possible.
+where :math:`y_j` is the target value of data point j and :math:`\mu_i = \frac{1}{|C_i|}\sum_{y_j \in C_i} y_j` is mean of the target values within cluster :math:`C_i`. It measures the compactness (i.e goodness) of the clustering with respect to the target and should be as small as possible.
 
 
 Model variance
