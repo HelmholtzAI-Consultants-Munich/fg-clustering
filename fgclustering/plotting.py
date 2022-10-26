@@ -9,7 +9,6 @@ import seaborn as sns
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
-from turtle import color
 
 import fgclustering.utils as utils
 import fgclustering.statistics as stats
@@ -21,7 +20,7 @@ import fgclustering.statistics as stats
 
 def _plot_global_feature_importance(p_value_of_features, save):
     '''Plot global feature importance based on p-values given as input.
-
+    
     :param p_value_of_features: dictionary where keys are names of features and values are p-values of these features
     :type p_value_of_features: dict
     :param save: Filename to save plot.
@@ -40,7 +39,7 @@ def _plot_global_feature_importance(p_value_of_features, save):
 
     sns.set_theme(style='whitegrid')
     plt.figure(figsize=(6.5, figure_size))  # keep width default, change height depending on the number of features
-    plot = sns.barplot(data=importance, x='value', y='variable', color='lightblue')
+    plot = sns.barplot(data=importance, x='value', y='variable', color='darkgrey')
     plot.set_xlabel('importance')
     plot.set_ylabel('feature')
     plt.title('Global Feature Importance')
@@ -51,9 +50,9 @@ def _plot_global_feature_importance(p_value_of_features, save):
     plt.show()
 
 
-def _plot_local_feature_importance(X, bootstraps, thr_pvalue, save, num_cols):
+def _plot_local_feature_importance(X, bootstraps, save, num_cols):
     '''Plot local feature importance to show the importance of each feature for each cluster.
-
+    
     :param X: Feature matrix.
     :type X: pandas.DataFrame
     :param bootstraps: Number of bootstraps to be drawn for computation of p-value.
@@ -75,10 +74,10 @@ def _plot_local_feature_importance(X, bootstraps, thr_pvalue, save, num_cols):
 
     sns.set_theme(style='whitegrid')
     plot = sns.FacetGrid(X_barplot, col='variable', sharey=False, col_wrap=num_cols, height=figure_size)
-    plot.map(sns.barplot, 'value', 'feature', color='lightblue')
+    plot.map(sns.barplot, 'value', 'feature', color='darkgrey')
     plot.set_axis_labels('importance', 'feature')
     plot.set_titles(col_template="Cluster {col_name}")
-    plt.suptitle('Feature Importance per Cluster')
+    plt.suptitle('Local Feature Importance')
     plt.tight_layout()
 
     if save is not None:
@@ -89,14 +88,17 @@ def _plot_local_feature_importance(X, bootstraps, thr_pvalue, save, num_cols):
 def _plot_heatmap(X, method, thr_pvalue, save):
     '''Plot feature heatmap sorted by clusters, where features are filtered and ranked
     with statistical tests (ANOVA for continuous featres, chi square for categorical features).
-
+    
     :param X: Feature matrix.
     :type X: pandas.DataFrame
     :param method: Model type of Random Forest model: classifier or regression.
     :type method: str
+    :param thr_pvalue: P-value threshold used for feature filtering
+    :type thr_pvalue: float, optional
     :param save: Filename to save plot.
     :type save: str
     '''
+    X = X.copy()
     X_scaled = utils.scale_minmax(X)
     X_heatmap = pd.DataFrame(columns=X_scaled.columns)
 
@@ -163,15 +165,17 @@ def _plot_heatmap(X, method, thr_pvalue, save):
     if save is not None:
         plt.savefig('{}_heatmap.png'.format(save), bbox_inches='tight', dpi=300)
     plt.show()
-
+    
 
 def _plot_distributions(X, thr_pvalue, save, num_cols):
     '''Plot feature boxplots (for continuous features) or barplots (for categorical features) divided by clusters,
-    where features are filtered and ranked with statistical tests (ANOVA for continuous features,
+    where features are filtered and ranked by p-value of a statistical test (ANOVA for continuous features,
     chi square for categorical features).
-
+    
     :param X: Feature matrix.
     :type X: pandas.DataFrame
+    :param thr_pvalue: P-value threshold used for feature filtering
+    :type thr_pvalue: float, optional
     :param save: Filename to save plot.
     :type save: str
     :param num_cols: Number of plots in one row.
@@ -180,8 +184,7 @@ def _plot_distributions(X, thr_pvalue, save, num_cols):
     X = X.copy()
 
     variables_to_plot = X.drop(['target', 'cluster'], axis=1, inplace=False).columns.to_list()
-    # adding target, to plot it first
-    variables_to_plot = ['target'] + variables_to_plot
+    variables_to_plot = ['target'] + variables_to_plot # adding target, to plot it first
 
     num_rows = int(np.ceil(len(variables_to_plot)/num_cols))
     plt.figure(figsize=(num_cols*4.5, num_rows*4.5))
@@ -198,7 +201,7 @@ def _plot_distributions(X, thr_pvalue, save, num_cols):
             ax.set_title("Feature: {}".format(feature))
             ax.legend(bbox_to_anchor=(1, 1), loc=2)
         else:
-            sns.boxplot(x='cluster', y=feature, data=X, ax=ax, color='lightblue')
+            sns.boxplot(x='cluster', y=feature, data=X, ax=ax, color='darkgrey')
             ax.set_title("Feature: {}".format(feature))
 
     if save is not None:

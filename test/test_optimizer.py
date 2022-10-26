@@ -22,6 +22,7 @@ def test_optimizeK():
     max_iter_clustering = 100
     discart_value = 0.6
     random_state = 42
+    n_jobs = 3
 
     ### test classification
     max_K = 4
@@ -33,7 +34,7 @@ def test_optimizeK():
     y = data_breast_cancer.loc[:,'target'].to_numpy()
     
     distance_matrix = 1 - proximityMatrix(model, X)
-    result = optimizeK(distance_matrix, y, max_K, bootstraps, max_iter_clustering, discart_value, method, random_state)
+    result = optimizeK(distance_matrix, y, max_K, bootstraps, max_iter_clustering, discart_value, method, random_state, n_jobs)
     
     assert result == 2, "Error optimal number of Clusters for breast cancer test case is not equal 2"
 
@@ -47,7 +48,7 @@ def test_optimizeK():
     y = data_boston.loc[:,'target'].to_numpy()
     
     distance_matrix = 1 - proximityMatrix(model, X)
-    result = optimizeK(distance_matrix, y, max_K, bootstraps, max_iter_clustering, discart_value, method, random_state)
+    result = optimizeK(distance_matrix, y, max_K, bootstraps, max_iter_clustering, discart_value, method, random_state, n_jobs)
 
     assert result == 5 or result == 6, "Error optimal number of Clusters for boston test case is not equal 5 or 6" 
 
@@ -56,22 +57,27 @@ def test_compute_stability_indices():
     
     distance_matrix = np.kron(np.eye(3,dtype=int),np.ones([10,10]))
     bootstraps = 10
+    max_iter_clustering = 100
+    init_clustering = 'k-medoids++'
+    method_clustering = 'pam'
     random_state = 42
+    n_jobs = 3
+    
     
     #test 1: test if 3 different clusters are found and have maximal stability
-    cluster_method = lambda X: KMedoids(n_clusters=3, random_state=42, init = 'build', method = "pam", max_iter=100).fit(X).labels_
-    
-    result = _compute_stability_indices(distance_matrix, cluster_method, bootstraps, random_state)
-    
+    cluster_method = lambda X: KMedoids(n_clusters=3, random_state=random_state, init=init_clustering, method=method_clustering, max_iter=max_iter_clustering).fit(X).labels_
+    labels = cluster_method(distance_matrix)
+    result = _compute_stability_indices_parallel(distance_matrix, labels, cluster_method, bootstraps, n_jobs)
+
     assert result[0] == 1., "Clusters that should be stable are found to be unstable"
     assert result[1] == 1., "Clusters that should be stable are found to be unstable"
     assert result[2] == 1., "Clusters that should be stable are found to be unstable"
     
 
-    #test 2: test if 3 different clusters are found and have maximal stability
-    cluster_method = lambda X: KMedoids(n_clusters=2, random_state=42, init = 'build', method = "pam", max_iter=100).fit(X).labels_
-    
-    result = _compute_stability_indices(distance_matrix, cluster_method, bootstraps, random_state)
+    #test 2: test if 2 different clusters are found and have maximal stability
+    cluster_method = lambda X: KMedoids(n_clusters=2, random_state=random_state, init=init_clustering, method=method_clustering, max_iter=max_iter_clustering).fit(X).labels_
+    labels = cluster_method(distance_matrix)
+    result = _compute_stability_indices_parallel(distance_matrix, labels, cluster_method, bootstraps, n_jobs)
     
     assert min(result[0], result[1]) < 1., "Clusters that should be unstable are found to be stable"
 

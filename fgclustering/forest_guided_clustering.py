@@ -2,6 +2,8 @@
 # imports
 ############################################
 
+import warnings
+
 from sklearn_extra.cluster import KMedoids
 
 import fgclustering.utils as utils
@@ -27,7 +29,7 @@ class FgClustering():
     :type data: pandas.DataFrame
     :param target_column: Name of target column or target values as numpy array.
     :type target_column: str or numpy.ndarray
-    :param random_state: [description], defaults to 42
+    :param random_state: seed for random number generator, defaults to 42
     :type random_state: int, optional
     :raises ValueError: error raised if Random Forest model is not a 
         sklearn.ensemble.RandomForestClassifier or sklearn.ensemble.RandomForestRegressor object
@@ -60,7 +62,7 @@ class FgClustering():
         self.k = None
         self.cluster_labels = None
 
-    def run(self, number_of_clusters = None, max_K = 8, bootstraps_JI = 300, max_iter_clustering = 500, discart_value_JI = 0.6):
+    def run(self, number_of_clusters = None, max_K = 8, bootstraps_JI = 100, max_iter_clustering = 100, init_clustering = 'k-medoids++', method_clustering = 'pam', discart_value_JI = 0.6, n_jobs = 1):
         '''Runs the forest-guided clustering model. The optimal number of clusters for a k-medoids clustering is computed, 
         based on the distance matrix computed from the Random Forest proximity matrix.
 
@@ -69,29 +71,47 @@ class FgClustering():
         :type number_of_clusters: int, optional
         :param max_K: Maximum number of clusters for cluster score computation, defaults to 8
         :type max_K: int, optional
-        :param bootstraps_JI: Number of bootstraps to compute the Jaccard Index, defaults to 300
+        :param bootstraps_JI: Number of bootstraps to compute the Jaccard Index, defaults to 100
         :type bootstraps_JI: int, optional  
-        :param max_iter_clustering: Number of iterations for k-medoids clustering, defaults to 500
+        :param max_iter_clustering: Number of iterations for k-medoids clustering, defaults to 100
         :type max_iter_clustering: int, optional
+        :param init_clustering: Specify medoid initialization method. To speed up computation for large datasets use 'random'.
+            See sklearn documentation for parameter description, defaults to 'k-medoids++'
+        :type init_clustering: {'random', 'heuristic', 'k-medoids++', 'build'}, optional
+        :param method_clustering: Which algorithm to use. 'alternate' is faster while 'pam' is more accurate, defaults to 'pam'
+        :type method_clustering: {'alternate', 'pam'}, optional
         :param discart_value_JI: Minimum Jaccard Index for cluster stability, defaults to 0.6
         :type discart_value_JI: float, optional
+        :param n_jobs: number of jobs to run in parallel when optimizing the number of clusters. n_jobs=1 means no parallel computing is used, defaults to 1
+        :type n_jobs: int, optional
         '''
+
         if number_of_clusters is None:
             self.k = optimizer.optimizeK(self.distance_matrix, 
                                     self.y.to_numpy(), 
                                     max_K, 
                                     bootstraps_JI, 
                                     max_iter_clustering, 
+                                    init_clustering, 
+                                    method_clustering, 
                                     discart_value_JI, 
                                     self.method, 
-                                    self.random_state)
+                                    self.random_state,
+                                    n_jobs)
+
+            if self.k == 1:
+                warnings.warn("No stable clusters were found!")
+                return
+            
             print(f"Optimal number of cluster is: {self.k}")
+        
         else:
             self.k = number_of_clusters
             print(f"Use {self.k} as number of cluster")
 
-        self.cluster_labels = KMedoids(n_clusters=self.k, random_state=self.random_state).fit(self.distance_matrix).labels_
+        self.cluster_labels = KMedoids(n_clusters=self.k, random_state=self.random_state, init=init_clustering, method=method_clustering, max_iter=max_iter_clustering).fit(self.distance_matrix).labels_
         self._X_ranked, self.p_value_of_features = stats.calculate_global_feature_importance(self.X, self.y, self.cluster_labels)
+
 
     def plot_global_feature_importance(self, save = None):
         '''Plot global feature importance based on p-values given as input, the p-values are computed using an Anova (for continuous
@@ -102,6 +122,7 @@ class FgClustering():
 
         '''
         plotting._plot_global_feature_importance(self.p_value_of_features, save)
+
 
     def plot_local_feature_importance(self, bootstraps_p_value = 1000, thr_pvalue = 0.01, save = None, num_cols = 4):
         '''Plot local feature importance to show the importance of each feature for each cluster, 
@@ -121,19 +142,20 @@ class FgClustering():
         X_ranked = self._X_ranked.copy()
         for column in X_ranked.columns:
             if self.p_value_of_features[column] > thr_pvalue:
-                X_ranked.drop(column, axis  = 1, inplace=True) 
+                X_ranked.drop(column, axis=1, inplace=True) 
 
         plotting._plot_local_feature_importance(X_ranked, bootstraps_p_value, thr_pvalue, save, num_cols)
 
-    def plot_decision_paths(self, distributions=True, heatmap=True, thr_pvalue=0.01, save=None, num_cols=6):
-        '''Plot decision paths of the random forest.
-        If distributions is true, the function plots the feature boxplots (for continuous features) or barplots (for categorical features) divided by clusters.
-        If heatmap is true, the function plots the feature heatmap sorted by clusters.
-        On both plots, features are filtered and ranked with statistical tests (ANOVA for continuous features, chi square for categorical features).
 
-        :param distributions: Indicator whether the distributions of features are plotted
+    def plot_decision_paths(self, distributions = True, heatmap = True, thr_pvalue = 0.01, save = None, num_cols = 6):
+        '''Plot decision paths of the Random Forest model.
+        If distributions = True, feature distributions per cluster are plotted as boxplots (for continuous features) or barplots (for categorical features).
+        If heatmap = True, feature values are plotted in a heatmap sorted by clusters.
+        For both plots, features are filtered and ranked by p-values of a statistical test (ANOVA for continuous features, chi-square for categorical features).
+
+        :param distributions: Plot feature distributions, defaults to True
         :type distributions: boolean, optional
-        :param heatmap: Indicator whether the heatmap is plotted
+        :param heatmap: Plot feature heatmap, defaults to True
         :type heatmap: boolean, optional
         :param thr_pvalue: P-value threshold for feature filtering, defaults to 0.01
         :type thr_pvalue: float, optional
@@ -146,10 +168,11 @@ class FgClustering():
         X_ranked = self._X_ranked.copy()
         for column in X_ranked.columns:
             if self.p_value_of_features[column] > thr_pvalue:
-                X_ranked.drop(column, axis  = 1, inplace=True)
+                X_ranked.drop(column, axis=1, inplace=True)    
 
         if heatmap:
             plotting._plot_heatmap(X_ranked, self.method, thr_pvalue, save)
 
         if distributions:
             plotting._plot_distributions(X_ranked, thr_pvalue, save, num_cols)
+
