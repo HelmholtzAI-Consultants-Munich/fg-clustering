@@ -9,7 +9,7 @@ import pandas as pd
 from sklearn_extra.cluster import KMedoids
 
 from fgclustering.utils import *
-from fgclustering.statistics import compute_balanced_average_impurity, compute_total_within_cluster_variation, calculate_global_feature_importance, get_feature_importance_clusterwise
+from fgclustering.statistics import compute_balanced_average_impurity, compute_total_within_cluster_variation, calculate_global_feature_importance, calculate_local_feature_importance
 
 
 ############################################
@@ -17,27 +17,23 @@ from fgclustering.statistics import compute_balanced_average_impurity, compute_t
 ############################################
 
 def test_compute_balanced_average_impurity():
-    
-    expected_result = 0.
 
     categorical_values = pd.Series([0,0,0,0,0,1,1,1,1,1])
     cluster_labels = np.array([0,0,0,0,0,1,1,1,1,1])
     
     result = compute_balanced_average_impurity(categorical_values, cluster_labels)
     
-    assert expected_result == result
+    assert result == 0., "error: impurity should be 0"
 
 
 def test_compute_total_within_cluster_variation():
-    
-    expected_result = 0.
 
     continuous_values = pd.Series([0,0,0,0,0,1,1,1,1,1])
     cluster_labels = np.array([0,0,0,0,0,1,1,1,1,1])
     
     result = compute_total_within_cluster_variation(continuous_values, cluster_labels)
     
-    assert expected_result == result
+    assert result == 0., "error: within cluster variation should be 0"
 
 
 def test_calculate_global_feature_importance():
@@ -52,10 +48,10 @@ def test_calculate_global_feature_importance():
     X_ranked, p_value_of_features = calculate_global_feature_importance(X, y, cluster_labels)
     
     X_ranked.drop('cluster', axis  = 1, inplace=True)
-    assert list(X_ranked.columns) == ['target', 'col_4', 'col_3', 'col_2', 'col_1']
+    assert list(X_ranked.columns) == ['target', 'col_4', 'col_3', 'col_2', 'col_1'], "error: global feature importance returns wrong ordering"
 
 
-def test_get_feature_importance_clusterwise():
+def test_calculate_local_feature_importance():
 
     k = 3
     random_state = 42
@@ -75,9 +71,9 @@ def test_get_feature_importance_clusterwise():
         if p_value_of_features[column] > thr_pvalue:
             X.drop(column, axis  = 1, inplace=True)    
 
-    importance = get_feature_importance_clusterwise(X_ranked, bootstraps)
+    importance = calculate_local_feature_importance(X_ranked, bootstraps)
     
-    assert sum(importance < 10) == 3
+    assert (importance < 1).values.sum() == 1, "error: wrong number of features with highest feature importance "
 
 
 

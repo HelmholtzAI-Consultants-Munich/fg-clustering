@@ -148,12 +148,12 @@ def _compute_stability_indices_parallel(distance_matrix, labels, cluster_method,
     :return: Dictionary with cluster labels as keys and Jaccard Indices as values.
     :rtype: dict
     '''
+    clusters = np.unique(labels)
     indices_original_clusters = _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(labels)
 
     # Compute Jaccard Index per bootstrapped sample
     index_per_cluster = Parallel(n_jobs=n_jobs)(
-        delayed(_compute_stability_indices)(distance_matrix, cluster_method, clusters,
-                                      indices_original_clusters) for i in range(bootstraps))
+        delayed(_compute_stability_indices)(distance_matrix, cluster_method, clusters, indices_original_clusters) for i in range(bootstraps))
     # Sum Jaccard values of the same keys across dictionaries
     index_per_cluster = dict(functools.reduce(operator.add,
                                    map(collections.Counter, index_per_cluster)))

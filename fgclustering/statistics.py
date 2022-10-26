@@ -256,7 +256,7 @@ def _calculate_p_value_continuous(X_feature_cluster, X_feature, cluster_size, bo
     return p_value
     
 
-def get_feature_importance_clusterwise(X, bootstraps, epsilon = sys.float_info.min):
+def calculate_local_feature_importance(X, bootstraps, epsilon = sys.float_info.min):
     '''Calculate local importance of each feature within each cluster. 
     The higher the importance for a feature, the lower the variance (continuous feature) 
     or impurity (categorical feature) of that feature within the cluster.

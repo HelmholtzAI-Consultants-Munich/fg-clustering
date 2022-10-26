@@ -62,7 +62,7 @@ def _plot_local_feature_importance(X, bootstraps, save, num_cols):
     :param num_cols: Number of plots in one row.
     :type num_cols: int
     '''
-    importance = stats.get_feature_importance_clusterwise(X, bootstraps)
+    importance = stats.calculate_local_feature_importance(X, bootstraps)
 
     X_barplot = pd.melt(importance, ignore_index=False)
     X_barplot = X_barplot.rename_axis('feature').reset_index(level=0, inplace=False)

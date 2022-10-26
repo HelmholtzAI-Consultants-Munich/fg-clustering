@@ -24,8 +24,8 @@ def test_proximityMatrix():
     
     dim1, dim2 = result.shape
     
-    assert dim1 == dim2, "error proximity matrix not quadratic"
-    assert dim1 == len(X), "error proximity matrix has wrong dimensions"
+    assert dim1 == dim2, "error: proximity matrix not quadratic"
+    assert dim1 == len(X), "error: proximity matrix has wrong dimensions"
     
-    assert np.diag(result).min() == 1.
-    assert np.diag(result).max() == 1.
+    assert np.diag(result).min() == 1., "error: proximity matrix should have ones on diagonal"
+    assert np.diag(result).max() == 1., "error: proximity matrix should have ones on diagonal"
