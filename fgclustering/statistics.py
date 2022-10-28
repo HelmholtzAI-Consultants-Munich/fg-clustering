@@ -132,17 +132,20 @@ def _rank_features(X, y, p_value_of_features):
     return X_ranked
 
 
-def _sort_clusters_by_target(X_ranked):
+def _sort_clusters_by_target(X_ranked, model_type):
     '''Sort clusters by mean target values in clusters. 
 
     :param X_ranked: Filtered and ranked feature matrix.
     :type X_ranked: pandas.DataFrame
+    :param model_type: Model type of Random Forest model: classifier or regression.
+    :type model_type: str
     :return: Filtered and ranked feature matrix with ordered clusters.
     :rtype: pandas.DataFrame
     '''
-    # Turn to int so that mean can be calculated for the sake of sorting
-    if str(X_ranked.target.dtype) == 'category':
-        X_ranked.target = X_ranked.target.astype('int')
+    # When using a classifier, the target value is label encoded, such that we can sort the clusters by target values
+    if model_type == 'classifier':
+        X_ranked['target_orig'] = X_ranked['target']
+        X_ranked['target'] = X_ranked['target_orig'].astype('category').cat.codes
     
     means = X_ranked.groupby(['cluster']).mean().sort_values(by='target',ascending=True)
     means['target'] = range(means.shape[0])
@@ -151,10 +154,15 @@ def _sort_clusters_by_target(X_ranked):
     X_ranked = X_ranked.replace({'cluster': mapping})
     X_ranked['cluster'] = pd.Categorical(X_ranked['cluster'], sorted(X_ranked['cluster'].unique()))
 
+    # Decode target values and remove encoded values
+    if model_type == 'classifier':
+        X_ranked['target'] = X_ranked['target_orig']
+        X_ranked.drop(['target_orig'], axis=1, inplace=True)
+
     return X_ranked
 
 
-def calculate_global_feature_importance(X, y, cluster_labels):
+def calculate_global_feature_importance(X, y, cluster_labels, model_type):
     '''Calculate global feature importance for each feature. 
     The higher the importance for a feature, the lower the p-value obtained by 
     an ANOVA (continuous feature) or chi-square (categorical feature) test.
@@ -166,6 +174,8 @@ def calculate_global_feature_importance(X, y, cluster_labels):
     :type y: pandas.Series
     :param cluster_labels: Clustering labels.
     :type cluster_labels: numpy.ndarray
+    :param model_type: Model type of Random Forest model: classifier or regression.
+    :type model_type: str
     :return: Feature matrix ranked by p-value of statistical test and 
         dictionary with computed p-values of all features.
     :rtype: pandas.DataFrame and dict
@@ -190,7 +200,7 @@ def calculate_global_feature_importance(X, y, cluster_labels):
             p_value_of_features[feature] = anova_p_value
 
     X_ranked = _rank_features(X, y, p_value_of_features)
-    X_ranked = _sort_clusters_by_target(X_ranked)
+    X_ranked = _sort_clusters_by_target(X_ranked, model_type)
     X_ranked.sort_values(by=['cluster','target'], axis=0, inplace=True)
     
     return X_ranked, p_value_of_features

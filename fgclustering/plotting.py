@@ -77,8 +77,7 @@ def _plot_local_feature_importance(p_value_of_features_per_cluster, thr_pvalue, 
     plot.map(sns.barplot, 'value', 'feature', color='#3470a3')
     plot.set_axis_labels('importance', 'feature')
     plot.set_titles(col_template="Cluster {col_name}")
-    plt.suptitle('Local Feature Importance')
-    plt.title(f'Showing features with significance < {thr_pvalue}', fontsize=10, loc='left')
+    plt.suptitle(f'Local Feature Importance - Showing features with p-value < {thr_pvalue}')
     plt.tight_layout()
 
     if save is not None:
@@ -86,7 +85,7 @@ def _plot_local_feature_importance(p_value_of_features_per_cluster, thr_pvalue, 
     plt.show()
 
 
-def _plot_heatmap(X, thr_pvalue, method, save):
+def _plot_heatmap(X, thr_pvalue, model_type, save):
     '''Plot feature heatmap sorted by clusters, where features are filtered and ranked
     with statistical tests (ANOVA for continuous featres, chi square for categorical features).
     
@@ -94,16 +93,19 @@ def _plot_heatmap(X, thr_pvalue, method, save):
     :type X: pandas.DataFrame
     :param thr_pvalue: P-value threshold used for feature filtering
     :type thr_pvalue: float, optional
-    :param method: Model type of Random Forest model: classifier or regression.
-    :type method: str
+    :param model_type: Model type of Random Forest model: classifier or regression.
+    :type model_type: str
     :param save: Filename to save plot.
     :type save: str
     '''
     X = X.copy()
+    target_values_original = X['target']
+
+    if model_type == 'classifier':
+        X['target'] = X['target'].astype('category').cat.codes
+
     X_scaled = utils.scale_minmax(X)
     X_heatmap = pd.DataFrame(columns=X_scaled.columns)
-
-    target_values_original = X['target']
     target_values_scaled = X_scaled['target']
 
     one_percent_of_number_of_samples = int(np.ceil(0.01*len(X)))
@@ -135,8 +137,7 @@ def _plot_heatmap(X, thr_pvalue, method, save):
     fig = plt.figure(figsize=(figure_size, figure_size))
     img = plt.imshow(heatmap_, interpolation='none', aspect='auto')
 
-    plt.suptitle('Subgroups of instances that follow similar decision paths in the RF model', fontsize=12)
-    plt.title(f'Showing features with significance < {thr_pvalue}', fontsize=10, loc='left')
+    plt.suptitle(f'Subgroups of instances that follow similar decision paths in the RF model \n Showing features with p-value < {thr_pvalue}')
     plt.xticks([], [])
     plt.yticks(range(n_features), X_heatmap.columns)
 
@@ -144,7 +145,7 @@ def _plot_heatmap(X, thr_pvalue, method, save):
     for spine in plt.gca().spines.values():
         spine.set_visible(False)
 
-    if method == "regression":
+    if model_type == "regression":
         norm = matplotlib.colors.Normalize(vmin=target_values_original.min(), vmax=target_values_original.max())
         cbar_target = plt.colorbar(matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap_target))
         cbar_target.set_label('target')
@@ -191,7 +192,7 @@ def _plot_distributions(X, thr_pvalue, num_cols, save):
     plt.figure(figsize=(num_cols*4.5, num_rows*4.5))
     plt.tight_layout()
     plt.subplots_adjust(hspace=0.8, wspace=0.8)
-    plt.suptitle(f'Distribution of feature values across subgroups with significance < {thr_pvalue}', fontsize=14)
+    plt.suptitle(f'Distribution of feature values across subgroups \n Showing features with p-value < {thr_pvalue}', fontsize=14)
 
     for n, feature in enumerate(variables_to_plot):
         # add a new subplot iteratively
