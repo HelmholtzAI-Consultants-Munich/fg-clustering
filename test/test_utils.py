@@ -16,6 +16,7 @@ from fgclustering.utils import *
 
 def test_proximityMatrix():  
     
+    #test data
     data_breast_cancer = pd.read_csv('./data/data_breast_cancer.csv')
     model = joblib.load(open('./data/random_forest_breat_cancer.joblib', 'rb'))
     X = data_breast_cancer.drop(columns=['target']).to_numpy()

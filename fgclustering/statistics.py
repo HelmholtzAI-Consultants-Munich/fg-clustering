@@ -158,6 +158,7 @@ def calculate_global_feature_importance(X, y, cluster_labels):
     '''Calculate global feature importance for each feature. 
     The higher the importance for a feature, the lower the p-value obtained by 
     an ANOVA (continuous feature) or chi-square (categorical feature) test.
+     Returned as p-value, hence importance is 1-p-value.
 
     :param X: Feature matrix.
     :type X: pandas.DataFrame
@@ -256,18 +257,17 @@ def _calculate_p_value_continuous(X_feature_cluster, X_feature, cluster_size, bo
     return p_value
     
 
-def calculate_local_feature_importance(X, bootstraps, epsilon = sys.float_info.min):
+def calculate_local_feature_importance(X, bootstraps_p_value):
     '''Calculate local importance of each feature within each cluster. 
     The higher the importance for a feature, the lower the variance (continuous feature) 
     or impurity (categorical feature) of that feature within the cluster.
+    Returned as p-value, hence importance is 1-p-value.
 
     :param X: Feature matrix.
     :type X: pandas.DataFrame
-    :param bootstraps: Number of bootstraps to be drawn for computation of p-value.
-    :type bootstraps: int
-    :param epsilon: Small value for log calculation to avoind log(0), defaults to sys.float_info.min
-    :type epsilon: float, optional
-    :return: Importance matrix with feature importance per cluster.
+    :param bootstraps_p_value: Number of bootstraps to be drawn for computation of p-value.
+    :type bootstraps_p_value: int
+    :return: p-value matrix of all features per cluster.
     :rtype: pandas.DataFrame
     '''
     X = X.copy()
@@ -276,7 +276,7 @@ def calculate_local_feature_importance(X, bootstraps, epsilon = sys.float_info.m
     X.drop(['cluster', 'target'], axis=1, inplace=True)
 
     features = X.columns.tolist()
-    importance = pd.DataFrame(columns=clusters.unique(), index=features)
+    p_value_of_features_per_cluster = pd.DataFrame(columns=clusters.unique(), index=features)
     
     X_categorical = X.select_dtypes(include=['category'])
     X_numeric = X.select_dtypes(exclude=['category'])
@@ -285,13 +285,13 @@ def calculate_local_feature_importance(X, bootstraps, epsilon = sys.float_info.m
         for cluster in clusters.unique():
             X_feature_cluster = X_categorical.loc[clusters == cluster, feature]
             X_feature = X_categorical[feature]
-            importance.loc[feature,cluster] = 1 - (_calculate_p_value_categorical(X_feature_cluster, X_feature, cluster, clusters_size.loc[cluster], bootstraps) + epsilon)
+            p_value_of_features_per_cluster.loc[feature,cluster] = _calculate_p_value_categorical(X_feature_cluster, X_feature, cluster, clusters_size.loc[cluster], bootstraps_p_value)
 
     for feature in X_numeric.columns:
         X_numeric.loc[:,feature] = X_numeric[feature]
         for cluster in clusters.unique():
             X_feature_cluster = X_numeric.loc[clusters == cluster, feature]
             X_feature = X_numeric[feature]
-            importance.loc[feature,cluster] = 1 - (_calculate_p_value_continuous(X_feature_cluster, X_feature, clusters_size.loc[cluster], bootstraps) + epsilon)
+            p_value_of_features_per_cluster.loc[feature,cluster] = _calculate_p_value_continuous(X_feature_cluster, X_feature, clusters_size.loc[cluster], bootstraps_p_value)
     
-    return importance
+    return p_value_of_features_per_cluster

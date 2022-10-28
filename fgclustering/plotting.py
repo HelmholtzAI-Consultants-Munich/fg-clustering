@@ -26,10 +26,10 @@ def _plot_global_feature_importance(p_value_of_features, save):
     :param save: Filename to save plot.
     :type save: str
     '''
-    importance = p_value_of_features.copy()
-    importance.pop('target')
-    importance.pop('cluster')
-    importance = pd.DataFrame(importance, index=[0])
+    p_value_of_features = p_value_of_features.copy()
+    p_value_of_features.pop('target')
+    p_value_of_features.pop('cluster')
+    importance = pd.DataFrame(p_value_of_features, index=[0])
     importance = pd.melt(importance)
     importance.sort_values(by='value', ascending=True, inplace=True)
     importance.value = 1 - importance.value
@@ -39,7 +39,7 @@ def _plot_global_feature_importance(p_value_of_features, save):
 
     sns.set_theme(style='whitegrid')
     plt.figure(figsize=(6.5, figure_size))  # keep width default, change height depending on the number of features
-    plot = sns.barplot(data=importance, x='value', y='variable', color='darkgrey')
+    plot = sns.barplot(data=importance, x='value', y='variable', color='#3470a3')
     plot.set_xlabel('importance')
     plot.set_ylabel('feature')
     plt.title('Global Feature Importance')
@@ -50,19 +50,19 @@ def _plot_global_feature_importance(p_value_of_features, save):
     plt.show()
 
 
-def _plot_local_feature_importance(X, bootstraps, save, num_cols):
+def _plot_local_feature_importance(p_value_of_features_per_cluster, thr_pvalue, num_cols, save):
     '''Plot local feature importance to show the importance of each feature for each cluster.
     
-    :param X: Feature matrix.
-    :type X: pandas.DataFrame
-    :param bootstraps: Number of bootstraps to be drawn for computation of p-value.
-    :type bootstraps: int
-    :param save: Filename to save plot.
-    :type save: str
+    :param p_value_of_features_per_cluster: p-value matrix of all features per cluster.
+    :type p_value_of_features_per_cluster: pandas.DataFrame
+    :param thr_pvalue: P-value threshold used for feature filtering
+    :type thr_pvalue: float, optional
     :param num_cols: Number of plots in one row.
     :type num_cols: int
+    :param save: Filename to save plot.
+    :type save: str
     '''
-    importance = stats.calculate_local_feature_importance(X, bootstraps)
+    importance = 1-p_value_of_features_per_cluster
 
     X_barplot = pd.melt(importance, ignore_index=False)
     X_barplot = X_barplot.rename_axis('feature').reset_index(level=0, inplace=False)
@@ -74,10 +74,11 @@ def _plot_local_feature_importance(X, bootstraps, save, num_cols):
 
     sns.set_theme(style='whitegrid')
     plot = sns.FacetGrid(X_barplot, col='variable', sharey=False, col_wrap=num_cols, height=figure_size)
-    plot.map(sns.barplot, 'value', 'feature', color='darkgrey')
+    plot.map(sns.barplot, 'value', 'feature', color='#3470a3')
     plot.set_axis_labels('importance', 'feature')
     plot.set_titles(col_template="Cluster {col_name}")
     plt.suptitle('Local Feature Importance')
+    plt.title(f'Showing features with significance < {thr_pvalue}', fontsize=10, loc='left')
     plt.tight_layout()
 
     if save is not None:
@@ -85,16 +86,16 @@ def _plot_local_feature_importance(X, bootstraps, save, num_cols):
     plt.show()
 
 
-def _plot_heatmap(X, method, thr_pvalue, save):
+def _plot_heatmap(X, thr_pvalue, method, save):
     '''Plot feature heatmap sorted by clusters, where features are filtered and ranked
     with statistical tests (ANOVA for continuous featres, chi square for categorical features).
     
     :param X: Feature matrix.
     :type X: pandas.DataFrame
-    :param method: Model type of Random Forest model: classifier or regression.
-    :type method: str
     :param thr_pvalue: P-value threshold used for feature filtering
     :type thr_pvalue: float, optional
+    :param method: Model type of Random Forest model: classifier or regression.
+    :type method: str
     :param save: Filename to save plot.
     :type save: str
     '''
@@ -167,7 +168,7 @@ def _plot_heatmap(X, method, thr_pvalue, save):
     plt.show()
     
 
-def _plot_distributions(X, thr_pvalue, save, num_cols):
+def _plot_distributions(X, thr_pvalue, num_cols, save):
     '''Plot feature boxplots (for continuous features) or barplots (for categorical features) divided by clusters,
     where features are filtered and ranked by p-value of a statistical test (ANOVA for continuous features,
     chi square for categorical features).
@@ -176,10 +177,10 @@ def _plot_distributions(X, thr_pvalue, save, num_cols):
     :type X: pandas.DataFrame
     :param thr_pvalue: P-value threshold used for feature filtering
     :type thr_pvalue: float, optional
-    :param save: Filename to save plot.
-    :type save: str
     :param num_cols: Number of plots in one row.
     :type num_cols: int
+    :param save: Filename to save plot.
+    :type save: str
     '''
     X = X.copy()
 
@@ -201,7 +202,7 @@ def _plot_distributions(X, thr_pvalue, save, num_cols):
             ax.set_title("Feature: {}".format(feature))
             ax.legend(bbox_to_anchor=(1, 1), loc=2)
         else:
-            sns.boxplot(x='cluster', y=feature, data=X, ax=ax, color='darkgrey')
+            sns.boxplot(x='cluster', y=feature, data=X, ax=ax, color='#3470a3')
             ax.set_title("Feature: {}".format(feature))
 
     if save is not None:

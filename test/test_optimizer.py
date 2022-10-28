@@ -18,31 +18,33 @@ from fgclustering.optimizer import optimizeK, _compute_stability_indices_paralle
 
 def test_optimizeK():
     
-    bootstraps = 30
-    max_iter_clustering = 100
-    init_clustering = 'k-medoids++'
+    #parameters
     method_clustering = 'pam'
-    discart_value = 0.6
+    init_clustering = 'k-medoids++'
+    max_iter_clustering = 100
+    discart_value_JI = 0.6
+    bootstraps_JI = 100
     random_state = 42
     n_jobs = 3
 
     ### test classification
     max_K = 4
-    method = "classifier"
+    model_type = "classifier"
 
+    #test data
     data_breast_cancer = pd.read_csv('./data/data_breast_cancer.csv')
     model = joblib.load(open('./data/random_forest_breat_cancer.joblib', 'rb'))
     X = data_breast_cancer.drop(columns=['target']).to_numpy()
     y = data_breast_cancer.loc[:,'target'].to_numpy()
     
     distance_matrix = 1 - proximityMatrix(model, X)
-    result = optimizeK(distance_matrix, y, max_K, bootstraps, max_iter_clustering, init_clustering, method_clustering, discart_value, method, random_state, n_jobs)
-    
-    assert result == 2, "Error optimal number of Clusters for breast cancer test case is not equal 2"
+    k = optimizeK(distance_matrix, y, model_type, max_K, method_clustering, init_clustering, max_iter_clustering, discart_value_JI, bootstraps_JI, random_state, n_jobs)
+
+    assert k == 2, "Error optimal number of Clusters for breast cancer test case is not equal 2"
 
     ### test regression
     max_K = 7
-    method = "regression"
+    model_type = "regression"
 
     data_boston = pd.read_csv('./data/data_boston.csv')
     model = joblib.load(open('./data/random_forest_boston.joblib', 'rb'))
@@ -50,52 +52,54 @@ def test_optimizeK():
     y = data_boston.loc[:,'target'].to_numpy()
     
     distance_matrix = 1 - proximityMatrix(model, X)
-    result = optimizeK(distance_matrix, y, max_K, bootstraps, max_iter_clustering, init_clustering, method_clustering, discart_value, method, random_state, n_jobs)
+    k = optimizeK(distance_matrix, y, model_type, max_K, method_clustering, init_clustering, max_iter_clustering, discart_value_JI, bootstraps_JI, random_state, n_jobs)
 
-    assert result == 5 or result == 6, "Error optimal number of Clusters for boston test case is not equal 5 or 6" 
+    assert k == 5 or k == 6, "Error optimal number of Clusters for boston test case is not equal 5 or 6" 
 
 
 def test_compute_stability_indices():
     
-    distance_matrix = np.kron(np.eye(3,dtype=int),np.ones([10,10]))
-    bootstraps = 10
-    max_iter_clustering = 100
-    init_clustering = 'k-medoids++'
+    #parameters
     method_clustering = 'pam'
+    init_clustering = 'k-medoids++'
+    max_iter_clustering = 100
+    discart_value_JI = 0.6
+    bootstraps_JI = 100
     random_state = 42
     n_jobs = 3
     
+    #test data
+    distance_matrix = np.kron(np.eye(3,dtype=int),np.ones([10,10]))
     
     #test 1: test if 3 different clusters are found and have maximal stability
     cluster_method = lambda X: KMedoids(n_clusters=3, random_state=random_state, init=init_clustering, method=method_clustering, max_iter=max_iter_clustering).fit(X).labels_
     labels = cluster_method(distance_matrix)
-    result = _compute_stability_indices_parallel(distance_matrix, labels, cluster_method, bootstraps, n_jobs)
+    result = _compute_stability_indices_parallel(distance_matrix, labels, cluster_method, bootstraps_JI, n_jobs)
 
     assert result[0] == 1., "Clusters that should be stable are found to be unstable"
     assert result[1] == 1., "Clusters that should be stable are found to be unstable"
     assert result[2] == 1., "Clusters that should be stable are found to be unstable"
     
-
     #test 2: test if 2 different clusters are found that don't have maximal stability
     cluster_method = lambda X: KMedoids(n_clusters=2, random_state=random_state, init=init_clustering, method=method_clustering, max_iter=max_iter_clustering).fit(X).labels_
     labels = cluster_method(distance_matrix)
-    result = _compute_stability_indices_parallel(distance_matrix, labels, cluster_method, bootstraps, n_jobs)
+    result = _compute_stability_indices_parallel(distance_matrix, labels, cluster_method, bootstraps_JI, n_jobs)
     
     assert min(result[0], result[1]) < 1., "Clusters that should be unstable are found to be stable"
 
 
 def test_translate_cluster_labels_to_dictionary_of_index_sets_per_cluster():
     
+    #test data
     labels = [1,2,3,2,1]
-    expected_output = {1: set([0,4]), 2: set([1,3]), 3: set([2])}
+    mapping = {0:10,1:11,2:12,3:13,4:14,5:15}
     
-    output = _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(labels, mapping = False)
-
-    assert output == expected_output
+    # test translation without mapping
+    dictionary_of_index_sets_per_cluster = _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(labels, mapping = False)
+    assert dictionary_of_index_sets_per_cluster == {1: set([0,4]), 2: set([1,3]), 3: set([2])}, "error: wrong dictionary of index sets"
     
-    expected_output = {1: set([10,14]), 2: set([11,13]), 3: set([12])}
-    output = _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(labels, mapping = {0:10,1:11,2:12,3:13,4:14,5:15})
-    
-    assert output == expected_output, "error: wrong dictionary of index sets"
+    # test translation with mapping
+    dictionary_of_index_sets_per_cluster = _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(labels, mapping = mapping)
+    assert dictionary_of_index_sets_per_cluster == {1: set([10,14]), 2: set([11,13]), 3: set([12])}, "error: wrong dictionary of index sets"
     
     

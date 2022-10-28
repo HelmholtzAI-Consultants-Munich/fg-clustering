@@ -11,6 +11,9 @@ import collections, functools, operator
 
 import fgclustering.statistics as statistics
 
+import warnings
+warnings.filterwarnings('ignore')
+
 ############################################
 # Optimize number of clusters k
 ############################################
@@ -163,31 +166,32 @@ def _compute_stability_indices_parallel(distance_matrix, labels, cluster_method,
     return index_per_cluster
     
     
-def optimizeK(distance_matrix, y, max_K, bootstraps, max_iter_clustering, init_clustering, method_clustering, discart_value, method, random_state, n_jobs):
+def optimizeK(distance_matrix, y, model_type, max_K, method_clustering, init_clustering, max_iter_clustering, discart_value_JI, bootstraps_JI, random_state, n_jobs):
     '''Compute the optimal number of clusters for k-medoids clustering (trade-off between cluster purity and cluster stability). 
 
     :param distance_matrix: Proximity matrix of Random Forest model.
     :type distance_matrix: pandas.DataFrame
     :param y: Target column.
     :type y: pandas.Series
+    :param model_type: Model type of Random Forest model: classifier or regression.
+    :type model_type: str
     :param max_K: Maximum number of clusters for cluster score computation, defaults to 6
     :type max_K: int
-    :param bootstraps: Number of bootstraps to compute the Jaccard Index, defaults to 300
-    :type bootstraps: int
-    :param max_iter_clustering: Number of iterations for k-medoids clustering, defaults to 500
-    :type max_iter_clustering: int
+    :param method_clustering: Which algorithm to use. 'alternate' is faster while 'pam' is more accurate, defaults to 'pam'
+    :type method_clustering: {'alternate', 'pam'}, optional
     :param init_clustering: Specify medoid initialization method. To speed up computation for large datasets use 'random'.
         See sklearn documentation for parameter description, defaults to 'k-medoids++'
     :type init_clustering: {'random', 'heuristic', 'k-medoids++', 'build'}, optional
-    :param method_clustering: Which algorithm to use. 'alternate' is faster while 'pam' is more accurate, defaults to 'pam'
-    :type method_clustering: {'alternate', 'pam'}, optional
+    :param max_iter_clustering: Number of iterations for k-medoids clustering, defaults to 500
+    :type max_iter_clustering: int
     :param discart_value: Minimum Jaccard Index for cluster stability, defaults to 0.6
     :type discart_value: float
-    :param method: Model type of Random Forest model: classifier or regression.
-    :type method: str
+    :param bootstraps_JI: Number of bootstraps to compute the Jaccard Index, defaults to 300
+    :type bootstraps_JI: int
     :param random_state: Seed number for random state, defaults to 42
     :type random_state: int
-    :param n_jobs: number of jobs to run in parallel when computing the cluster stability. n_jobs=1 means no parallel computing is used, defaults to 1
+    :param n_jobs: number of jobs to run in parallel when computing the cluster stability. 
+        n_jobs=1 means no parallel computing is used, defaults to 1
     :type n_jobs: int, optional
     :return: Optimal number of clusters.
     :rtype: int
@@ -208,16 +212,16 @@ def optimizeK(distance_matrix, y, max_K, bootstraps, max_iter_clustering, init_c
         labels = cluster_method(distance_matrix)
 
         # compute jaccard indices
-        index_per_cluster = _compute_stability_indices_parallel(distance_matrix, labels, cluster_method, bootstraps, n_jobs)
+        index_per_cluster = _compute_stability_indices_parallel(distance_matrix, labels, cluster_method, bootstraps_JI, n_jobs)
         min_index = min([index_per_cluster[cluster] for cluster in index_per_cluster.keys()])
         
         # only continue if jaccard indices are all larger 0.6 (thus all clusters are stable)
         print('For number of cluster {} the Jaccard Index is {}'.format(k, min_index))
-        if min_index > discart_value:
-            if method == "classifier":
+        if min_index > discart_value_JI:
+            if model_type == "classifier":
                 # compute balanced purities
                 score = statistics.compute_balanced_average_impurity(y, labels)
-            elif method == "regression":
+            elif model_type == "regression":
                 # compute the total within cluster variation
                 score = statistics.compute_total_within_cluster_variation(y, labels)
             if score<score_min:

@@ -11,6 +11,9 @@ import fgclustering.optimizer as optimizer
 import fgclustering.plotting as plotting
 import fgclustering.statistics as stats
 
+import warnings
+warnings.filterwarnings('ignore')
+
 ############################################
 # Forest-guided Clustering
 ############################################
@@ -42,10 +45,10 @@ class FgClustering():
         is_classifier = 'RandomForestClassifier' in str(type(model))
         
         if is_regressor is True:
-            self.method = "regression"
+            self.model_type = "regression"
             print("Interpreting RandomForestRegressor")
         elif is_classifier is True:
-            self.method = "classifier"
+            self.model_type = "classifier"
             print("Interpreting RandomForestClassifier")
         else:
             raise ValueError(f'Do not recognize {str(type(model))}. Can only work with sklearn RandomForestRegressor or RandomForestClassifier.')
@@ -62,7 +65,8 @@ class FgClustering():
         self.k = None
         self.cluster_labels = None
 
-    def run(self, number_of_clusters = None, max_K = 8, bootstraps_JI = 100, max_iter_clustering = 100, init_clustering = 'k-medoids++', method_clustering = 'pam', discart_value_JI = 0.6, n_jobs = 1):
+
+    def run(self, number_of_clusters = None, max_K = 8, method_clustering = 'pam', init_clustering = 'k-medoids++', max_iter_clustering = 100, discart_value_JI = 0.6, bootstraps_JI = 100, bootstraps_p_value = 100 , n_jobs = 1):
         '''Runs the forest-guided clustering model. The optimal number of clusters for a k-medoids clustering is computed, 
         based on the distance matrix computed from the Random Forest proximity matrix.
 
@@ -71,31 +75,34 @@ class FgClustering():
         :type number_of_clusters: int, optional
         :param max_K: Maximum number of clusters for cluster score computation, defaults to 8
         :type max_K: int, optional
-        :param bootstraps_JI: Number of bootstraps to compute the Jaccard Index, defaults to 100
-        :type bootstraps_JI: int, optional  
-        :param max_iter_clustering: Number of iterations for k-medoids clustering, defaults to 100
-        :type max_iter_clustering: int, optional
+        :param method_clustering: Which algorithm to use. 'alternate' is faster while 'pam' is more accurate, defaults to 'pam'
+        :type method_clustering: {'alternate', 'pam'}, optional
         :param init_clustering: Specify medoid initialization method. To speed up computation for large datasets use 'random'.
             See sklearn documentation for parameter description, defaults to 'k-medoids++'
         :type init_clustering: {'random', 'heuristic', 'k-medoids++', 'build'}, optional
-        :param method_clustering: Which algorithm to use. 'alternate' is faster while 'pam' is more accurate, defaults to 'pam'
-        :type method_clustering: {'alternate', 'pam'}, optional
+        :param max_iter_clustering: Number of iterations for k-medoids clustering, defaults to 100
+        :type max_iter_clustering: int, optional
         :param discart_value_JI: Minimum Jaccard Index for cluster stability, defaults to 0.6
         :type discart_value_JI: float, optional
-        :param n_jobs: number of jobs to run in parallel when optimizing the number of clusters. n_jobs=1 means no parallel computing is used, defaults to 1
+        :param bootstraps_JI: Number of bootstraps to compute the Jaccard Index, defaults to 100
+        :type bootstraps_JI: int, optional 
+        :param bootstraps_p_value: Number of bootstraps to compute the p-value of feature importance, defaults to 100
+        :type bootstraps_p_value: int, optional 
+        :param n_jobs: number of jobs to run in parallel when optimizing the number of clusters. 
+            n_jobs=1 means no parallel computing is used, defaults to 1
         :type n_jobs: int, optional
         '''
 
         if number_of_clusters is None:
             self.k = optimizer.optimizeK(self.distance_matrix, 
                                     self.y.to_numpy(), 
+                                    self.model_type, 
                                     max_K, 
-                                    bootstraps_JI, 
+                                    method_clustering,
+                                    init_clustering,
                                     max_iter_clustering, 
-                                    init_clustering, 
-                                    method_clustering, 
                                     discart_value_JI, 
-                                    self.method, 
+                                    bootstraps_JI, 
                                     self.random_state,
                                     n_jobs)
 
@@ -111,6 +118,7 @@ class FgClustering():
 
         self.cluster_labels = KMedoids(n_clusters=self.k, random_state=self.random_state, init=init_clustering, method=method_clustering, max_iter=max_iter_clustering).fit(self.distance_matrix).labels_
         self._X_ranked, self.p_value_of_features = stats.calculate_global_feature_importance(self.X, self.y, self.cluster_labels)
+        self._p_value_of_features_per_cluster = stats.calculate_local_feature_importance(self._X_ranked, bootstraps_p_value)
 
 
     def plot_global_feature_importance(self, save = None):
@@ -124,30 +132,28 @@ class FgClustering():
         plotting._plot_global_feature_importance(self.p_value_of_features, save)
 
 
-    def plot_local_feature_importance(self, bootstraps_p_value = 1000, thr_pvalue = 0.01, save = None, num_cols = 4):
+    def plot_local_feature_importance(self, thr_pvalue = 1, num_cols = 4, save = None):
         '''Plot local feature importance to show the importance of each feature for each cluster, 
         measured by variance and impurity of the feature within the cluster, i.e. the higher 
         the feature importance, the lower the feature variance / impurity within the cluster.
 
-        :param bootstraps_p_value: Number of bootstraps to compute the p-value of feature importance, defaults to 1000
-        :type bootstraps_p_value: int, optional
-        :param thr_pvalue: P-value threshold for feature filtering, defaults to 0.01
+        :param thr_pvalue: P-value threshold for feature filtering, defaults to 1
         :type thr_pvalue: float, optional
         :param save: Filename to save plot, if None the figure is not saved, defaults to None
         :type save: str, optional
         :param num_cols: Number of plots in one row, defaults to 4.
         :type num_cols: int, optional
         '''
-        # drop insignificant values
-        X_ranked = self._X_ranked.copy()
-        for column in X_ranked.columns:
-            if self.p_value_of_features[column] > thr_pvalue:
-                X_ranked.drop(column, axis=1, inplace=True) 
+        # drop feature with insignificant global feature p-values
+        p_value_of_features_per_cluster = self._p_value_of_features_per_cluster.copy()
+        for row in p_value_of_features_per_cluster.index:
+            if self.p_value_of_features[row] > thr_pvalue:
+                p_value_of_features_per_cluster.drop(column, axis=0, inplace=True) 
 
-        plotting._plot_local_feature_importance(X_ranked, bootstraps_p_value, thr_pvalue, save, num_cols)
+        plotting._plot_local_feature_importance(p_value_of_features_per_cluster, thr_pvalue, num_cols, save)
 
 
-    def plot_decision_paths(self, distributions = True, heatmap = True, thr_pvalue = 0.01, save = None, num_cols = 6):
+    def plot_decision_paths(self, distributions = True, heatmap = True, thr_pvalue = 1, num_cols = 6, save = None):
         '''Plot decision paths of the Random Forest model.
         If distributions = True, feature distributions per cluster are plotted as boxplots (for continuous features) or barplots (for categorical features).
         If heatmap = True, feature values are plotted in a heatmap sorted by clusters.
@@ -157,7 +163,7 @@ class FgClustering():
         :type distributions: boolean, optional
         :param heatmap: Plot feature heatmap, defaults to True
         :type heatmap: boolean, optional
-        :param thr_pvalue: P-value threshold for feature filtering, defaults to 0.01
+        :param thr_pvalue: P-value threshold for feature filtering, defaults to 1
         :type thr_pvalue: float, optional
         :param save: Filename to save plot, if None the figure is not saved, defaults to None
         :type save: str, optional
@@ -171,8 +177,8 @@ class FgClustering():
                 X_ranked.drop(column, axis=1, inplace=True)    
 
         if heatmap:
-            plotting._plot_heatmap(X_ranked, self.method, thr_pvalue, save)
+            plotting._plot_heatmap(X_ranked, thr_pvalue, self.model_type, save)
 
         if distributions:
-            plotting._plot_distributions(X_ranked, thr_pvalue, save, num_cols)
+            plotting._plot_distributions(X_ranked, thr_pvalue, num_cols, save)
 

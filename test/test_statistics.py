@@ -18,6 +18,7 @@ from fgclustering.statistics import compute_balanced_average_impurity, compute_t
 
 def test_compute_balanced_average_impurity():
 
+    #test data
     categorical_values = pd.Series([0,0,0,0,0,1,1,1,1,1])
     cluster_labels = np.array([0,0,0,0,0,1,1,1,1,1])
     
@@ -28,6 +29,7 @@ def test_compute_balanced_average_impurity():
 
 def test_compute_total_within_cluster_variation():
 
+    # test data
     continuous_values = pd.Series([0,0,0,0,0,1,1,1,1,1])
     cluster_labels = np.array([0,0,0,0,0,1,1,1,1,1])
     
@@ -40,7 +42,7 @@ def test_calculate_global_feature_importance():
     
     # test if anova test filters out features 1 and 2 which are the same in both clusters and 
     # leaves features 3 and 4 which are clearly different in both clusters
-    
+    #test data
     X = pd.DataFrame.from_dict({'col_1': [1,1,1,1,1,0.9], 'col_2': [1,1,1,1,0.9,0.5], 'col_3': [1,1,1,0,0,1], 'col_4': [0,0,0,1,1,1]})
     y = pd.Series([0,0,0,0,0,0])
     cluster_labels = np.array([0,0,0,1,1,1])
@@ -53,27 +55,26 @@ def test_calculate_global_feature_importance():
 
 def test_calculate_local_feature_importance():
 
-    k = 3
-    random_state = 42
-    thr_pvalue = 0.001
+    # test if clusterwise importance is high for feature 2 and 4 and low for feature 1 and 3
+    #parameters
+    thr_pvalue = 1
     bootstraps = 100
 
-    data_iris = pd.read_csv('./data/data_iris.csv')
-    model = joblib.load(open('./data/random_forest_iris.joblib', 'rb'))
-    X = data_iris.drop(columns=['target'])
-    y = data_iris.loc[:,'target'].to_numpy()
+    #test data
+    X = pd.DataFrame.from_dict({'col_1': [0.9,1,0.9,1,1,0.9,1,0.9,1,0.9,1,0.9], 'col_2': [0.1,0.1,0.1,0.1,0.9,0.9,0.9,0.9,1,1,1,1], 'col_3': [0.1,0,0.1,0,0.1,0,0.1,0,0.1,0.1,0,0], 'col_4': [0,0,0,0,1,1,1,1,2,2,2,2]})
+    y = pd.Series([0,0,0,0,0,0,0,0,0,0,0,1])
+    cluster_labels = np.array([0,0,0,0,1,1,1,1,2,2,2,2])
 
-    distanceMatrix = 1 - proximityMatrix(model, X.to_numpy())
-
-    cluster_labels = KMedoids(n_clusters=k, random_state=random_state).fit(distanceMatrix).labels_
     X_ranked, p_value_of_features = calculate_global_feature_importance(X, y, cluster_labels)
     for column in X.columns:
         if p_value_of_features[column] > thr_pvalue:
-            X.drop(column, axis  = 1, inplace=True)    
+            X.drop(column, axis=1, inplace=True)    
 
-    importance = calculate_local_feature_importance(X_ranked, bootstraps)
-    
-    assert (importance < 1).values.sum() == 1, "error: wrong number of features with highest feature importance "
+    p_value_of_features_per_cluster = calculate_local_feature_importance(X_ranked, bootstraps)
+    importance = 1-p_value_of_features_per_cluster
+    result = importance.transpose().median()
+
+    assert sum(result > 0.9) == 2, "error: wrong number of features with highest feature importance"
 
 
 
