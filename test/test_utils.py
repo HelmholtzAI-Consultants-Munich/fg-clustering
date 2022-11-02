@@ -5,6 +5,8 @@
 import joblib
 import pandas as pd
 
+from sklearn.datasets import make_classification
+from sklearn.ensemble import RandomForestClassifier
 
 from fgclustering.utils import *
 
@@ -17,9 +19,11 @@ from fgclustering.utils import *
 def test_proximityMatrix():  
     
     #test data
-    data_breast_cancer = pd.read_csv('./data/data_breast_cancer.csv')
-    model = joblib.load(open('./data/random_forest_breat_cancer.joblib', 'rb'))
-    X = data_breast_cancer.drop(columns=['target']).to_numpy()
+    X, y = make_classification(n_samples=300, n_features=10, n_informative=4, n_redundant=2, n_classes=2, n_clusters_per_class=1, random_state=1)
+    X = pd.DataFrame(X)
+
+    model = RandomForestClassifier(max_depth=10, max_features='sqrt', max_samples=0.8, bootstrap=True, oob_score=True, random_state=42)
+    model.fit(X, y)
     
     result = proximityMatrix(model, X)
     

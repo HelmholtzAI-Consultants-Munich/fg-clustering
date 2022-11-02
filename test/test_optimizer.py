@@ -7,6 +7,8 @@ import numpy as np
 import pandas as pd
 
 from sklearn_extra.cluster import KMedoids
+from sklearn.datasets import make_classification, make_regression
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 from fgclustering.utils import proximityMatrix
 from fgclustering.optimizer import optimizeK, _compute_stability_indices_parallel, _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster
@@ -28,33 +30,37 @@ def test_optimizeK():
     n_jobs = 3
 
     ### test classification
-    max_K = 4
+    max_K = 5
     model_type = "classifier"
 
     #test data
-    data_breast_cancer = pd.read_csv('./data/data_breast_cancer.csv')
-    model = joblib.load(open('./data/random_forest_breat_cancer.joblib', 'rb'))
-    X = data_breast_cancer.drop(columns=['target']).to_numpy()
-    y = data_breast_cancer.loc[:,'target'].to_numpy()
-    
+    X, y = make_classification(n_samples=300, n_features=10, n_informative=4, n_redundant=2, n_classes=2, n_clusters_per_class=1, random_state=1)
+    X = pd.DataFrame(X)
+
+    model = RandomForestClassifier(max_depth=10, max_features='sqrt', max_samples=0.8, bootstrap=True, oob_score=True, random_state=42)
+    model.fit(X, y)
+
     distance_matrix = 1 - proximityMatrix(model, X)
     k = optimizeK(distance_matrix, y, model_type, max_K, method_clustering, init_clustering, max_iter_clustering, discart_value_JI, bootstraps_JI, random_state, n_jobs)
 
-    assert k == 2, "Error optimal number of Clusters for breast cancer test case is not equal 2"
+    assert k == 2, "Error optimal number of clusters for classification problem is not equal to 2"
 
     ### test regression
     max_K = 7
     model_type = "regression"
+    discart_value_JI = 0.7
 
-    data_boston = pd.read_csv('./data/data_boston.csv')
-    model = joblib.load(open('./data/random_forest_boston.joblib', 'rb'))
-    X = data_boston.drop(columns=['target']).to_numpy()
-    y = data_boston.loc[:,'target'].to_numpy()
-    
+    #test data
+    X, y = make_regression(n_samples=500, n_features=10, n_informative=4, n_targets=1, noise=0, random_state=1)
+    X = pd.DataFrame(X)
+
+    model = RandomForestRegressor(max_depth=5, max_features='sqrt', max_samples=0.8, bootstrap=True, oob_score=True, random_state=42)
+    model.fit(X, y)
+
     distance_matrix = 1 - proximityMatrix(model, X)
     k = optimizeK(distance_matrix, y, model_type, max_K, method_clustering, init_clustering, max_iter_clustering, discart_value_JI, bootstraps_JI, random_state, n_jobs)
 
-    assert k == 5 or k == 6, "Error optimal number of Clusters for boston test case is not equal 5 or 6" 
+    assert k == 3, "Error optimal number of clusters for regression problem is not equal to 3" 
 
 
 def test_compute_stability_indices():
