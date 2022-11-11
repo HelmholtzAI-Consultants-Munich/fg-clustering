@@ -85,12 +85,12 @@ def _plot_local_feature_importance(p_value_of_features_per_cluster, thr_pvalue, 
     plt.show()
 
 
-def _plot_heatmap(X, thr_pvalue, model_type, save):
+def _plot_heatmap(data_clustering_ranked, thr_pvalue, model_type, save):
     '''Plot feature heatmap sorted by clusters, where features are filtered and ranked
     with statistical tests (ANOVA for continuous featres, chi square for categorical features).
     
-    :param X: Feature matrix.
-    :type X: pandas.DataFrame
+    :param data_clustering_ranked: Filtered and ranked data frame incl features, target and cluster numbers.
+    :type data_clustering_ranked: pandas.DataFrame
     :param thr_pvalue: P-value threshold used for feature filtering
     :type thr_pvalue: float, optional
     :param model_type: Model type of Random Forest model: classifier or regression.
@@ -98,28 +98,31 @@ def _plot_heatmap(X, thr_pvalue, model_type, save):
     :param save: Filename to save plot.
     :type save: str
     '''
-    X = X.copy()
-    target_values_original = X['target']
+    data_clustering_ranked = data_clustering_ranked.copy()
+    target_values_original = data_clustering_ranked['target']
+    
+    for feature in data_clustering_ranked.columns:
+        if pd.api.types.is_string_dtype(data_clustering_ranked[feature]):
+            data_clustering_ranked[feature] = data_clustering_ranked[feature].astype('category')
+        if pd.api.types.is_categorical_dtype(data_clustering_ranked[feature]) and feature != 'cluster':
+            data_clustering_ranked[feature] = data_clustering_ranked[feature].cat.codes
 
-    if model_type == 'classifier':
-        X['target'] = X['target'].astype('category').cat.codes
+    data_scaled = utils.scale_minmax(data_clustering_ranked)
+    data_heatmap = pd.DataFrame(columns=data_scaled.columns)
+    target_values_scaled = data_scaled['target']
 
-    X_scaled = utils.scale_minmax(X)
-    X_heatmap = pd.DataFrame(columns=X_scaled.columns)
-    target_values_scaled = X_scaled['target']
+    one_percent_of_number_of_samples = int(np.ceil(0.01*len(data_clustering_ranked)))
 
-    one_percent_of_number_of_samples = int(np.ceil(0.01*len(X)))
-
-    for cluster in X_scaled.cluster.unique():
-        X_heatmap = pd.concat([X_heatmap, X_scaled[X_scaled.cluster == cluster]], ignore_index=True)
-        X_heatmap = pd.concat([X_heatmap, pd.DataFrame(np.nan,
+    for cluster in data_scaled.cluster.unique():
+        data_heatmap = pd.concat([data_heatmap, data_scaled[data_scaled.cluster == cluster]], ignore_index=True)
+        data_heatmap = pd.concat([data_heatmap, pd.DataFrame(np.nan,
                                                        index=np.arange(one_percent_of_number_of_samples),
                                                        # blank lines which are 1% of num samples
-                                                       columns=X_scaled.columns)], ignore_index=True)
-    X_heatmap = X_heatmap[:-5]
-    X_heatmap.drop('cluster', axis=1, inplace=True)
+                                                       columns=data_scaled.columns)], ignore_index=True)
+    data_heatmap = data_heatmap[:-5]
+    data_heatmap.drop('cluster', axis=1, inplace=True)
 
-    n_samples, n_features = X_heatmap.shape
+    n_samples, n_features = data_heatmap.shape
     heatmap_ = np.zeros((n_features, n_samples, 4))
     cmap_features = matplotlib.cm.get_cmap('coolwarm').copy()
     cmap_target = matplotlib.cm.get_cmap('viridis')  # gist_ncar
@@ -127,9 +130,9 @@ def _plot_heatmap(X, thr_pvalue, model_type, save):
     for feature in range(n_features):
         for sample in range(n_samples):
             if feature == 0:
-                heatmap_[feature, sample, :] = cmap_target(X_heatmap.iloc[sample, feature])
+                heatmap_[feature, sample, :] = cmap_target(data_heatmap.iloc[sample, feature])
             else:
-                heatmap_[feature, sample, :] = cmap_features(X_heatmap.iloc[sample, feature])
+                heatmap_[feature, sample, :] = cmap_features(data_heatmap.iloc[sample, feature])
 
     figure_size = max(6.5, int(np.ceil(5*n_features/25)))
 
@@ -139,7 +142,7 @@ def _plot_heatmap(X, thr_pvalue, model_type, save):
 
     plt.suptitle(f'Subgroups of instances that follow similar decision paths in the RF model \n Showing features with p-value < {thr_pvalue}')
     plt.xticks([], [])
-    plt.yticks(range(n_features), X_heatmap.columns)
+    plt.yticks(range(n_features), data_heatmap.columns)
 
     # remove bounding box
     for spine in plt.gca().spines.values():
@@ -169,13 +172,13 @@ def _plot_heatmap(X, thr_pvalue, model_type, save):
     plt.show()
     
 
-def _plot_distributions(X, thr_pvalue, num_cols, save):
+def _plot_distributions(data_clustering_ranked, thr_pvalue, num_cols, save):
     '''Plot feature boxplots (for continuous features) or barplots (for categorical features) divided by clusters,
     where features are filtered and ranked by p-value of a statistical test (ANOVA for continuous features,
     chi square for categorical features).
     
-    :param X: Feature matrix.
-    :type X: pandas.DataFrame
+    :param data_clustering_ranked: Filtered and ranked data frame incl features, target and cluster numbers.
+    :type data_clustering_ranked: pandas.DataFrame
     :param thr_pvalue: P-value threshold used for feature filtering
     :type thr_pvalue: float, optional
     :param num_cols: Number of plots in one row.
@@ -183,27 +186,27 @@ def _plot_distributions(X, thr_pvalue, num_cols, save):
     :param save: Filename to save plot.
     :type save: str
     '''
-    X = X.copy()
+    data_clustering_ranked = data_clustering_ranked.copy()
 
-    variables_to_plot = X.drop(['target', 'cluster'], axis=1, inplace=False).columns.to_list()
+    variables_to_plot = data_clustering_ranked.drop(['target', 'cluster'], axis=1, inplace=False).columns.to_list()
     variables_to_plot = ['target'] + variables_to_plot # adding target, to plot it first
 
     num_rows = int(np.ceil(len(variables_to_plot)/num_cols))
     plt.figure(figsize=(num_cols*4.5, num_rows*4.5))
     plt.tight_layout()
-    plt.subplots_adjust(hspace=0.8, wspace=0.8)
-    plt.suptitle(f'Distribution of feature values across subgroups \n Showing features with p-value < {thr_pvalue}', fontsize=14)
+    plt.subplots_adjust(top=0.95, hspace=0.8, wspace=0.8)
+    plt.suptitle(f'Distribution of feature values across subgroups - Showing features with p-value < {thr_pvalue}', fontsize=14)
 
     for n, feature in enumerate(variables_to_plot):
         # add a new subplot iteratively
         ax = plt.subplot(num_rows, num_cols, n + 1)
-        if X[feature].nunique() < 5:
-            sns.countplot(x='cluster', hue=feature, data=X, ax=ax,
-                          palette=sns.color_palette("Blues_r", n_colors=len(np.unique(X[feature]))))
+        if data_clustering_ranked[feature].nunique() < 5 or pd.api.types.is_categorical_dtype(data_clustering_ranked[feature]):
+            sns.countplot(x='cluster', hue=feature, data=data_clustering_ranked, ax=ax,
+                          palette=sns.color_palette("Blues_r", n_colors=len(np.unique(data_clustering_ranked[feature]))))
             ax.set_title("Feature: {}".format(feature))
             ax.legend(bbox_to_anchor=(1, 1), loc=2)
         else:
-            sns.boxplot(x='cluster', y=feature, data=X, ax=ax, color='#3470a3')
+            sns.boxplot(x='cluster', y=feature, data=data_clustering_ranked, ax=ax, color='#3470a3')
             ax.set_title("Feature: {}".format(feature))
 
     if save is not None:

@@ -77,8 +77,7 @@ class FgClustering():
         :type max_K: int, optional
         :param method_clustering: Which algorithm to use. 'alternate' is faster while 'pam' is more accurate, defaults to 'pam'
         :type method_clustering: {'alternate', 'pam'}, optional
-        :param init_clustering: Specify medoid initialization method. To speed up computation for large datasets use 'random'.
-            See sklearn documentation for parameter description, defaults to 'k-medoids++'
+        :param init_clustering: Specify medoid initialization method. See sklearn documentation for parameter description, defaults to 'k-medoids++'
         :type init_clustering: {'random', 'heuristic', 'k-medoids++', 'build'}, optional
         :param max_iter_clustering: Number of iterations for k-medoids clustering, defaults to 100
         :type max_iter_clustering: int, optional
@@ -117,8 +116,25 @@ class FgClustering():
             print(f"Use {self.k} as number of cluster")
 
         self.cluster_labels = KMedoids(n_clusters=self.k, random_state=self.random_state, init=init_clustering, method=method_clustering, max_iter=max_iter_clustering).fit(self.distance_matrix).labels_
-        self._X_ranked, self.p_value_of_features = stats.calculate_global_feature_importance(self.X, self.y, self.cluster_labels, self.model_type)
-        self._p_value_of_features_per_cluster = stats.calculate_local_feature_importance(self._X_ranked, bootstraps_p_value)
+        self._data_clustering_ranked, self.p_value_of_features = stats.calculate_global_feature_importance(self.X, self.y, self.cluster_labels, self.model_type)
+        self._p_value_of_features_per_cluster = stats.calculate_local_feature_importance(self._data_clustering_ranked, bootstraps_p_value)
+
+
+    def calculate_statistics(self, data, target_column, bootstraps_p_value = 100):
+        '''Recalculates p-values for each feature (over all clusters and per cluster) based on the new feature matrix. This impacts all plotting functions.
+        Note: the new feature matrix must have the same number of samples and the same ordering of samples as the original feature matrix.
+
+        :param X: Feature Matrix.
+        :type X: pandas.DataFrame
+        :param bootstraps_p_value: Number of bootstraps to compute the p-value of feature importance, defaults to 100
+        :type bootstraps_p_value: int, optional 
+        '''
+        if type(target_column)==str:
+            X = data.drop(columns=[target_column])
+        else:
+            X = data
+        self._data_clustering_ranked, self.p_value_of_features = stats.calculate_global_feature_importance(X, self.y, self.cluster_labels, self.model_type)
+        self._p_value_of_features_per_cluster = stats.calculate_local_feature_importance(self._data_clustering_ranked, bootstraps_p_value)
 
 
     def plot_global_feature_importance(self, save = None):
@@ -148,7 +164,7 @@ class FgClustering():
         p_value_of_features_per_cluster = self._p_value_of_features_per_cluster.copy()
         for row in p_value_of_features_per_cluster.index:
             if self.p_value_of_features[row] > thr_pvalue:
-                p_value_of_features_per_cluster.drop(column, axis=0, inplace=True) 
+                p_value_of_features_per_cluster.drop(row, axis=0, inplace=True) 
 
         plotting._plot_local_feature_importance(p_value_of_features_per_cluster, thr_pvalue, num_cols, save)
 
@@ -171,14 +187,14 @@ class FgClustering():
         :type num_cols: int, optional
         '''
         # drop insignificant values
-        X_ranked = self._X_ranked.copy()
-        for column in X_ranked.columns:
+        data_clustering_ranked = self._data_clustering_ranked.copy()
+        for column in data_clustering_ranked.columns:
             if self.p_value_of_features[column] > thr_pvalue:
-                X_ranked.drop(column, axis=1, inplace=True)    
+                data_clustering_ranked.drop(column, axis=1, inplace=True)    
 
         if heatmap:
-            plotting._plot_heatmap(X_ranked, thr_pvalue, self.model_type, save)
+            plotting._plot_heatmap(data_clustering_ranked, thr_pvalue, self.model_type, save)
 
         if distributions:
-            plotting._plot_distributions(X_ranked, thr_pvalue, num_cols, save)
+            plotting._plot_distributions(data_clustering_ranked, thr_pvalue, num_cols, save)
 
