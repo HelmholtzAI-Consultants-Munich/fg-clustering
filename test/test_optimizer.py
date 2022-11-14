@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from sklearn_extra.cluster import KMedoids
+import kmedoids
 from sklearn.datasets import make_classification, make_regression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
@@ -78,7 +79,8 @@ def test_compute_stability_indices():
     distance_matrix = np.kron(np.eye(3,dtype=int),np.ones([10,10]))
     
     #test 1: test if 3 different clusters are found and have maximal stability
-    cluster_method = lambda X: KMedoids(n_clusters=3, random_state=random_state, init=init_clustering, method=method_clustering, max_iter=max_iter_clustering).fit(X).labels_
+    #cluster_method = lambda X: KMedoids(n_clusters=3, random_state=random_state, init=init_clustering, method=method_clustering, max_iter=max_iter_clustering).fit(X).labels_
+    cluster_method = lambda X: kmedoids.KMedoids(n_clusters=3, method = method_clustering, random_state=random_state, max_iter=max_iter_clustering, init=init_clustering).fit(X).labels_
     labels = cluster_method(distance_matrix)
     result = _compute_stability_indices_parallel(distance_matrix, labels, cluster_method, bootstraps_JI, n_jobs)
 
@@ -87,7 +89,7 @@ def test_compute_stability_indices():
     assert result[2] == 1., "Clusters that should be stable are found to be unstable"
     
     #test 2: test if 2 different clusters are found that don't have maximal stability
-    cluster_method = lambda X: KMedoids(n_clusters=2, random_state=random_state, init=init_clustering, method=method_clustering, max_iter=max_iter_clustering).fit(X).labels_
+    cluster_method = lambda X: kmedoids.KMedoids(n_clusters=2, method = method_clustering, random_state=random_state, max_iter=max_iter_clustering, init=init_clustering).fit(X).labels_
     labels = cluster_method(distance_matrix)
     result = _compute_stability_indices_parallel(distance_matrix, labels, cluster_method, bootstraps_JI, n_jobs)
     
