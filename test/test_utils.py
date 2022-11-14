@@ -2,7 +2,6 @@
 # imports
 ############################################
 
-import joblib
 import pandas as pd
 
 from sklearn.datasets import make_classification
@@ -25,7 +24,8 @@ def test_proximityMatrix():
     model = RandomForestClassifier(max_depth=10, max_features='sqrt', max_samples=0.8, bootstrap=True, oob_score=True, random_state=42)
     model.fit(X, y)
     
-    result = proximityMatrix(model, X)
+    terminals = model.apply(X)
+    result = proximityMatrix(terminals)
     
     dim1, dim2 = result.shape
     
@@ -34,3 +34,5 @@ def test_proximityMatrix():
     
     assert np.diag(result).min() == 1., "error: proximity matrix should have ones on diagonal"
     assert np.diag(result).max() == 1., "error: proximity matrix should have ones on diagonal"
+
+    assert np.allclose(result, result.T), "error: proximity matrix should be symmetric"
