@@ -5,7 +5,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-
+from numba import njit, prange
 
 ############################################
 # functions
@@ -49,7 +49,23 @@ def scale_minmax(X):
     return X_scale
 
 
-def proximityMatrix(model, X, normalize=True):  
+@njit
+def proximityMatrix(terminals, normalize=True):  
+    
+    n = terminals.shape[0]
+    proxMat = np.zeros((n,n))
+    for i in prange(n):
+        for j in prange(i, n):
+            proxMat[i,j] = np.sum(terminals[i,:]==terminals[j,:])
+    proxMat = proxMat + proxMat.T - np.eye(n)*proxMat[0,0]
+
+    if normalize:
+        proxMat = proxMat / terminals.shape[1]
+        
+    return proxMat
+
+
+def proximityMatrix_old(model, X, normalize=True):  
     '''Calculate proximity matrix of Random Forest model. 
 
     :param model: Trained Random Forest model.
