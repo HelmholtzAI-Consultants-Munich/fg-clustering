@@ -8,6 +8,7 @@ from tqdm import tqdm
 from sklearn_extra.cluster import KMedoids
 from joblib import Parallel, delayed
 import collections, functools, operator
+from numba import njit, prange
 
 import fgclustering.statistics as statistics
 
@@ -52,6 +53,18 @@ def _compute_jaccard_matrix(clusters, indices_bootstrap_clusters, indices_origin
     return jaccard_matrix
 
 
+@njit
+def _filter_bootstrap(M, bootstrapped_samples):
+    n = M.shape[0]
+
+    M_bootstrapped = np.empty((n,n), dtype=M.dtype).T # transpose to get F-contiguous
+
+    for j in prange(n):
+        M_bootstrapped[:, j] = M[:,bootstrapped_samples[j]][bootstrapped_samples]
+    
+    return M_bootstrapped
+
+
 def _bootstrap_matrix(M):
     '''Create a bootstrap from the original matrix.
 
@@ -61,6 +74,26 @@ def _bootstrap_matrix(M):
         mapping_bootstrapped_indices_to_original_indices: mapping from bootstrapped to original indices.
     :rtype: pandas.DataFrame, dict
     '''
+    #np.random.seed(seed)
+    lm = len(M)
+    bootstrapped_samples = np.random.choice(np.arange(lm), lm)
+    bootstrapped_samples = np.sort(bootstrapped_samples) #Sort samples to increase speed. Does not affect downstream analysis because M is symmetric
+    M_bootstrapped = _filter_bootstrap(M, bootstrapped_samples)
+    mapping_bootstrapped_indices_to_original_indices = {bootstrapped : original for bootstrapped, original in enumerate(bootstrapped_samples)}
+   
+    return M_bootstrapped, mapping_bootstrapped_indices_to_original_indices
+
+
+def _bootstrap_matrix_old(M, seed=42):
+    '''Create a bootstrap from the original matrix.
+
+    :param M: Original matrix.
+    :type M: pandas.DataFrame
+    :return: M_bootstrapped: ootstrapped matrix; 
+        mapping_bootstrapped_indices_to_original_indices: mapping from bootstrapped to original indices.
+    :rtype: pandas.DataFrame, dict
+    '''
+    np.random.seed(seed)
     lm = len(M)
     bootstrapped_samples = np.random.choice(np.arange(lm), lm)
     bootstrapped_samples = np.sort(bootstrapped_samples) #Sort samples to increase speed. Does not affect downstream analysis because M is symmetric
