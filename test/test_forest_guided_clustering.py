@@ -2,14 +2,9 @@
 # imports
 ############################################
 
-import os
-import sys
-import joblib
 import pandas as pd
-
 from sklearn.datasets import make_classification
 from sklearn.ensemble import RandomForestClassifier
-
 from fgclustering.forest_guided_clustering import *
 
 
