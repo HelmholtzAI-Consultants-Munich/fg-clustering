@@ -2,12 +2,10 @@
 # imports
 ############################################
 
-import joblib
 import numpy as np
 import pandas as pd
 
 from sklearn_extra.cluster import KMedoids
-import kmedoids
 from sklearn.datasets import make_classification, make_regression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
@@ -41,7 +39,8 @@ def test_optimizeK():
     model = RandomForestClassifier(max_depth=10, max_features='sqrt', max_samples=0.8, bootstrap=True, oob_score=True, random_state=42)
     model.fit(X, y)
 
-    distance_matrix = 1 - proximityMatrix(model, X)
+    terminals = model.apply(X)
+    distance_matrix = 1 - proximityMatrix(terminals)
     k = optimizeK(distance_matrix, y, model_type, max_K, method_clustering, init_clustering, max_iter_clustering, discart_value_JI, bootstraps_JI, random_state, n_jobs)
 
     assert k == 2, "Error optimal number of clusters for classification problem is not equal to 2"
@@ -58,7 +57,8 @@ def test_optimizeK():
     model = RandomForestRegressor(max_depth=5, max_features='sqrt', max_samples=0.8, bootstrap=True, oob_score=True, random_state=42)
     model.fit(X, y)
 
-    distance_matrix = 1 - proximityMatrix(model, X)
+    terminals = model.apply(X)
+    distance_matrix = 1 - proximityMatrix(terminals)
     k = optimizeK(distance_matrix, y, model_type, max_K, method_clustering, init_clustering, max_iter_clustering, discart_value_JI, bootstraps_JI, random_state, n_jobs)
 
     assert k == 3, "Error optimal number of clusters for regression problem is not equal to 3" 
@@ -70,26 +70,22 @@ def test_compute_stability_indices():
     method_clustering = 'pam'
     init_clustering = 'k-medoids++'
     max_iter_clustering = 100
-    discart_value_JI = 0.6
     bootstraps_JI = 100
     random_state = 42
     n_jobs = 3
     
     #test data
     distance_matrix = np.kron(np.eye(3,dtype=int),np.ones([10,10]))
-    
     #test 1: test if 3 different clusters are found and have maximal stability
-    #cluster_method = lambda X: KMedoids(n_clusters=3, random_state=random_state, init=init_clustering, method=method_clustering, max_iter=max_iter_clustering).fit(X).labels_
-    cluster_method = lambda X: kmedoids.KMedoids(n_clusters=3, method = method_clustering, random_state=random_state, max_iter=max_iter_clustering, init=init_clustering).fit(X).labels_
+    cluster_method = lambda X: KMedoids(n_clusters=3, method = method_clustering, random_state=random_state, max_iter=max_iter_clustering, init=init_clustering).fit(X).labels_
     labels = cluster_method(distance_matrix)
     result = _compute_stability_indices_parallel(distance_matrix, labels, cluster_method, bootstraps_JI, n_jobs)
-
     assert result[0] == 1., "Clusters that should be stable are found to be unstable"
     assert result[1] == 1., "Clusters that should be stable are found to be unstable"
     assert result[2] == 1., "Clusters that should be stable are found to be unstable"
     
     #test 2: test if 2 different clusters are found that don't have maximal stability
-    cluster_method = lambda X: kmedoids.KMedoids(n_clusters=2, method = method_clustering, random_state=random_state, max_iter=max_iter_clustering, init=init_clustering).fit(X).labels_
+    cluster_method = lambda X: KMedoids(n_clusters=2, method = method_clustering, random_state=random_state, max_iter=max_iter_clustering, init=init_clustering).fit(X).labels_
     labels = cluster_method(distance_matrix)
     result = _compute_stability_indices_parallel(distance_matrix, labels, cluster_method, bootstraps_JI, n_jobs)
     
@@ -109,5 +105,3 @@ def test_translate_cluster_labels_to_dictionary_of_index_sets_per_cluster():
     # test translation with mapping
     dictionary_of_index_sets_per_cluster = _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(labels, mapping = mapping)
     assert dictionary_of_index_sets_per_cluster == {1: set([10,14]), 2: set([11,13]), 3: set([12])}, "error: wrong dictionary of index sets"
-    
-    
