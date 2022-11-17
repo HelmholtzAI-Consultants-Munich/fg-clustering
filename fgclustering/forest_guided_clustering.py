@@ -5,7 +5,6 @@
 import warnings
 
 from sklearn_extra.cluster import KMedoids
-
 import fgclustering.utils as utils
 import fgclustering.optimizer as optimizer
 import fgclustering.plotting as plotting
@@ -60,7 +59,8 @@ class FgClustering():
             self.y = target_column
             self.X = data
         
-        self.proximity_matrix = utils.proximityMatrix(model, self.X.to_numpy())
+        terminals = model.apply(self.X.to_numpy())
+        self.proximity_matrix = utils.proximityMatrix(terminals)
         self.distance_matrix = 1 - self.proximity_matrix
         self.k = None
         self.cluster_labels = None
@@ -115,7 +115,8 @@ class FgClustering():
             self.k = number_of_clusters
             print(f"Use {self.k} as number of cluster")
 
-        self.cluster_labels = KMedoids(n_clusters=self.k, random_state=self.random_state, init=init_clustering, method=method_clustering, max_iter=max_iter_clustering).fit(self.distance_matrix).labels_
+        self.cluster_labels = KMedoids(method = method_clustering, n_clusters=self.k, random_state=self.random_state, max_iter=max_iter_clustering, init=init_clustering).fit(self.distance_matrix).labels_
+
         self._data_clustering_ranked, self.p_value_of_features = stats.calculate_global_feature_importance(self.X, self.y, self.cluster_labels, self.model_type)
         self._p_value_of_features_per_cluster = stats.calculate_local_feature_importance(self._data_clustering_ranked, bootstraps_p_value)
 
