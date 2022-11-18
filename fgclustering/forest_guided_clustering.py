@@ -4,7 +4,7 @@
 
 import warnings
 
-from sklearn_extra.cluster import KMedoids
+import kmedoids
 import fgclustering.utils as utils
 import fgclustering.optimizer as optimizer
 import fgclustering.plotting as plotting
@@ -66,7 +66,7 @@ class FgClustering():
         self.cluster_labels = None
 
 
-    def run(self, number_of_clusters = None, max_K = 8, method_clustering = 'pam', init_clustering = 'k-medoids++', max_iter_clustering = 100, discart_value_JI = 0.6, bootstraps_JI = 100, bootstraps_p_value = 100 , n_jobs = 1):
+    def run(self, number_of_clusters = None, max_K = 8, method_clustering = 'pam', init_clustering = 'random', max_iter_clustering = 100, discart_value_JI = 0.6, bootstraps_JI = 100, bootstraps_p_value = 100 , n_jobs = 1):
         '''Runs the forest-guided clustering model. The optimal number of clusters for a k-medoids clustering is computed, 
         based on the distance matrix computed from the Random Forest proximity matrix.
 
@@ -77,8 +77,8 @@ class FgClustering():
         :type max_K: int, optional
         :param method_clustering: Which algorithm to use. 'alternate' is faster while 'pam' is more accurate, defaults to 'pam'
         :type method_clustering: {'alternate', 'pam'}, optional
-        :param init_clustering: Specify medoid initialization method. See sklearn documentation for parameter description, defaults to 'k-medoids++'
-        :type init_clustering: {'random', 'heuristic', 'k-medoids++', 'build'}, optional
+        :param init_clustering: Specify medoid initialization method. See python kmedoids documentation for parameter description, defaults to 'random'
+        :type init_clustering: {'random', 'first', 'build'}, optional
         :param max_iter_clustering: Number of iterations for k-medoids clustering, defaults to 100
         :type max_iter_clustering: int, optional
         :param discart_value_JI: Minimum Jaccard Index for cluster stability, defaults to 0.6
@@ -115,7 +115,7 @@ class FgClustering():
             self.k = number_of_clusters
             print(f"Use {self.k} as number of cluster")
 
-        self.cluster_labels = KMedoids(method = method_clustering, n_clusters=self.k, random_state=self.random_state, max_iter=max_iter_clustering, init=init_clustering).fit(self.distance_matrix).labels_
+        self.cluster_labels = kmedoids.KMedoids(method = method_clustering, n_clusters=self.k, random_state=self.random_state, max_iter=max_iter_clustering, init=init_clustering, metric='precomputed').fit(self.distance_matrix).labels_
 
         self._data_clustering_ranked, self.p_value_of_features = stats.calculate_global_feature_importance(self.X, self.y, self.cluster_labels, self.model_type)
         self._p_value_of_features_per_cluster = stats.calculate_local_feature_importance(self._data_clustering_ranked, bootstraps_p_value)
