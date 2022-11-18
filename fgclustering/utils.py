@@ -63,31 +63,3 @@ def proximityMatrix(terminals, normalize=True):
         proxMat = proxMat / terminals.shape[1]
         
     return proxMat
-
-
-def proximityMatrix_old(model, X, normalize=True):  
-    '''Calculate proximity matrix of Random Forest model. 
-
-    :param model: Trained Random Forest model.
-    :type model: sklearn.ensemble
-    :param X: Feature matrix.
-    :type X: pandas.DataFrame
-    :param normalize: Normalize proximity matrix by number of trees in the Random Forest, defaults to True.
-    :type normalize: bool, optional
-    :return: Proximity matrix of Random Forest model.
-    :rtype: pandas.DataFrame
-    '''
-    terminals = model.apply(X)
-    nTrees = terminals.shape[1]
-
-    a = 0
-    proxMat = 0
-
-    for i in range(nTrees):
-        a = terminals[:,i]
-        proxMat += np.equal.outer(a, a)
-
-    if normalize:
-        proxMat = proxMat / nTrees
-
-    return proxMat
