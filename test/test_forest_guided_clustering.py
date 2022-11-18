@@ -17,7 +17,7 @@ def test_forest_guided_clustering():
     #parameters
     max_K = 6
     method_clustering = 'pam'
-    init_clustering = 'k-medoids++'
+    init_clustering = 'random'
     max_iter_clustering = 100
     discart_value_JI = 0.6
     bootstraps_JI = 100
@@ -39,4 +39,3 @@ def test_forest_guided_clustering():
 
     # obtain optimal number of clusters
     assert fgc.k == 2, "error: wrong optimal k calculated"
-
