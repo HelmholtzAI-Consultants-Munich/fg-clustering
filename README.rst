@@ -1,5 +1,8 @@
-|Stars| |PyPI| |Docs| |Cite| |stability-stable|
+|stability-stable| |Stars| |PyPI| |Docs| |Cite| 
 
+|Open in Gitpod|
+
+.. |stability-stable| image:: https://img.shields.io/badge/stability-stable-green.svg
 .. |Stars| image:: https://img.shields.io/github/stars/HelmholtzAI-Consultants-Munich/forest_guided_clustering?logo=GitHub&color=yellow
    :target: https://github.com/HelmholtzAI-Consultants-Munich/forest_guided_clustering/stargazers
 .. |PyPI| image:: https://img.shields.io/pypi/v/fgclustering.svg
@@ -8,8 +11,8 @@
    :target: https://forest-guided-clustering.readthedocs.io
 .. |Cite| image:: https://zenodo.org/badge/397931780.svg
    :target: https://zenodo.org/badge/latestdoi/397931780
-.. |stability-stable| image:: https://img.shields.io/badge/stability-stable-green.svg
-   
+.. |Open in Gitpod| image:: https://gitpod.io/button/open-in-gitpod.svg
+   :target: https://gitpod.io/#https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering
    
 
 .. raw:: html
