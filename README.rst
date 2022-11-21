@@ -1,4 +1,4 @@
-|Stars| |PyPI| |Docs| |Cite|
+|Stars| |PyPI| |Docs| |Cite| |stability-stable|
 
 .. |Stars| image:: https://img.shields.io/github/stars/HelmholtzAI-Consultants-Munich/forest_guided_clustering?logo=GitHub&color=yellow
    :target: https://github.com/HelmholtzAI-Consultants-Munich/forest_guided_clustering/stargazers
@@ -8,6 +8,8 @@
    :target: https://forest-guided-clustering.readthedocs.io
 .. |Cite| image:: https://zenodo.org/badge/397931780.svg
    :target: https://zenodo.org/badge/latestdoi/397931780
+.. |stability-stable| image:: https://img.shields.io/badge/stability-stable-green.svg
+   
    
 
 .. raw:: html
