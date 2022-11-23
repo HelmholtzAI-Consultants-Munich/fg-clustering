@@ -85,7 +85,7 @@ def proximityMatrix(model, X, normalize=True):
     :param normalize: Normalize proximity matrix by number of trees in the Random Forest, defaults to True.
     :type normalize: bool, optional
     :return: Proximity matrix of Random Forest model.
-    :rtype: pandas.DataFrame
+    :rtype: numpy array
     '''
 
     terminals = model.apply(X)
