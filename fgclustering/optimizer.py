@@ -54,7 +54,7 @@ def _compute_jaccard_matrix(clusters, indices_bootstrap_clusters, indices_origin
 
 
 @njit
-def _filter_bootstrap(M, bootstrapped_samples):
+def _get_bootstrap(M, bootstrapped_samples):
     n = M.shape[0]
 
     M_bootstrapped = np.empty((n,n), dtype=M.dtype).T # transpose to get F-contiguous
@@ -78,7 +78,7 @@ def _bootstrap_matrix(M):
     lm = len(M)
     bootstrapped_samples = np.random.choice(np.arange(lm), lm)
     bootstrapped_samples = np.sort(bootstrapped_samples) #Sort samples to increase speed. Does not affect downstream analysis because M is symmetric
-    M_bootstrapped = _filter_bootstrap(M, bootstrapped_samples)
+    M_bootstrapped = _get_bootstrap(M, bootstrapped_samples)
     mapping_bootstrapped_indices_to_original_indices = {bootstrapped : original for bootstrapped, original in enumerate(bootstrapped_samples)}
    
     return M_bootstrapped, mapping_bootstrapped_indices_to_original_indices
@@ -221,7 +221,7 @@ def optimizeK(distance_matrix, y, model_type, max_K, method_clustering, init_clu
     
     for k in tqdm(range(2, max_K)):
         #compute clusters        
-        cluster_method = lambda X: kmedoids.KMedoids(n_clusters=k, random_state=random_state, init=init_clustering, method=method_clustering, max_iter=max_iter_clustering, metric='precomputed').fit(X).labels_
+        cluster_method = lambda X: kmedoids.KMedoids(n_clusters=k, method=method_clustering, init=init_clustering, metric='precomputed', max_iter=max_iter_clustering, random_state=random_state).fit(X).labels_
         labels = cluster_method(distance_matrix)
         
         # compute jaccard indices
