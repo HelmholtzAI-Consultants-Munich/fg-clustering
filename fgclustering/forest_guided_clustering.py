@@ -190,11 +190,8 @@ class FgClustering():
         data_clustering_ranked = self._data_clustering_ranked.copy()
         for column in data_clustering_ranked.columns:
             if self.p_value_of_features[column] > thr_pvalue:
-                data_clustering_ranked.drop(column, axis=1, inplace=True)    
-        
-        if self.model_type == 'classifier':
-            predicted_classes = self.model.
-
+                data_clustering_ranked.drop(column, axis=1, inplace=True)
+                
         if heatmap:
             plotting._plot_heatmap(data_clustering_ranked, thr_pvalue, self.model_type, save)
 
