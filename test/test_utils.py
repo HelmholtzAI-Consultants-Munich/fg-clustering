@@ -24,8 +24,7 @@ def test_proximityMatrix():
     model = RandomForestClassifier(max_depth=10, max_features='sqrt', max_samples=0.8, bootstrap=True, oob_score=True, random_state=42)
     model.fit(X, y)
     
-    terminals = model.apply(X)
-    result = proximityMatrix(terminals)
+    result = proximityMatrix(model, X)
     
     dim1, dim2 = result.shape
     

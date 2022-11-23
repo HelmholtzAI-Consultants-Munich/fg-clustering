@@ -39,8 +39,7 @@ def test_optimizeK():
     model = RandomForestClassifier(max_depth=10, max_features='sqrt', max_samples=0.8, bootstrap=True, oob_score=True, random_state=42)
     model.fit(X, y)
 
-    terminals = model.apply(X)
-    distance_matrix = 1 - proximityMatrix(terminals)
+    distance_matrix = 1 - proximityMatrix(model, X)
     k = optimizeK(distance_matrix, y, model_type, max_K, method_clustering, init_clustering, max_iter_clustering, discart_value_JI, bootstraps_JI, random_state, n_jobs)
 
     assert k == 2, "Error optimal number of clusters for classification problem is not equal to 2"
@@ -57,8 +56,7 @@ def test_optimizeK():
     model = RandomForestRegressor(max_depth=5, max_features='sqrt', max_samples=0.8, bootstrap=True, oob_score=True, random_state=42)
     model.fit(X, y)
 
-    terminals = model.apply(X)
-    distance_matrix = 1 - proximityMatrix(terminals)
+    distance_matrix = 1 - proximityMatrix(model, X)
     k = optimizeK(distance_matrix, y, model_type, max_K, method_clustering, init_clustering, max_iter_clustering, discart_value_JI, bootstraps_JI, random_state, n_jobs)
     
     assert k == 2, "Error optimal number of clusters for regression problem is not equal to 2" 
