@@ -5,9 +5,10 @@
 import numpy as np
 from tqdm import tqdm
 
-from sklearn_extra.cluster import KMedoids
+import kmedoids
 from joblib import Parallel, delayed
 import collections, functools, operator
+from numba import njit, prange
 
 import fgclustering.statistics as statistics
 
@@ -52,22 +53,45 @@ def _compute_jaccard_matrix(clusters, indices_bootstrap_clusters, indices_origin
     return jaccard_matrix
 
 
+@njit
+def _get_bootstrap(M, bootstrapped_samples):
+    '''Filtering original matrix by rows and columns to create the bootstrap matrix.
+    Function is paralellized with numba and especially useful in case of big datasets, i.e., large distance matrices.
+
+    :param M: Original matrix.
+    :type M: pandas.DataFrame
+    :param bootstrapped_samples: (sorted) bootstrapped samples for bootstrap matrix creation
+    :type bootstrapped_samples: numpy array
+    :return: M_bootstrapped: bootstrapped matrix
+    :rtype: pandas.DataFrame
+    '''
+
+    n = M.shape[0]
+
+    M_bootstrapped = np.empty((n,n), dtype=M.dtype).T # transpose to get F-contiguous
+
+    for j in prange(n):
+        M_bootstrapped[:, j] = M[:,bootstrapped_samples[j]][bootstrapped_samples]
+    
+    return M_bootstrapped
+
+
 def _bootstrap_matrix(M):
     '''Create a bootstrap from the original matrix.
 
     :param M: Original matrix.
     :type M: pandas.DataFrame
-    :return: M_bootstrapped: ootstrapped matrix; 
+    :return: M_bootstrapped: bootstrapped matrix; 
         mapping_bootstrapped_indices_to_original_indices: mapping from bootstrapped to original indices.
     :rtype: pandas.DataFrame, dict
     '''
+
     lm = len(M)
     bootstrapped_samples = np.random.choice(np.arange(lm), lm)
     bootstrapped_samples = np.sort(bootstrapped_samples) #Sort samples to increase speed. Does not affect downstream analysis because M is symmetric
-    M_bootstrapped = M[:,bootstrapped_samples][bootstrapped_samples,:]
-    
+    M_bootstrapped = _get_bootstrap(M, bootstrapped_samples)
     mapping_bootstrapped_indices_to_original_indices = {bootstrapped : original for bootstrapped, original in enumerate(bootstrapped_samples)}
-    
+   
     return M_bootstrapped, mapping_bootstrapped_indices_to_original_indices
 
 
@@ -208,9 +232,9 @@ def optimizeK(distance_matrix, y, model_type, max_K, method_clustering, init_clu
     
     for k in tqdm(range(2, max_K)):
         #compute clusters        
-        cluster_method = lambda X: KMedoids(n_clusters=k, random_state=random_state, init=init_clustering, method=method_clustering, max_iter=max_iter_clustering).fit(X).labels_
+        cluster_method = lambda X: kmedoids.KMedoids(n_clusters=k, method=method_clustering, init=init_clustering, metric='precomputed', max_iter=max_iter_clustering, random_state=random_state).fit(X).labels_
         labels = cluster_method(distance_matrix)
-
+        
         # compute jaccard indices
         index_per_cluster = _compute_stability_indices_parallel(distance_matrix, labels, cluster_method, bootstraps_JI, n_jobs)
         min_index = min([index_per_cluster[cluster] for cluster in index_per_cluster.keys()])

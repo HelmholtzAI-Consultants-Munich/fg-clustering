@@ -2,12 +2,9 @@
 # imports
 ############################################
 
-import joblib
+
 import numpy as np
 import pandas as pd
-
-from sklearn_extra.cluster import KMedoids
-
 from fgclustering.utils import *
 from fgclustering.statistics import compute_balanced_average_impurity, compute_total_within_cluster_variation, calculate_global_feature_importance, calculate_local_feature_importance
 
