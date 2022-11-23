@@ -50,8 +50,16 @@ def scale_minmax(X):
 
 
 @njit
-def proximityMatrix(terminals, normalize=True):  
-    
+def _calculate_proximityMatrix(terminals, normalize):  
+    '''Calculate proximity matrix given leaf indices from the random forest model. 
+    Function is paralellized with numba and especially useful in case of big datasets or forests with a large number of estimators
+
+    :param terminals: ndarray of shape (n_samples, n_estimators), result of apply() method of RandomForest; for each tree in the forest, it contais leaf indices a sample ended up in.
+    :type terminals: numpy array
+    :param normalize: Normalize proximity matrix by number of trees in the Random Forest, defaults to True.
+    :type normalize: bool, optional
+    '''
+
     n = terminals.shape[0]
     proxMat = np.zeros((n,n))
     for i in prange(n):
@@ -63,3 +71,21 @@ def proximityMatrix(terminals, normalize=True):
         proxMat = proxMat / terminals.shape[1]
         
     return proxMat
+
+
+def proximityMatrix(model, X, normalize=True):
+    '''Calculate proximity matrix of Random Forest model. 
+
+    :param model: Trained Random Forest model.
+    :type model: sklearn.ensemble
+    :param X: Feature matrix.
+    :type X: pandas.DataFrame
+    :param normalize: Normalize proximity matrix by number of trees in the Random Forest, defaults to True.
+    :type normalize: bool, optional
+    :return: Proximity matrix of Random Forest model.
+    :rtype: pandas.DataFrame
+    '''
+
+    terminals = model.apply(X)
+
+    return _calculate_proximityMatrix(terminals, normalize)
