@@ -74,7 +74,7 @@ def _bootstrap_matrix(M):
         mapping_bootstrapped_indices_to_original_indices: mapping from bootstrapped to original indices.
     :rtype: pandas.DataFrame, dict
     '''
-    #np.random.seed(seed)
+
     lm = len(M)
     bootstrapped_samples = np.random.choice(np.arange(lm), lm)
     bootstrapped_samples = np.sort(bootstrapped_samples) #Sort samples to increase speed. Does not affect downstream analysis because M is symmetric
