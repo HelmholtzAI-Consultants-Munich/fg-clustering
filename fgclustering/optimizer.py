@@ -55,6 +55,17 @@ def _compute_jaccard_matrix(clusters, indices_bootstrap_clusters, indices_origin
 
 @njit
 def _filter_bootstrap(M, bootstrapped_samples):
+    '''Filter the original matrix based on the given bootstrapped_samples in order to create the bootsrapped matrix. 
+    Function is paralellized with numba and especially useful in case of big datasets, i.e., large distance matrices. 
+
+    :param M: Original matrix.
+    :type M: pandas.DataFrame
+    :param bootstrapped_samples: (sorted) bootstrapped sample used for filtering
+    :type bootstrapped_samples: numpy.ndarray
+    :return: M_bootstrapped: bootstrapped matrix; 
+    :rtype: pandas.DataFrame
+    '''
+
     n = M.shape[0]
 
     M_bootstrapped = np.empty((n,n), dtype=M.dtype).T # transpose to get F-contiguous
@@ -70,7 +81,7 @@ def _bootstrap_matrix(M):
 
     :param M: Original matrix.
     :type M: pandas.DataFrame
-    :return: M_bootstrapped: ootstrapped matrix; 
+    :return: M_bootstrapped: bootstrapped matrix; 
         mapping_bootstrapped_indices_to_original_indices: mapping from bootstrapped to original indices.
     :rtype: pandas.DataFrame, dict
     '''
