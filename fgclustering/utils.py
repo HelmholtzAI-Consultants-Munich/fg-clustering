@@ -58,6 +58,8 @@ def _calculate_proximityMatrix(terminals, normalize):
     :type terminals: numpy array
     :param normalize: Normalize proximity matrix by number of trees in the Random Forest, defaults to True.
     :type normalize: bool, optional
+    :return: calculated proximity matrix of Random Forest model
+    :rtype: numpy array 
     '''
 
     n = terminals.shape[0]
