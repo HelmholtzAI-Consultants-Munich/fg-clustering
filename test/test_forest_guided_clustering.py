@@ -24,7 +24,7 @@ def test_forest_guided_clustering():
     n_jobs = 3
    
     # test data
-    X, y = make_classification(n_samples=300, n_features=10, n_informative=4, n_redundant=2, n_classes=2, n_clusters_per_class=1, random_state=1)
+    X, y = make_classification(n_samples=300, n_features=10, n_informative=4, n_redundant=1, n_classes=2, n_clusters_per_class=1, random_state=42)
     X = pd.DataFrame(X)
 
     model = RandomForestClassifier(max_depth=10, max_features='sqrt', max_samples=0.8, bootstrap=True, oob_score=True, random_state=42)
