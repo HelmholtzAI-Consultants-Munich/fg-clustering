@@ -57,7 +57,7 @@ To get explainability of your Random Forest model via Forest-Guided Clustering, 
    from fgclustering import FgClustering
    
    # initialize and run fgclustering object
-   fgc = FgClustering(model=rf, data=data_boston, target_column='target')
+   fgc = FgClustering(model=rf, data=data, target_column='target')
    fgc.run()
    
    # visualize results
@@ -72,7 +72,7 @@ To get explainability of your Random Forest model via Forest-Guided Clustering, 
 where 
 
 - :code:`model=rf` is a Random Forest Classifier or Regressor object,
-- :code:`data=data_boston` is the dataset on which the Random Forest model was trained on, e.g. boston housing dataset, and
+- :code:`data=data` is a dataset containing the same features as required by the Random Forest model, and
 - :code:`target_column='target'` is the name of the target column (i.e. *target*) in the provided dataset. 
 
 For a detailed tutorial see the IPython Notebook :code:`tutorial.ipynb`.
