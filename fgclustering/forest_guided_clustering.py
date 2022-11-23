@@ -60,7 +60,7 @@ class FgClustering():
             self.X = data
         
         terminals = model.apply(self.X.to_numpy())
-        self.proximity_matrix = utils.proximityMatrix(terminals)
+        self.proximity_matrix = utils.proximityMatrix(model, self.X)
         self.distance_matrix = 1 - self.proximity_matrix
         self.k = None
         self.cluster_labels = None
