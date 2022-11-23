@@ -59,7 +59,6 @@ class FgClustering():
             self.y = target_column
             self.X = data
         
-        terminals = model.apply(self.X.to_numpy())
         self.proximity_matrix = utils.proximityMatrix(model, self.X)
         self.distance_matrix = 1 - self.proximity_matrix
         self.k = None
@@ -192,6 +191,9 @@ class FgClustering():
         for column in data_clustering_ranked.columns:
             if self.p_value_of_features[column] > thr_pvalue:
                 data_clustering_ranked.drop(column, axis=1, inplace=True)    
+        
+        if self.model_type == 'classifier':
+            predicted_classes = self.model.
 
         if heatmap:
             plotting._plot_heatmap(data_clustering_ranked, thr_pvalue, self.model_type, save)
