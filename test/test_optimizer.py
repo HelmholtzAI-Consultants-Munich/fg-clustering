@@ -76,8 +76,9 @@ def test_compute_stability_indices():
     
     #test data
     distance_matrix = 1 - np.kron(np.eye(3,dtype=int),np.ones([10,10]))
+    
     #test 1: test if 3 different clusters are found and have maximal stability
-    cluster_method = lambda X: kmedoids.KMedoids(n_clusters=3, method = method_clustering, random_state=random_state, max_iter=max_iter_clustering, init=init_clustering, metric='precomputed').fit(X).labels_
+    cluster_method = lambda X: kmedoids.KMedoids(n_clusters=3, method = method_clustering, init=init_clustering, metric='precomputed', max_iter=max_iter_clustering, random_state=random_state).fit(X).labels_
     labels = cluster_method(distance_matrix)
     print(np.unique(labels))
     result = _compute_stability_indices_parallel(distance_matrix, labels, cluster_method, bootstraps_JI, n_jobs)
@@ -86,7 +87,7 @@ def test_compute_stability_indices():
     assert result[2] == 1., "Clusters that should be stable are found to be unstable"
     
     #test 2: test if 2 different clusters are found that don't have maximal stability
-    cluster_method = lambda X: kmedoids.KMedoids(n_clusters=2, method = method_clustering, random_state=random_state, max_iter=max_iter_clustering, init=init_clustering, metric='precomputed').fit(X).labels_
+    cluster_method = lambda X: kmedoids.KMedoids(n_clusters=2, method = method_clustering, init=init_clustering, metric='precomputed', max_iter=max_iter_clustering, random_state=random_state).fit(X).labels_
     labels = cluster_method(distance_matrix)
     print(np.unique(labels))
     result = _compute_stability_indices_parallel(distance_matrix, labels, cluster_method, bootstraps_JI, n_jobs)
