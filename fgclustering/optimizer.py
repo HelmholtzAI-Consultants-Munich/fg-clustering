@@ -190,7 +190,7 @@ def _compute_stability_indices_parallel(distance_matrix, labels, cluster_method,
     return index_per_cluster
     
     
-def optimizeK(distance_matrix, y, model_type, max_K, method_clustering, init_clustering, max_iter_clustering, discart_value_JI, bootstraps_JI, random_state, n_jobs):
+def optimizeK(distance_matrix, y, model_type, max_K, method_clustering, init_clustering, max_iter_clustering, discart_value_JI, bootstraps_JI, random_state, n_jobs, verbose):
     '''Compute the optimal number of clusters for k-medoids clustering (trade-off between cluster purity and cluster stability). 
 
     :param distance_matrix: Proximity matrix of Random Forest model.
@@ -219,6 +219,8 @@ def optimizeK(distance_matrix, y, model_type, max_K, method_clustering, init_clu
     :type n_jobs: int, optional
     :return: Optimal number of clusters.
     :rtype: int
+    :param verbose: print the output of fgc cluster optimization process (the Jaccard index and score for each cluster number); defaults to 1 (printing). Set to 0 for no outputs.
+    :type verbose: {0,1}, optional
     '''  
     np.random.seed(random_state)
     
@@ -229,8 +231,9 @@ def optimizeK(distance_matrix, y, model_type, max_K, method_clustering, init_clu
     
     score_min = np.inf
     optimal_k = 1
-    
-    for k in tqdm(range(2, max_K)):
+    disable = True if verbose == 0 else False
+
+    for k in tqdm(range(2, max_K), disable=disable):
         #compute clusters        
         cluster_method = lambda X: kmedoids.KMedoids(n_clusters=k, method=method_clustering, init=init_clustering, metric='precomputed', max_iter=max_iter_clustering, random_state=random_state).fit(X).labels_
         labels = cluster_method(distance_matrix)
@@ -239,8 +242,9 @@ def optimizeK(distance_matrix, y, model_type, max_K, method_clustering, init_clu
         index_per_cluster = _compute_stability_indices_parallel(distance_matrix, labels, cluster_method, bootstraps_JI, n_jobs)
         min_index = min([index_per_cluster[cluster] for cluster in index_per_cluster.keys()])
         
-        # only continue if jaccard indices are all larger 0.6 (thus all clusters are stable)
-        print('For number of cluster {} the Jaccard Index is {}'.format(k, min_index))
+        # only continue if jaccard indices are all larger than 0.6 (thus all clusters are stable)
+        if not disable:
+            print('For number of cluster {} the Jaccard Index is {}'.format(k, min_index))
         if min_index > discart_value_JI:
             if model_type == "classifier":
                 # compute balanced purities
@@ -251,8 +255,11 @@ def optimizeK(distance_matrix, y, model_type, max_K, method_clustering, init_clu
             if score<score_min:
                 optimal_k = k
                 score_min = score
-            print('For number of cluster {} the score is {}'.format(k,score))
+            
+            if not disable:
+                print('For number of cluster {} the score is {}'.format(k,score))
         else:
-            print('Clustering is instable, no score computed!')
+            if not disable:
+                print('Clustering is instable, no score computed!')
 
     return optimal_k

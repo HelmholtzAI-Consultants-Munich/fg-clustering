@@ -65,7 +65,7 @@ class FgClustering():
         self.cluster_labels = None
 
 
-    def run(self, number_of_clusters = None, max_K = 8, method_clustering = 'pam', init_clustering = 'random', max_iter_clustering = 100, discart_value_JI = 0.6, bootstraps_JI = 100, bootstraps_p_value = 100 , n_jobs = 1):
+    def run(self, number_of_clusters = None, max_K = 8, method_clustering = 'pam', init_clustering = 'random', max_iter_clustering = 100, discart_value_JI = 0.6, bootstraps_JI = 100, bootstraps_p_value = 100 , n_jobs = 1, verbose = 1):
         '''Runs the forest-guided clustering model. The optimal number of clusters for a k-medoids clustering is computed, 
         based on the distance matrix computed from the Random Forest proximity matrix.
 
@@ -89,6 +89,8 @@ class FgClustering():
         :param n_jobs: maximum number of jobs to run in parallel when creating bootstraps to compute the Jaccard index. 
             n_jobs=1 means no parallel computing is used, defaults to 1
         :type n_jobs: int, optional
+        :param verbose: print the output of fgc cluster optimization process (the Jaccard index and score for each cluster number); defaults to 1 (printing). Set to 0 for no outputs.
+        :type n_jobs: {0,1}, optional
         '''
 
         if number_of_clusters is None:
@@ -102,7 +104,8 @@ class FgClustering():
                                     discart_value_JI, 
                                     bootstraps_JI, 
                                     self.random_state,
-                                    n_jobs)
+                                    n_jobs, 
+                                    verbose)
 
             if self.k == 1:
                 warnings.warn("No stable clusters were found!")
