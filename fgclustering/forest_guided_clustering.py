@@ -74,8 +74,8 @@ class FgClustering():
         :type number_of_clusters: int, optional
         :param max_K: Maximum number of clusters for cluster score computation, defaults to 8
         :type max_K: int, optional
-        :param method_clustering: Which algorithm to use. 'alternate' is faster while 'pam' is more accurate, defaults to 'pam'
-        :type method_clustering: {'alternate', 'pam'}, optional
+        :param method_clustering: Which algorithm to use. 'alternate' is faster while 'pam' is more accurate, defaults to 'pam'. Use 'fasterpam' for big datasets. See python kmedoids documentation for other implemented methods.
+        :type method_clustering: {'fasterpam', 'fastpam1', 'pam', 'alternate', 'fastermsc', 'fastmsc', 'pamsil', and 'pammedsil'}, optional
         :param init_clustering: Specify medoid initialization method. See python kmedoids documentation for parameter description, defaults to 'random'
         :type init_clustering: {'random', 'first', 'build'}, optional
         :param max_iter_clustering: Number of iterations for k-medoids clustering, defaults to 100
@@ -86,7 +86,7 @@ class FgClustering():
         :type bootstraps_JI: int, optional 
         :param bootstraps_p_value: Number of bootstraps to compute the p-value of feature importance, defaults to 100
         :type bootstraps_p_value: int, optional 
-        :param n_jobs: number of jobs to run in parallel when creating bootstraps to compute the Jaccard index. 
+        :param n_jobs: maximum number of jobs to run in parallel when creating bootstraps to compute the Jaccard index. 
             n_jobs=1 means no parallel computing is used, defaults to 1
         :type n_jobs: int, optional
         '''
