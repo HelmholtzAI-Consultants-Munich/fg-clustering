@@ -86,7 +86,7 @@ class FgClustering():
         :type bootstraps_JI: int, optional 
         :param bootstraps_p_value: Number of bootstraps to compute the p-value of feature importance, defaults to 100
         :type bootstraps_p_value: int, optional 
-        :param n_jobs: number of jobs to run in parallel when optimizing the number of clusters. 
+        :param n_jobs: number of jobs to run in parallel when creating bootstraps to compute the Jaccard index. 
             n_jobs=1 means no parallel computing is used, defaults to 1
         :type n_jobs: int, optional
         '''
