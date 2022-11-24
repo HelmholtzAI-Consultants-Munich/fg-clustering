@@ -90,7 +90,7 @@ class FgClustering():
             n_jobs=1 means no parallel computing is used, defaults to 1
         :type n_jobs: int, optional
         :param verbose: print the output of fgc cluster optimization process (the Jaccard index and score for each cluster number); defaults to 1 (printing). Set to 0 for no outputs.
-        :type n_jobs: {0,1}, optional
+        :type verbose: {0,1}, optional
         '''
 
         if number_of_clusters is None:
