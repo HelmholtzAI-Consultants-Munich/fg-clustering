@@ -27,6 +27,7 @@ def test_optimizeK():
     bootstraps_JI = 100
     random_state = 42
     n_jobs = 3
+    verbose = 1
 
     ### test classification
     max_K = 5
@@ -40,7 +41,7 @@ def test_optimizeK():
     model.fit(X, y)
 
     distance_matrix = 1 - proximityMatrix(model, X)
-    k = optimizeK(distance_matrix, y, model_type, max_K, method_clustering, init_clustering, max_iter_clustering, discart_value_JI, bootstraps_JI, random_state, n_jobs)
+    k = optimizeK(distance_matrix, y, model_type, max_K, method_clustering, init_clustering, max_iter_clustering, discart_value_JI, bootstraps_JI, random_state, n_jobs, verbose)
 
     assert k == 2, "Error optimal number of clusters for classification problem is not equal to 2"
 
@@ -57,7 +58,7 @@ def test_optimizeK():
     model.fit(X, y)
 
     distance_matrix = 1 - proximityMatrix(model, X)
-    k = optimizeK(distance_matrix, y, model_type, max_K, method_clustering, init_clustering, max_iter_clustering, discart_value_JI, bootstraps_JI, random_state, n_jobs)
+    k = optimizeK(distance_matrix, y, model_type, max_K, method_clustering, init_clustering, max_iter_clustering, discart_value_JI, bootstraps_JI, random_state, n_jobs, verbose)
     
     assert k == 2, "Error optimal number of clusters for regression problem is not equal to 2" 
 
