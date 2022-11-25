@@ -30,7 +30,7 @@ PyPI install:
    
    curl https://sh.rustup.rs -sSf | sh
 
-If this does not work, please try:
+If this does not work, please try to install Cargo from source:
 
 .. code:: bash
 
