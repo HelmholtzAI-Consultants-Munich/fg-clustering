@@ -35,9 +35,9 @@ Installation
 
 **Requirements:**
 
-- >= Python 3.8 
-- :code:`pandas`, :code:`numpy`, :code:`tqdm`
-- :code:`sklearn`, :code:`scikit-learn-extra`, :code:`scipy`, :code:`statsmodels`
+- 3.8 <= Python < 3.11 
+- :code:`pandas`, :code:`numpy`, :code:`tqdm`, :code:`numba`, :code:`numexpr`
+- :code:`scikit-learn`, :code:`scipy`, :code:`statsmodels`
 - :code:`matplotlib`, :code:`seaborn`
 
 All required packages are automatically installed if installation is done via :code:`pip`.
@@ -50,6 +50,17 @@ PyPI install:
 
     pip install fgclustering
 
+
+Note: This package depends on :code:`kmedoids` package. If you are using Windows or OSX, you may need to first install Cargo with:
+:code:`curl https://sh.rustup.rs -sSf | sh`
+
+If this does not work, please try:
+.. code::
+   git clone https://github.com/rust-lang/cargo
+   cd cargo
+   cargo build --release
+
+For further information, please visit `this page <https://pypi.org/project/kmedoids/>`_.
 
 
 Usage
