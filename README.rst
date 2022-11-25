@@ -52,9 +52,11 @@ PyPI install:
 
 
 Note: This package depends on :code:`kmedoids` package. If you are using Windows or OSX, you may need to first install Cargo with:
+
 :code:`curl https://sh.rustup.rs -sSf | sh`
 
 If this does not work, please try:
+
 .. code::
    git clone https://github.com/rust-lang/cargo
    cd cargo
