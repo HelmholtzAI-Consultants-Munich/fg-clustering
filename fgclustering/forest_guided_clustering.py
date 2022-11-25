@@ -10,8 +10,8 @@ import fgclustering.optimizer as optimizer
 import fgclustering.plotting as plotting
 import fgclustering.statistics as stats
 
-import warnings
-warnings.filterwarnings('ignore')
+#import warnings
+#warnings.filterwarnings('ignore')
 
 ############################################
 # Forest-guided Clustering

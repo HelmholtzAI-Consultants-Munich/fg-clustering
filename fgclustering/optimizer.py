@@ -12,8 +12,8 @@ from numba import njit, prange
 
 import fgclustering.statistics as statistics
 
-import warnings
-warnings.filterwarnings('ignore')
+#import warnings
+#warnings.filterwarnings('ignore')
 
 ############################################
 # Optimize number of clusters k
