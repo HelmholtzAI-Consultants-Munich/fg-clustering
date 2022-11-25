@@ -17,8 +17,8 @@ sys.path.insert(0, os.path.abspath('../../fgclustering'))
 # -- Project information -----------------------------------------------------
 
 project = 'Forest Guided Clustering'
-copyright = '2021, Lisa Barros de Andrade e Sousa, Dominik Thalmeier'
-author = 'Lisa Barros de Andrade e Sousa, Dominik Thalmeier'
+copyright = '2022, Lisa Barros de Andrade e Sousa, Dominik Thalmeier, Helena Pelin'
+author = 'Lisa Barros de Andrade e Sousa, Dominik Thalmeier, Helena Pelin'
 
 # The full version, including alpha/beta/rc tags
 release = '1.0.0'
