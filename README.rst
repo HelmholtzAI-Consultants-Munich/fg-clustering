@@ -37,7 +37,7 @@ Installation
 
 - 3.8 <= Python < 3.11 
 - :code:`pandas`, :code:`numpy`, :code:`tqdm`, :code:`numba`, :code:`numexpr`
-- :code:`scikit-learn`, :code:`scipy`, :code:`statsmodels`
+- :code:`scikit-learn`, :code:`scipy`, :code:`statsmodels`, :code:`kmedoids`
 - :code:`matplotlib`, :code:`seaborn`
 
 All required packages are automatically installed if installation is done via :code:`pip`.
