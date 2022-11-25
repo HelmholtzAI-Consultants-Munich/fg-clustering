@@ -3,7 +3,7 @@ import setuptools
 
 setup(
     name='fgclustering',
-    version='1.0.0',
+    version='1.0.1',
     url='https://github.com/HelmholtzAI-Consultants-Munich/forest_guided_clustering',
     author='Lisa Barros de Andrade e Sousa, Dominik Thalmeier, Helena Pelin, Marie Piraud',
     author_email='lisa.barros.andrade.sousa@gmail.com, dominikthalmeier@googlemail.com, helena.pelin@helmholtz-muenchen.de',
