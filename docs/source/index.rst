@@ -17,9 +17,30 @@ Quick Start
 
 **Installation:**
 
+PyPI install:
+
 .. code:: bash
 
     pip install fgclustering
+
+
+*Note:* This package depends on :code:`kmedoids` package. If you are using Windows or OSX, you may need to first install Cargo with:
+
+.. code:: bash 
+   
+   curl https://sh.rustup.rs -sSf | sh
+
+If this does not work, please try:
+
+.. code:: bash
+
+   git clone https://github.com/rust-lang/cargo
+   cd cargo
+   cargo build --release
+
+
+For further information, please visit `this page <https://pypi.org/project/kmedoids/>`_.
+
 
 **Basic Usage:**
 
@@ -30,7 +51,7 @@ To get explainability of your Random Forest model via Forest-Guided Clustering, 
    from fgclustering import FgClustering
    
    # initialize and run fgclustering object
-   fgc = FgClustering(model=rf, data=data_boston, target_column='target')
+   fgc = FgClustering(model=rf, data=data, target_column='target')
    fgc.run()
    
    # visualize results
@@ -45,10 +66,22 @@ To get explainability of your Random Forest model via Forest-Guided Clustering, 
 where 
 
 - :code:`model=rf` is a Random Forest Classifier or Regressor object,
-- :code:`data=data_boston` is the dataset on which the Random Forest model was trained on, e.g. boston housing dataset, and
+- :code:`data=data` is a dataset containing the same features as required by the Random Forest model, and
 - :code:`target_column='target'` is the name of the target column (i.e. *target*) in the provided dataset. 
 
-For a detailed tutorial see the IPython Notebook :code:`tutorial.ipynb` or Forest-Guided Clustering Tutorial.
+For a detailed tutorial see the IPython Notebook :code:`tutorial.ipynb`.
+
+
+**Usage on big datasets**
+
+If you are working with the dataset containing large number of samples, you can use one of the following strategies:
+
+- Use the cores you have at your disposal to parallelize the optimization of the cluster number. You can do so by setting the parameter :code:`n_jobs` to a value > 1 in the :code:`run()` function.
+- Use the faster implementation of the pam method that K-Medoids algorithm uses to find the clusters by setting the parameter :code:`method_clustering` to *fasterpam* in the :code:`run()` function.
+- Use subsampling technique
+
+For a detailed tutorial on the usage on big datasets, please see the Section Special Case 3 in the :code:`tutorial.ipynb`.
+
 
 Table of Content
 ==================

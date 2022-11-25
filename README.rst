@@ -51,7 +51,7 @@ PyPI install:
     pip install fgclustering
 
 
-Note: This package depends on :code:`kmedoids` package. If you are using Windows or OSX, you may need to first install Cargo with:
+*Note:* This package depends on :code:`kmedoids` package. If you are using Windows or OSX, you may need to first install Cargo with:
 
 .. code:: bash 
    
