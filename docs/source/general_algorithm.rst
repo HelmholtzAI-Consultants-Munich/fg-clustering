@@ -40,6 +40,6 @@ stability of each cluster :math:`i` in the clustering is measured by the average
 
 :math:`JS_i(A|B) = \frac{\sum_{b=1}^n\frac{|A ∩ B_b|}{|A ∪ B_b|}}{n}`
 
-Jaccard similarity values > 0.6 are usually indicative of stable patterns in the data (*Hennig, 2008*). Only stable clusterings, i.e. clustering with low variance,
+A Jaccard similarity value <= 0.5 is indicative of a "dissolved cluster". Jaccard similarity values > 0.6 can be considered as an indicating patterns in the data and is suggested as the minimal threshold for stability.
+However, which points exactly should belong to these clusters is not reliable. Generally, a valid, stable cluster should yield a mean Jaccard similarity value of 0.75 or more (*Hennig, 2008*). Only stable clusterings, i.e. clustering with low variance,
 are considered as clustering candidates. Hence, the optimal number of clusters :math:`k` is the one yielding the minimum model bias, while having a stable clustering.
-

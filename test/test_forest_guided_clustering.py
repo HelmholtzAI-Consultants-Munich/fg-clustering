@@ -2,14 +2,9 @@
 # imports
 ############################################
 
-import os
-import sys
-import joblib
 import pandas as pd
-
 from sklearn.datasets import make_classification
 from sklearn.ensemble import RandomForestClassifier
-
 from fgclustering.forest_guided_clustering import *
 
 
@@ -22,14 +17,14 @@ def test_forest_guided_clustering():
     #parameters
     max_K = 6
     method_clustering = 'pam'
-    init_clustering = 'k-medoids++'
+    init_clustering = 'random'
     max_iter_clustering = 100
     discart_value_JI = 0.6
     bootstraps_JI = 100
     n_jobs = 3
    
     # test data
-    X, y = make_classification(n_samples=300, n_features=10, n_informative=4, n_redundant=2, n_classes=2, n_clusters_per_class=1, random_state=1)
+    X, y = make_classification(n_samples=300, n_features=10, n_informative=4, n_redundant=1, n_classes=2, n_clusters_per_class=1, random_state=42)
     X = pd.DataFrame(X)
 
     model = RandomForestClassifier(max_depth=10, max_features='sqrt', max_samples=0.8, bootstrap=True, oob_score=True, random_state=42)
@@ -44,4 +39,3 @@ def test_forest_guided_clustering():
 
     # obtain optimal number of clusters
     assert fgc.k == 2, "error: wrong optimal k calculated"
-

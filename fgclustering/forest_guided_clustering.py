@@ -2,17 +2,14 @@
 # imports
 ############################################
 
-import warnings
-
-from sklearn_extra.cluster import KMedoids
-
+import kmedoids
 import fgclustering.utils as utils
 import fgclustering.optimizer as optimizer
 import fgclustering.plotting as plotting
 import fgclustering.statistics as stats
 
-import warnings
-warnings.filterwarnings('ignore')
+#import warnings
+#warnings.filterwarnings('ignore')
 
 ############################################
 # Forest-guided Clustering
@@ -60,13 +57,13 @@ class FgClustering():
             self.y = target_column
             self.X = data
         
-        self.proximity_matrix = utils.proximityMatrix(model, self.X.to_numpy())
+        self.proximity_matrix = utils.proximityMatrix(model, self.X)
         self.distance_matrix = 1 - self.proximity_matrix
         self.k = None
         self.cluster_labels = None
 
 
-    def run(self, number_of_clusters = None, max_K = 8, method_clustering = 'pam', init_clustering = 'k-medoids++', max_iter_clustering = 100, discart_value_JI = 0.6, bootstraps_JI = 100, bootstraps_p_value = 100 , n_jobs = 1):
+    def run(self, number_of_clusters = None, max_K = 8, method_clustering = 'pam', init_clustering = 'random', max_iter_clustering = 100, discart_value_JI = 0.6, bootstraps_JI = 100, bootstraps_p_value = 100 , n_jobs = 1, verbose = 1):
         '''Runs the forest-guided clustering model. The optimal number of clusters for a k-medoids clustering is computed, 
         based on the distance matrix computed from the Random Forest proximity matrix.
 
@@ -75,10 +72,10 @@ class FgClustering():
         :type number_of_clusters: int, optional
         :param max_K: Maximum number of clusters for cluster score computation, defaults to 8
         :type max_K: int, optional
-        :param method_clustering: Which algorithm to use. 'alternate' is faster while 'pam' is more accurate, defaults to 'pam'
-        :type method_clustering: {'alternate', 'pam'}, optional
-        :param init_clustering: Specify medoid initialization method. See sklearn documentation for parameter description, defaults to 'k-medoids++'
-        :type init_clustering: {'random', 'heuristic', 'k-medoids++', 'build'}, optional
+        :param method_clustering: Which algorithm to use. 'alternate' is faster while 'pam' is more accurate, defaults to 'pam'. Use 'fasterpam' for big datasets. See python kmedoids documentation for other implemented methods.
+        :type method_clustering: {'fasterpam', 'fastpam1', 'pam', 'alternate', 'fastermsc', 'fastmsc', 'pamsil', and 'pammedsil'}, optional
+        :param init_clustering: Specify medoid initialization method. See python kmedoids documentation for parameter description, defaults to 'random'
+        :type init_clustering: {'random', 'first', 'build'}, optional
         :param max_iter_clustering: Number of iterations for k-medoids clustering, defaults to 100
         :type max_iter_clustering: int, optional
         :param discart_value_JI: Minimum Jaccard Index for cluster stability, defaults to 0.6
@@ -87,9 +84,11 @@ class FgClustering():
         :type bootstraps_JI: int, optional 
         :param bootstraps_p_value: Number of bootstraps to compute the p-value of feature importance, defaults to 100
         :type bootstraps_p_value: int, optional 
-        :param n_jobs: number of jobs to run in parallel when optimizing the number of clusters. 
+        :param n_jobs: maximum number of jobs to run in parallel when creating bootstraps to compute the Jaccard index. 
             n_jobs=1 means no parallel computing is used, defaults to 1
         :type n_jobs: int, optional
+        :param verbose: print the output of fgc cluster optimization process (the Jaccard index and score for each cluster number); defaults to 1 (printing). Set to 0 for no outputs.
+        :type verbose: {0,1}, optional
         '''
 
         if number_of_clusters is None:
@@ -103,7 +102,8 @@ class FgClustering():
                                     discart_value_JI, 
                                     bootstraps_JI, 
                                     self.random_state,
-                                    n_jobs)
+                                    n_jobs, 
+                                    verbose)
 
             if self.k == 1:
                 warnings.warn("No stable clusters were found!")
@@ -115,7 +115,8 @@ class FgClustering():
             self.k = number_of_clusters
             print(f"Use {self.k} as number of cluster")
 
-        self.cluster_labels = KMedoids(n_clusters=self.k, random_state=self.random_state, init=init_clustering, method=method_clustering, max_iter=max_iter_clustering).fit(self.distance_matrix).labels_
+        self.cluster_labels = kmedoids.KMedoids(n_clusters=self.k, method = method_clustering, init=init_clustering, metric='precomputed', max_iter=max_iter_clustering, random_state=self.random_state).fit(self.distance_matrix).labels_
+
         self._data_clustering_ranked, self.p_value_of_features = stats.calculate_global_feature_importance(self.X, self.y, self.cluster_labels, self.model_type)
         self._p_value_of_features_per_cluster = stats.calculate_local_feature_importance(self._data_clustering_ranked, bootstraps_p_value)
 
@@ -190,8 +191,8 @@ class FgClustering():
         data_clustering_ranked = self._data_clustering_ranked.copy()
         for column in data_clustering_ranked.columns:
             if self.p_value_of_features[column] > thr_pvalue:
-                data_clustering_ranked.drop(column, axis=1, inplace=True)    
-
+                data_clustering_ranked.drop(column, axis=1, inplace=True)
+                
         if heatmap:
             plotting._plot_heatmap(data_clustering_ranked, thr_pvalue, self.model_type, save)
 

@@ -62,7 +62,7 @@ To get explainability of your Random Forest model via Forest-Guided Clustering, 
    from fgclustering import FgClustering
    
    # initialize and run fgclustering object
-   fgc = FgClustering(model=rf, data=data_boston, target_column='target')
+   fgc = FgClustering(model=rf, data=data, target_column='target')
    fgc.run()
    
    # visualize results
@@ -77,11 +77,21 @@ To get explainability of your Random Forest model via Forest-Guided Clustering, 
 where 
 
 - :code:`model=rf` is a Random Forest Classifier or Regressor object,
-- :code:`data=data_boston` is the dataset on which the Random Forest model was trained on, e.g. boston housing dataset, and
+- :code:`data=data` is a dataset containing the same features as required by the Random Forest model, and
 - :code:`target_column='target'` is the name of the target column (i.e. *target*) in the provided dataset. 
 
 For a detailed tutorial see the IPython Notebook :code:`tutorial.ipynb`.
 
+Usage on big datasets
+-------------------------------
+
+If you are working with the dataset containing large number of samples, you can use one of the following strategies:
+
+- Use the cores you have at your disposal to parallelize the optimization of the cluster number. You can do so by setting the parameter :code:`n_jobs` to a value > 1 in the :code:`run()` function.
+- Use the faster implementation of the pam method that K-Medoids algorithm uses to find the clusters by setting the parameter :code:`method_clustering` to *fasterpam* in the :code:`run()` function.
+- Use subsampling technique
+
+For a detailed tutorial on the usage on big datasets, please see the Section Special Case 3 in the :code:`tutorial.ipynb`.
 
 License
 -------------------------------
@@ -102,9 +112,9 @@ If Forest-Guided Clustering is useful for your research, consider citing the pac
 .. code:: 
 
    @software{lisa_sousa_2022_6445529,
-     author       = {Lisa Barros de Andrade e Sousa and
-                     Dominik Thalmeier,
+     author       = {Lisa Barros de Andrade e Sousa,
                      Helena Pelin,
+                     Dominik Thalmeier,
                      Marie Piraud},
      title        = {{Forest-Guided Clustering - Explainability for Random Forest Models}},
      month        = april,
