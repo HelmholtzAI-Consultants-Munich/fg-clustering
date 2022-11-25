@@ -81,6 +81,7 @@ Usage on big datasets
 -------------------------------
 
 If you are working with the dataset containing large number of samples, you can use one of the following strategies:
+
 - Use the cores you have at your disposal to parallelize the optimization of the cluster number. You can do so by setting the parameter `n_jobs` to a value > 1 in the `run()` function.
 - Use the faster implementation of the pam method that K-Medoids algorithm uses to find the clusters by setting the parameter `method_clustering` to *fasterpam* in the `run()` function.
 - Use subsampling technique
