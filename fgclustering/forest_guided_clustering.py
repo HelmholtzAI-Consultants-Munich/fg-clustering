@@ -2,8 +2,6 @@
 # imports
 ############################################
 
-import warnings
-
 import kmedoids
 import fgclustering.utils as utils
 import fgclustering.optimizer as optimizer
