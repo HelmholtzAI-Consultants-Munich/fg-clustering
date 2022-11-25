@@ -57,10 +57,12 @@ Note: This package depends on :code:`kmedoids` package. If you are using Windows
 
 If this does not work, please try:
 
-.. code::
+.. code:: bash
+
    git clone https://github.com/rust-lang/cargo
    cd cargo
    cargo build --release
+
 
 For further information, please visit `this page <https://pypi.org/project/kmedoids/>`_.
 
