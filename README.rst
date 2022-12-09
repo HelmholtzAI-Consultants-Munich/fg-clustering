@@ -1,4 +1,4 @@
-|stability-stable| |Stars| |PyPI| |Docs| |Cite| 
+|stability-stable| |Stars| |PyPI| |Docs| |Python Package using Conda| |Cite| 
 
 |Open in Gitpod|
 
@@ -13,7 +13,8 @@
    :target: https://zenodo.org/badge/latestdoi/397931780
 .. |Open in Gitpod| image:: https://gitpod.io/button/open-in-gitpod.svg
    :target: https://gitpod.io/#https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering
-   
+.. |Python Package using Conda| image:: https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/pytest_fgc.yml/badge.svg
+   :target: https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/pytest_fgc.yml
 
 .. raw:: html
 
