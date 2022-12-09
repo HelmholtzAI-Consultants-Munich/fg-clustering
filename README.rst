@@ -3,18 +3,18 @@
 |Open in Gitpod|
 
 .. |stability-stable| image:: https://img.shields.io/badge/stability-stable-green.svg
-.. |Stars| image:: https://img.shields.io/github/stars/HelmholtzAI-Consultants-Munich/forest_guided_clustering?logo=GitHub&color=yellow
+.. |stars| image:: https://img.shields.io/github/stars/HelmholtzAI-Consultants-Munich/forest_guided_clustering?logo=GitHub&color=yellow
    :target: https://github.com/HelmholtzAI-Consultants-Munich/forest_guided_clustering/stargazers
 .. |PyPI| image:: https://img.shields.io/pypi/v/fgclustering.svg
    :target: https://pypi.org/project/fgclustering
-.. |Docs| image:: https://readthedocs.org/projects/forest-guided-clustering/badge/?version=latest
+.. |build| image:: https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/pytest_fgc.yml/badge.svg
+   :target: https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/pytest_fgc.yml
+.. |docs| image:: https://readthedocs.org/projects/forest-guided-clustering/badge/?version=latest
    :target: https://forest-guided-clustering.readthedocs.io
-.. |Cite| image:: https://zenodo.org/badge/397931780.svg
+.. |cite| image:: https://zenodo.org/badge/397931780.svg
    :target: https://zenodo.org/badge/latestdoi/397931780
 .. |Open in Gitpod| image:: https://gitpod.io/button/open-in-gitpod.svg
    :target: https://gitpod.io/#https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering
-.. |Python Package using Conda| image:: https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/pytest_fgc.yml/badge.svg
-   :target: https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/pytest_fgc.yml
 
 .. raw:: html
 
