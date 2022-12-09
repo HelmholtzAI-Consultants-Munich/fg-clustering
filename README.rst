@@ -1,4 +1,4 @@
-|stability-stable| |stars| |PyPI| |build| |docs| |cite| 
+|stability-stable| |PyPI| |build| |docs| |stars|  |cite| 
 
 |Open in Gitpod|
 
