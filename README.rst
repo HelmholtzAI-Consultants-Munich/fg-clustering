@@ -13,6 +13,7 @@
    :target: https://forest-guided-clustering.readthedocs.io
 .. |cite| image:: https://zenodo.org/badge/397931780.svg
    :target: https://zenodo.org/badge/latestdoi/397931780
+ 
 .. |Open in Gitpod| image:: https://gitpod.io/button/open-in-gitpod.svg
    :target: https://gitpod.io/#https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering
 
