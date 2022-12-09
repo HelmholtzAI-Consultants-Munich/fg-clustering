@@ -1,4 +1,4 @@
-|stability-stable| |Stars| |PyPI| |Docs| |Python Package using Conda| |Cite| 
+|stability-stable| |Stars| |PyPI| |Docs| |build| |Cite| 
 
 |Open in Gitpod|
 
@@ -7,7 +7,8 @@
    :target: https://github.com/HelmholtzAI-Consultants-Munich/forest_guided_clustering/stargazers
 .. |PyPI| image:: https://img.shields.io/pypi/v/fgclustering.svg
    :target: https://pypi.org/project/fgclustering
-
+.. |build| image:: https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/pytest_fgc.yml/badge.svg
+   :target: https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/pytest_fgc.yml
 .. |docs| image:: https://readthedocs.org/projects/forest-guided-clustering/badge/?version=latest
    :target: https://forest-guided-clustering.readthedocs.io
 .. |cite| image:: https://zenodo.org/badge/397931780.svg
