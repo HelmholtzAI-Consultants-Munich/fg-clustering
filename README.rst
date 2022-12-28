@@ -1,4 +1,4 @@
-|stability-stable| |PyPI| |build| |docs| |stars|  |cite| 
+|stability-stable| |build| |docs| |PyPI| |cite| |stars|  
 
 |Open in Gitpod|
 
@@ -7,8 +7,8 @@
    :target: https://github.com/HelmholtzAI-Consultants-Munich/forest_guided_clustering/stargazers
 .. |PyPI| image:: https://img.shields.io/pypi/v/fgclustering.svg
    :target: https://pypi.org/project/fgclustering
-.. |build| image:: https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/pytest_fgc.yml/badge.svg
-   :target: https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/pytest_fgc.yml
+.. |build| image:: https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/test.yml/badge.svg
+   :target: https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/test.yml
 .. |docs| image:: https://readthedocs.org/projects/forest-guided-clustering/badge/?version=latest
    :target: https://forest-guided-clustering.readthedocs.io
 .. |cite| image:: https://zenodo.org/badge/397931780.svg
@@ -22,7 +22,6 @@
    <div align="center">
       <a href="#readme"><img src="docs/source/FGC_Logo.png" width="200"></a>
    </div>
-   
 
 Forest-Guided Clustering - Explainability for Random Forest Models
 =========================================================================
