@@ -8,7 +8,7 @@ import fgclustering.optimizer as optimizer
 import fgclustering.plotting as plotting
 import fgclustering.statistics as stats
 
-#import warnings
+import warnings
 #warnings.filterwarnings('ignore')
 
 ############################################
