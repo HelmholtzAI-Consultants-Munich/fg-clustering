@@ -1,4 +1,4 @@
-|stability-stable| |Code Status| |docs| |PyPI| |cite| |stars|  
+|stability-stable| |CI| |docs| |PyPI| |cite| |stars|  
 
 |Open in Gitpod|
 
@@ -7,7 +7,7 @@
    :target: https://github.com/HelmholtzAI-Consultants-Munich/forest_guided_clustering/stargazers
 .. |PyPI| image:: https://img.shields.io/pypi/v/fgclustering.svg
    :target: https://pypi.org/project/fgclustering
-.. |Code Status| https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/testing.yml/badge.svg
+.. |CI| https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/testing.yml/badge.svg
    :target: https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/testing.yml
 .. |docs| image:: https://readthedocs.org/projects/forest-guided-clustering/badge/?version=latest
    :target: https://forest-guided-clustering.readthedocs.io
