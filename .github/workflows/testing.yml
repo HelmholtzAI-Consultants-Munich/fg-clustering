@@ -16,7 +16,7 @@ jobs:
   
     runs-on: ${{ matrix.os }}
     strategy:
-      max-parallel: 5
+      max-parallel: 12
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.7", "3.8", "3.9", "3.10"]
@@ -56,8 +56,10 @@ jobs:
     #    update-conda: true
     #    python-version: ${{ matrix.python-version }}
     #    conda-channels: anaconda, conda-forge
-    - run: conda --version
-    - run: which python
+    - name: check python and conda version
+      run: |
+        conda --version
+        which python
     - name: Install dependencies
       run: |
         conda install -c conda-forge rust
