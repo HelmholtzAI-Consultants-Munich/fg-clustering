@@ -1,6 +1,15 @@
+.. raw:: html
+
+   <div align="center">
+      <a href="#readme"><img src="docs/source/FGC_Logo.png" width="200"></a>
+   </div>
+
+
+Forest-Guided Clustering - Explainability for Random Forest Models
+=========================================================================
+
 |stability-stable| |testing| |docs| |PyPI| |cite| |stars|  
 
-|Open in Gitpod|
 
 .. |stability-stable| image:: https://img.shields.io/badge/stability-stable-green.svg
 .. |stars| image:: https://img.shields.io/github/stars/HelmholtzAI-Consultants-Munich/forest_guided_clustering?logo=GitHub&color=yellow
@@ -13,18 +22,7 @@
    :target: https://forest-guided-clustering.readthedocs.io
 .. |cite| image:: https://zenodo.org/badge/397931780.svg
    :target: https://zenodo.org/badge/latestdoi/397931780
- 
-.. |Open in Gitpod| image:: https://gitpod.io/button/open-in-gitpod.svg
-   :target: https://gitpod.io/#https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering
 
-.. raw:: html
-
-   <div align="center">
-      <a href="#readme"><img src="docs/source/FGC_Logo.png" width="200"></a>
-   </div>
-
-Forest-Guided Clustering - Explainability for Random Forest Models
-=========================================================================
 
 This python package is about explainability of Random Forest models. Standard explainability methods (e.g. feature importance) assume independence of model features and hence, are not suited in the presence of correlated features. The Forest-Guided Clustering algorithm does not assume independence of model features, because it computes the feature importance based on subgroups of instances that follow similar decision rules within the Random Forest model. Hence, this method is well suited for cases with high correlation among model features.
 
