@@ -49,6 +49,8 @@ If this does not work, please try to install Cargo from source:
    git clone https://github.com/rust-lang/cargo
    cd cargo
    cargo build --release
+   
+For further information, please visit `this page <https://pypi.org/project/kmedoids/>`_.
 
 All other required packages are automatically installed if installation is done via :code:`pip`.
 
@@ -67,9 +69,6 @@ Installation from source:
    git clone https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering.git
    cd fg-clustering
    pip install . 
-
-
-For further information, please visit `this page <https://pypi.org/project/kmedoids/>`_.
 
 
 Usage
