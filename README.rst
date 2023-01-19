@@ -1,12 +1,4 @@
-.. raw:: html
 
-   <div align="center">
-      <a href="#readme"><img src="docs/source/FGC_Logo.png" width="200"></a>
-   </div>
-
-
-Forest-Guided Clustering - Explainability for Random Forest Models
-=========================================================================
 
 |stability-stable| |testing| |docs| |PyPI| |cite| |stars|  
 
@@ -24,6 +16,16 @@ Forest-Guided Clustering - Explainability for Random Forest Models
    :target: https://zenodo.org/badge/latestdoi/397931780
 
 
+.. raw:: html
+
+   <div align="center">
+      <a href="#readme"><img src="docs/source/FGC_Logo.png" width="200"></a>
+   </div>
+ 
+ 
+Forest-Guided Clustering - Explainability for Random Forest Models
+=========================================================================
+
 This python package is about explainability of Random Forest models. Standard explainability methods (e.g. feature importance) assume independence of model features and hence, are not suited in the presence of correlated features. The Forest-Guided Clustering algorithm does not assume independence of model features, because it computes the feature importance based on subgroups of instances that follow similar decision rules within the Random Forest model. Hence, this method is well suited for cases with high correlation among model features.
 
 For detailed documentation and usage examples, please visit the `Read the Docs documentation <https://forest-guided-clustering.readthedocs.io/>`_. 
@@ -34,12 +36,21 @@ Installation
 
 **Requirements:**
 
-- 3.8 <= Python < 3.11 
-- :code:`pandas`, :code:`numpy`, :code:`tqdm`, :code:`numba`, :code:`numexpr`
-- :code:`scikit-learn`, :code:`scipy`, :code:`statsmodels`, :code:`kmedoids`
-- :code:`matplotlib`, :code:`seaborn`
+This packages was tested for :code:`Python 3.7 - 3.11` on ubuntu, macos and windows. It depends on the :code:`kmedoids` python package. If you are using windows or macos, you may need to first install Rust/Cargo with:
 
-All required packages are automatically installed if installation is done via :code:`pip`.
+.. code:: bash 
+
+   conda install -c conda-forge rust
+   
+If this does not work, please try to install Cargo from source:
+
+.. code:: bash
+
+   git clone https://github.com/rust-lang/cargo
+   cd cargo
+   cargo build --release
+
+All other required packages are automatically installed if installation is done via :code:`pip`.
 
 **Install Options:**
 
@@ -48,21 +59,14 @@ PyPI install:
 .. code:: bash
 
     pip install fgclustering
-
-
-*Note:* This package depends on :code:`kmedoids` package. If you are using Windows or OSX, you may need to first install Cargo with:
-
-.. code:: bash 
-   
-   curl https://sh.rustup.rs -sSf | sh
-
-If this does not work, please try to install Cargo from source:
+    
+Installation from source:
 
 .. code:: bash
 
-   git clone https://github.com/rust-lang/cargo
-   cd cargo
-   cargo build --release
+   git clone https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering.git
+   cd fg-clustering
+   pip install . 
 
 
 For further information, please visit `this page <https://pypi.org/project/kmedoids/>`_.
