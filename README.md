@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/docs/source/FGC_Logo.png" width="200">
+<img src="https://raw.githubusercontent.com/HelmholtzAI-Consultants-Munich/fg-clustering/main/docs/source/FGC_Logo.png" width="200">
 	
 
 # Forest-Guided Clustering - Explainability for Random Forest Models
