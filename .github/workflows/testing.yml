@@ -38,18 +38,11 @@ jobs:
         
     - name: Setup Conda for Windows
       if: matrix.os == 'windows-latest'
-      run: |
-        echo '::set-env name=CONDA_EXEC::C:\Miniconda\condabin\conda.bat'n
-        #echo C:\Miniconda\condabin\conda.bat >> $GITHUB_PATH
-      shell: bash
-        
-    #- name: Setup Conda for Windows
-      #if: matrix.os == 'windows-latest'
-      #uses: s-weigand/setup-conda@v1
-      #with:
-        #update-conda: true
-        #python-version: ${{ matrix.python-version }}
-        #conda-channels: anaconda, conda-forge
+      uses: s-weigand/setup-conda@v1
+      with:
+        update-conda: true
+        python-version: ${{ matrix.python-version }}
+        conda-channels: anaconda, conda-forge
         
     - name: check python and conda version
       run: |
