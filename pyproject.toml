@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["fgclustering"]
+
+[project]
+name = "fgclustering2"
+dynamic = ["version"]
+authors = [
+  {name="Lisa Barros de Andrade e Sousa", email="lisa.barros.andrade.sousa@gmail.com"},
+  {name="Helena Pelin", email="helena.pelin@helmholtz-muenchen.de"},
+  {name="Dominik Thalmeier"},
+  {name="Marie Piraud", email="marie.piraud@helmholtz-muenchen.de"},
+]
+maintainers = [
+  {name="Lisa Barros de Andrade e Sousa", email="lisa.barros.andrade.sousa@gmail.com"},
+  {name="Helena Pelin", email="helena.pelin@helmholtz-muenchen.de"},
+]
+description = "Forest-Guided Clustering - Explainability method for Random Forest models."
+keywords = ["random forest", "xai", "explainable ai"]
+readme = "README.md"
+requires-python = ">=3.7, <3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = ["pandas","numpy","matplotlib","seaborn>=0.12","scikit-learn","kmedoids","scipy","tqdm","statsmodels>=0.13.5","numexpr>=2.8.4","numba"]
+
+[project.optional-dependencies]
+dev = ["Sphinx>=4.2.0","pytest"]
+
+
+
+[project.urls]
+documentation = "https://forest-guided-clustering.readthedocs.io/en/latest/"
+repository = "https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering"
