@@ -7,7 +7,8 @@ packages = ["fgclustering"]
 
 [project]
 name = "fgclustering2"
-dynamic = ["version"]
+#dynamic = ["version"]
+version = "0.0.4"
 authors = [
   {name="Lisa Barros de Andrade e Sousa", email="lisa.barros.andrade.sousa@gmail.com"},
   {name="Helena Pelin", email="helena.pelin@helmholtz-muenchen.de"},
