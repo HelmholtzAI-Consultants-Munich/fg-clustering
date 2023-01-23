@@ -1,3 +1,5 @@
+name: test_release
+
 on:
   release:
     types: [created]
@@ -13,9 +15,9 @@ jobs:
     steps:
       - name: Checkout Repository 
         uses: actions/checkout@v3
-      #- name: Upload to PyPI
-      #  env:
-      #    TWINE_USERNAME: __token__
-      #    TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-      #  run: | 
-      #    twine upload --repository-url=https://test.pypi.org/legacy/ dist/*
+      - name: Upload to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TEST_FGC }}
+        run: | 
+          twine upload --repository-url=https://test.pypi.org/legacy/ dist/*
