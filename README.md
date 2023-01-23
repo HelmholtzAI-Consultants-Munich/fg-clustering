@@ -81,20 +81,20 @@ git clone https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering.git
 To get explainability of your Random Forest model via Forest-Guided Clustering, you simply need to run the following commands:
 
 ```python
-   from fgclustering import FgClustering
+from fgclustering import FgClustering
    
-   # initialize and run fgclustering object
-   fgc = FgClustering(model=rf, data=data, target_column='target')
-   fgc.run()
+# initialize and run fgclustering object
+fgc = FgClustering(model=rf, data=data, target_column='target')
+fgc.run()
    
-   # visualize results
-   fgc.plot_global_feature_importance()
-   fgc.plot_local_feature_importance()
-   fgc.plot_decision_paths()
+# visualize results
+fgc.plot_global_feature_importance()
+fgc.plot_local_feature_importance()
+fgc.plot_decision_paths()
    
-   # obtain optimal number of clusters and vector that contains the cluster label of each data point
-   optimal_number_of_clusters = fgc.k
-   cluster_labels = fgc.cluster_labels
+# obtain optimal number of clusters and vector that contains the cluster label of each data point
+optimal_number_of_clusters = fgc.k
+cluster_labels = fgc.cluster_labels
 ```
 
 where 
@@ -129,17 +129,17 @@ Contributions are more than welcome! Everything from code to notebooks to exampl
 If Forest-Guided Clustering is useful for your research, consider citing the package:
 
 ```
-   @software{lisa_sousa_2022_6445529,
-     author       = {Lisa Barros de Andrade e Sousa,
+@software{lisa_sousa_2022_6445529,
+    author       = {Lisa Barros de Andrade e Sousa,
                      Helena Pelin,
                      Dominik Thalmeier,
                      Marie Piraud},
-     title        = {{Forest-Guided Clustering - Explainability for Random Forest Models}},
-     month        = april,
-     year         = 2022,
-     publisher    = {Zenodo},
-     version      = {v0.2.0},
-     doi          = {10.5281/zenodo.7085465},
-     url          = {https://doi.org/10.5281/zenodo.7085465}
-   }
+    title        = {{Forest-Guided Clustering - Explainability for Random Forest Models}},
+    month        = april,
+    year         = 2022,
+    publisher    = {Zenodo},
+    version      = {v0.2.0},
+    doi          = {10.5281/zenodo.7085465},
+    url          = {https://doi.org/10.5281/zenodo.7085465}
+}
 ```
