@@ -10,6 +10,7 @@ on:
       - main
       - dev
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   build:
