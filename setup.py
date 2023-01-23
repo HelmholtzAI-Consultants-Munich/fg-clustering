@@ -10,5 +10,5 @@ setup(
     packages=setuptools.find_packages(),
     install_requires=['pandas','numpy','matplotlib','seaborn>=0.12','scikit-learn','kmedoids','scipy','tqdm', 'statsmodels>=0.13.5','Sphinx>=4.2.0', 'numexpr>=2.8.4', 'numba'],
     python_requires='<3.11.0',
-    long_description=open('README.rst').read(),
+    long_description=open('README.md').read(),
 )
