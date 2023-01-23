@@ -39,9 +39,8 @@ jobs:
     - name: Setup Conda for Windows
       if: matrix.os == 'windows-latest'
       run: |
-        #$CONDA is an environment variable pointing to the root of the miniconda directory
-        echo ::add-path::$CONDA/condabin
-        #echo C:\Miniconda\condabin >> $GITHUB_PATH
+        #echo '::set-env name=CONDA_EXEC::C:\Miniconda\condabin\conda.bat'n
+        echo C:\Miniconda\condabin\conda.bat >> $GITHUB_PATH
         
     #- name: Setup Conda for Windows
       #if: matrix.os == 'windows-latest'
