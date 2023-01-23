@@ -39,8 +39,9 @@ jobs:
     - name: Setup Conda for Windows
       if: matrix.os == 'windows-latest'
       run: |
-        #echo '::set-env name=CONDA_EXEC::C:\Miniconda\condabin\conda.bat'n
-        echo C:\Miniconda\condabin\conda.bat >> $GITHUB_PATH
+        echo '::set-env name=CONDA_EXEC::C:\Miniconda\condabin\conda.bat'n
+        #echo C:\Miniconda\condabin\conda.bat >> $GITHUB_PATH
+      shell: bash
         
     #- name: Setup Conda for Windows
       #if: matrix.os == 'windows-latest'
