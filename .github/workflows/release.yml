@@ -23,19 +23,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install build
+          pip install twine
       - name: Build package
         run: python -m build
       - name: Upload to PyPI
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository_url: "https://test.pypi.org/legacy/"
-          password: ${{ secrets.PYPI_TEST_FGC }}
-      #- name: Upload to PyPI
-      #  env:
-      #    TWINE_USERNAME: __token__
-      #    TWINE_PASSWORD: ${{ secrets.PYPI_TEST_FGC }}
-      #  run: | 
-      #    python -m pip install --upgrade pip
-      #    pip install twine
-      #    twine upload --repository-url=https://test.pypi.org/legacy/ dist/*
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TEST_FGC }}
+        run: | 
+          twine upload --repository-url=https://test.pypi.org/legacy/ dist/*
