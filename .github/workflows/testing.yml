@@ -19,7 +19,7 @@ jobs:
       max-parallel: 12
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.7", "3.8", "3.9", "3.10"] #, "3.11"
         
     steps:
     - name: Checkout Repository 
@@ -36,19 +36,19 @@ jobs:
         #$CONDA is an environment variable pointing to the root of the miniconda directory
         echo $CONDA/bin >> $GITHUB_PATH
         
-    #- name: Setup Conda for Windows
-    #  if: matrix.os == 'windows-latest'
-    #  run: |
-    #    #$CONDA is an environment variable pointing to the root of the miniconda directory
-    #    echo C:\Miniconda\condabin >> $GITHUB_PATH
-        
     - name: Setup Conda for Windows
       if: matrix.os == 'windows-latest'
-      uses: s-weigand/setup-conda@v1
-      with:
-        update-conda: true
-        python-version: ${{ matrix.python-version }}
-        conda-channels: anaconda, conda-forge
+      run: |
+        #echo '::set-env name=CONDA_EXEC::C:\Miniconda\condabin\conda.bat'n
+        echo C:\Miniconda\condabin\conda.bat >> $GITHUB_PATH
+        
+    #- name: Setup Conda for Windows
+      #if: matrix.os == 'windows-latest'
+      #uses: s-weigand/setup-conda@v1
+      #with:
+        #update-conda: true
+        #python-version: ${{ matrix.python-version }}
+        #conda-channels: anaconda, conda-forge
         
     - name: check python and conda version
       run: |
