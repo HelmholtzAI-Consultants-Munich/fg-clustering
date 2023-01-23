@@ -1,0 +1,20 @@
+on:
+  release:
+    types: [created]
+   workflow_dispatch:
+    
+jobs:
+  testing:
+    uses: ./.github/workflows/testing.yml
+  publish:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository 
+        uses: actions/checkout@v3
+      #- name: Upload to PyPI
+      #  env:
+      #    TWINE_USERNAME: __token__
+      #    TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+      #  run: | 
+      #    twine upload --repository-url=https://test.pypi.org/legacy/ dist/*
