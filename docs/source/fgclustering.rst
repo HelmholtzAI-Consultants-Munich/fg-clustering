@@ -1,6 +1,9 @@
 fgclustering package
 ====================
 
+Submodules
+----------
+
 fgclustering.forest\_guided\_clustering module
 ----------------------------------------------
 
@@ -13,6 +16,14 @@ fgclustering.optimizer module
 -----------------------------
 
 .. automodule:: fgclustering.optimizer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+fgclustering.plotting module
+----------------------------
+
+.. automodule:: fgclustering.plotting
    :members:
    :undoc-members:
    :show-inheritance:
