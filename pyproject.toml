@@ -1,13 +1,9 @@
 [build-system]
-requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2", "setuptools-git-versioning<2"]
 build-backend = "setuptools.build_meta"
-
-
 
 [tool.setuptools]
 packages = ["fgclustering"]
-
-
 
 [project]
 name = "fgclustering2"
@@ -34,8 +30,11 @@ classifiers = [
 ]
 dependencies = ["pandas","numpy","matplotlib","seaborn>=0.12","scikit-learn","kmedoids","scipy","tqdm","statsmodels>=0.13.5","numexpr>=2.8.4","numba"]
 
-[tool.setuptools_scm]
-write_to = "fgclustering/_version.py"
+[tool.setuptools-git-versioning]
+enabled = true
+
+#[tool.setuptools_scm]
+#write_to = "fgclustering/_version.py"
 
 [project.urls]
 documentation = "https://forest-guided-clustering.readthedocs.io/en/latest/"
