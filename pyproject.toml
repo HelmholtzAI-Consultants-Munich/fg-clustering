@@ -35,7 +35,7 @@ dependencies = ["pandas","numpy","matplotlib","seaborn>=0.12","scikit-learn","km
 
 [tool.setuptools-git-versioning]
 enabled = true
-version_callback = "fgclustering.version:get_version"
+version_callback = "fgclustering:get_version"
 
 #[tool.setuptools_scm]
 #write_to = "fgclustering/_version.py"
