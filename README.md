@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/HelmholtzAI-Consultants-Munich/fg-clustering/main/docs/source/FGC_Logo.png" width="200">
+<img src="https://raw.githubusercontent.com/HelmholtzAI-Consultants-Munich/fg-clustering/main/docs/source/_figures/FGC_Logo.png" width="200">
 	
 
 # Forest-Guided Clustering - Explainability for Random Forest Models
@@ -15,8 +15,8 @@
 	
 [Docs] | [Tutorials]
 
-[Docs]: https://quicksetup-ai.readthedocs.io/
-[Tutorials]: https://oligo-designer-toolsuite.readthedocs.io/en/latest/tutorial.html
+[Docs]: https://forest-guided-clustering.readthedocs.io/en/latest/
+[Tutorials]: https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/tree/main/tutorials
 
 </div>
 
@@ -75,8 +75,7 @@ git clone https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering.git
 		pip install -e . [dev]
 
 
-
-## Getting Started
+## Basic Usage
 
 To get explainability of your Random Forest model via Forest-Guided Clustering, you simply need to run the following commands:
 
@@ -103,7 +102,7 @@ where
 - ```data=data``` is a dataset containing the same features as required by the Random Forest model, and
 - ```target_column='target'``` is the name of the target column (i.e. *target*) in the provided dataset. 
 
-For a detailed tutorial see the IPython Notebook ```tutorials/tutorial.ipynb```.
+For a detailed tutorial see the IPython Notebook ```tutorials/introduction_to_FGC.ipynb```.
 
 **Usage on big datasets**
 
@@ -113,7 +112,7 @@ If you are working with the dataset containing large number of samples, you can 
 - Use the faster implementation of the pam method that K-Medoids algorithm uses to find the clusters by setting the parameter  ```method_clustering``` to *fasterpam* in the ```run()``` function.
 - Use subsampling technique
 
-For a detailed tutorial on the usage on big datasets, please see the Section Special Case 3 in the  ```tutorial.ipynb```.
+For a detailed tutorial on the usage on big datasets, please see the Section Special Case 3 in the  ```tutorials/big_data_with_FGC.ipynb```.
 
 ## License
 
