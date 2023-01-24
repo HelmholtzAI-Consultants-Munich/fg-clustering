@@ -10,7 +10,7 @@ This python package is about explainability of Random Forest models. Standard ex
 are not suited in the presence of correlated features. The Forest-Guided Clustering algorithm does not assume independence of model features, because it computes the feature 
 importance based on subgroups of instances that follow similar decision rules within the Random Forest model. Hence, this method is well suited for cases with high correlation among model features. 
 
-For a short video introduction to the Forest-Guided Clustering Algorithm, please have a look at the video below.
+For a short video introduction to the Forest-Guided Clustering approach, please have a look at the video below.
 
 .. vimeo:: 746443233?h=07ddf2290b
 
