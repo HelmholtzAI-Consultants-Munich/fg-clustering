@@ -112,7 +112,7 @@ If you are working with the dataset containing large number of samples, you can 
 - Use the faster implementation of the pam method that K-Medoids algorithm uses to find the clusters by setting the parameter  ```method_clustering``` to *fasterpam* in the ```run()``` function.
 - Use subsampling technique
 
-For a detailed tutorial on the usage on big datasets, please see the Section Special Case 3 in the [FGC for Big Datasets](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/big_data_with_FGC.ipynb).
+For a detailed tutorial on the usage on big datasets, please see the IPython Notebook [FGC for Big Datasets](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/big_data_with_FGC.ipynb).
 
 ## License
 
