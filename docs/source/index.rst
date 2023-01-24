@@ -8,7 +8,8 @@ Welcome to *Forest-Guided Clustering*'s documentation
 
 This python package is about explainability of Random Forest models. Standard explainability methods (e.g. feature importance) assume independence of model features and hence, 
 are not suited in the presence of correlated features. The Forest-Guided Clustering algorithm does not assume independence of model features, because it computes the feature 
-importance based on subgroups of instances that follow similar decision rules within the Random Forest model. Hence, this method is well suited for cases with high correlation among model features.
+importance based on subgroups of instances that follow similar decision rules within the Random Forest model. Hence, this method is well suited for cases with high correlation among model features. 
+To showcase the advantages of FGC over Feature Importance we applied both methods to the Palmers Pinguins dataset and compared results in this notebook.
 
 **Citation:** If Forest-Guided Clustering is useful for your research, consider citing the package via `DOI: 10.5281/zenodo.7085465 <https://zenodo.org/badge/latestdoi/397931780>`_.
 
@@ -35,6 +36,7 @@ importance based on subgroups of instances that follow similar decision rules wi
    :caption: TUTORIALS
 
    _tutorials/introduction_to_FGC
+   _tutorials/comparing_FGC_to_feature_importance
    _tutorials/inference_with_FGC
    _tutorials/impact_of_model_complexity_on_FGC
    _tutorials/big_data_with_FGC
