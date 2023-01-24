@@ -104,7 +104,7 @@ where
 - ```data=data``` is a dataset containing the same features as required by the Random Forest model, and
 - ```target_column='target'``` is the name of the target column (i.e. *target*) in the provided dataset. 
 
-For a detailed tutorial see the IPython Notebook [Introduction to FGC](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/introduction_to_FGC.ipynb).
+For a detailed tutorial, please have a look at the Notebook [Introduction to FGC](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/introduction_to_FGC.ipynb).
 
 **Usage on big datasets**
 
@@ -114,7 +114,7 @@ If you are working with the dataset containing large number of samples, you can 
 - Use the faster implementation of the pam method that K-Medoids algorithm uses to find the clusters by setting the parameter  ```method_clustering``` to *fasterpam* in the ```run()``` function.
 - Use subsampling technique
 
-For a detailed tutorial on the usage on big datasets, please see the IPython Notebook [FGC for Big Datasets](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/big_data_with_FGC.ipynb).
+For a detailed tutorial on the usage on big datasets, please have a look att the Notebook [FGC for Big Datasets](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/big_data_with_FGC.ipynb).
 
 ## License
 
