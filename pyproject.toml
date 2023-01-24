@@ -11,8 +11,8 @@ packages = ["fgclustering"]
 
 [project]
 name = "fgclustering2"
-#dynamic = ["version"]
-version = "0.0.5"
+dynamic = ["version"]
+#version = "0.0.5"
 authors = [
   {name="Lisa Barros de Andrade e Sousa", email="lisa.barros.andrade.sousa@gmail.com"},
   {name="Helena Pelin", email="helena.pelin@helmholtz-muenchen.de"},
@@ -34,7 +34,8 @@ classifiers = [
 ]
 dependencies = ["pandas","numpy","matplotlib","seaborn>=0.12","scikit-learn","kmedoids","scipy","tqdm","statsmodels>=0.13.5","numexpr>=2.8.4","numba"]
 
-
+[tool.setuptools_scm]
+write_to = "fgclustering/_version.py"
 
 [project.urls]
 documentation = "https://forest-guided-clustering.readthedocs.io/en/latest/"
