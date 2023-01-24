@@ -169,7 +169,7 @@ def calculate_global_feature_importance(X, y, cluster_labels, model_type):
     '''Calculate global feature importance for each feature. 
     The higher the importance for a feature, the lower the p-value obtained by 
     an ANOVA (continuous feature) or chi-square (categorical feature) test.
-     Returned as p-value, hence importance is 1-p-value.
+    Returned as p-value, hence importance is 1-p-value.
 
     :param X: Feature matrix.
     :type X: pandas.DataFrame
