@@ -30,8 +30,11 @@ classifiers = [
 ]
 dependencies = ["pandas","numpy","matplotlib","seaborn>=0.12","scikit-learn","kmedoids","scipy","tqdm","statsmodels>=0.13.5","numexpr>=2.8.4","numba"]
 
-[tool.setuptools-git-versioning]
-enabled = true
+[tool.setuptools.dynamic]
+version = {attr = "fgclustering.VERSION"}
+
+#[tool.setuptools-git-versioning]
+#enabled = true
 
 #[tool.setuptools_scm]
 #write_to = "fgclustering/_version.py"
