@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2", "setuptools-git-versioning<2"]
-build-backend = "setuptools.build_meta"
+build-backend = "setuptools.build_meta:__legacy__"
 
 [tool.setuptools]
 packages = ["fgclustering"]
@@ -30,11 +30,12 @@ classifiers = [
 ]
 dependencies = ["pandas","numpy","matplotlib","seaborn>=0.12","scikit-learn","kmedoids","scipy","tqdm","statsmodels>=0.13.5","numexpr>=2.8.4","numba"]
 
-[tool.setuptools.dynamic]
-version = {attr = "fgclustering.VERSION"}
+#[tool.setuptools.dynamic]
+#version = {attr = "fgclustering.VERSION"}
 
-#[tool.setuptools-git-versioning]
-#enabled = true
+[tool.setuptools-git-versioning]
+enabled = true
+version_callback = "mypkg.version:get_version"
 
 #[tool.setuptools_scm]
 #write_to = "fgclustering/_version.py"
