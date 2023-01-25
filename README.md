@@ -33,7 +33,7 @@ Please see [here](https://forest-guided-clustering.readthedocs.io/) for full doc
 
 For a short introduction to Forest-Guided Clustering, click below:
 
-<iframe width="560" height="315" src="https://vimeo.com/746443233/07ddf2290b" frameborder="0" allowfullscreen></iframe>
+[![Video](http://img.youtube.com/vi/Bdx7DuAMB6o/hqdefault.jpg)](https://vimeo.com/746443233/07ddf2290b)
 
 
 ## Installation
