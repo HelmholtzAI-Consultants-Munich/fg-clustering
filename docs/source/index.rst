@@ -6,17 +6,18 @@
 Welcome to *Forest-Guided Clustering*'s documentation
 =========================================================================
 
-This python package is about explainability of Random Forest models. Standard explainability methods (e.g. feature importance) assume independence of model features and hence, 
-are not suited in the presence of correlated features. The Forest-Guided Clustering algorithm does not assume independence of model features, because it computes the feature 
-importance based on subgroups of instances that follow similar decision rules within the Random Forest model. Hence, this method is well suited for cases with high correlation among model features. 
+Forest-Guided Clustering (FGC) is an explainability method for Random Forest models. 
+Standard explainability methods (e.g. feature importance) assume independence of model features and hence, 
+are not suited in the presence of correlated features. The Forest-Guided Clustering algorithm does not assume independence of model features, 
+because it computes the feature importance based on subgroups of instances that follow similar decision rules within the Random Forest model. 
+Hence, this method is well suited for cases with high correlation among model features.  
 
-For a short video introduction to the Forest-Guided Clustering approach, please have a look at the video below.
+For a short introduction to Forest-Guided Clustering, click below:
 
 .. vimeo:: 746443233?h=07ddf2290b
 
-To showcase the advantages of FGC over Feature Importance we applied both methods to the Palmers Pinguins dataset and compared results in this Notebook :doc:`../_tutorials/comparing_FGC_to_feature_importance`.
+For a detailed comparison of FGC and Permutation Feature Importance, have alook at this :doc:`../_tutorials/comparing_FGC_to_feature_importance`.
 
-**Citation:** If Forest-Guided Clustering is useful for your research, consider citing the package via `DOI: 10.5281/zenodo.7085465 <https://zenodo.org/badge/latestdoi/397931780>`_.
 
 
 .. toctree::
@@ -49,18 +50,42 @@ To showcase the advantages of FGC over Feature Importance we applied both method
 
 .. toctree::
    :maxdepth: 2
-   :caption: API Documentation:
+   :caption: API DOCUMENTATION:
 
    fgclustering.rst
 
-
-License
---------
-
-The fgclustering package is MIT licensed.
 
 Contributing
 -------------
 
 Contributions are more than welcome! Everything from code to notebooks to examples and documentation are all equally valuable so please don't feel you can't contribute. 
 To contribute please fork the project make your changes and submit a pull request. We will do our best to work through any issues with you and get your code merged into the main branch.
+
+
+How to cite
+-------------
+
+If Forest-Guided Clustering is useful for your research, consider citing the package:
+
+::
+
+   @software{lisa_sousa_2022_6445529,
+      author       = {Lisa Barros de Andrade e Sousa,
+                        Helena Pelin,
+                        Dominik Thalmeier,
+                        Marie Piraud},
+      title        = {{Forest-Guided Clustering - Explainability for Random Forest Models}},
+      month        = april,
+      year         = 2022,
+      publisher    = {Zenodo},
+      version      = {v0.2.0},
+      doi          = {10.5281/zenodo.7085465},
+      url          = {https://doi.org/10.5281/zenodo.7085465}
+   }
+
+
+License
+--------
+
+``fgclustering`` is released under the MIT license. See `LICENSE <https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/LICENSE>`_ for additional details about it.
+

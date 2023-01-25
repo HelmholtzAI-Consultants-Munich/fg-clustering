@@ -5,13 +5,11 @@
 
 # Forest-Guided Clustering - Explainability for Random Forest Models
 
-
-![stability-stable](https://img.shields.io/badge/stability-stable-green.svg)
-[![stars](https://img.shields.io/github/stars/HelmholtzAI-Consultants-Munich/forest_guided_clustering?logo=GitHub&color=yellow)](https://github.com/HelmholtzAI-Consultants-Munich/forest_guided_clustering/stargazers)
+[![test](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/test.yml/badge.svg)](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/test.yml)
 [![PyPI](https://img.shields.io/pypi/v/fgclustering.svg)](https://pypi.org/project/fgclustering)
-[![testing](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/testing.yml/badge.svg)](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/testing.yml)
-[![docs](https://readthedocs.org/projects/forest-guided-clustering/badge/?version=latest)](https://forest-guided-clustering.readthedocs.io)
+[![stars](https://img.shields.io/github/stars/HelmholtzAI-Consultants-Munich/forest_guided_clustering?logo=GitHub&color=yellow)](https://github.com/HelmholtzAI-Consultants-Munich/forest_guided_clustering/stargazers)
 [![cite](https://zenodo.org/badge/397931780.svg)](https://zenodo.org/badge/latestdoi/397931780)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 	
 [Docs] | [Tutorials]
 
@@ -20,11 +18,22 @@
 
 </div>
 
-This python package is about explainability of Random Forest models. Standard explainability methods (e.g. feature importance) assume independence of model features and hence, are not suited in the presence of correlated features. The Forest-Guided Clustering algorithm does not assume independence of model features, because it computes the feature importance based on subgroups of instances that follow similar decision rules within the Random Forest model. Hence, this method is well suited for cases with high correlation among model features. 
+Forest-Guided Clustering (FGC) is an explainability method for Random Forest models. Standard explainability methods (e.g. feature importance) assume independence of model features and hence, are not suited in the presence of correlated features. The Forest-Guided Clustering algorithm does not assume independence of model features, because it computes the feature importance based on subgroups of instances that follow similar decision rules within the Random Forest model. Hence, this method is well suited for cases with high correlation among model features. 
 
-To showcase the advantages of FGC over Feature Importance we applied both methods to the Palmers Pinguins dataset and compared results in this [Notebook](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/comparing_FGC_to_feature_importance.ipynb).
+For a detailed comparison of FGC and Permutation Feature Importance, have alook at this [Notebook](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/comparing_FGC_to_feature_importance.ipynb).
 
-For detailed documentation and usage examples, please visit the [Read the Docs documentation](https://forest-guided-clustering.readthedocs.io/).
+## Documentation
+
+Please see [here](https://forest-guided-clustering.readthedocs.io/) for full documentation on:
+
+- Getting started (installation, basic usage)
+- Theoretical Background (introduction, general algorith, feature importance)
+- Tutorials (general application, special use cases)
+- API documentation
+
+For a short introduction to Forest-Guided Clustering, click below:
+
+<iframe width="560" height="315" src="https://vimeo.com/746443233/07ddf2290b" frameborder="0" allowfullscreen></iframe>
 
 
 ## Installation
@@ -116,11 +125,6 @@ If you are working with the dataset containing large number of samples, you can 
 
 For a detailed tutorial on the usage on big datasets, please have a look att the Notebook [FGC for Big Datasets](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/big_data_with_FGC.ipynb).
 
-## License
-
-The fgclustering package is MIT licensed.
-
-
 ## Contributing
  
 Contributions are more than welcome! Everything from code to notebooks to examples and documentation are all equally valuable so please don't feel you can't contribute. To contribute please fork the project make your changes and submit a pull request. We will do our best to work through any issues with you and get your code merged into the main branch.
@@ -144,3 +148,8 @@ If Forest-Guided Clustering is useful for your research, consider citing the pac
     url          = {https://doi.org/10.5281/zenodo.7085465}
 }
 ```
+
+## License
+
+```fgclustering``` is released under the MIT license. See [LICENSE](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/LICENSE) for additional details about it.
+
