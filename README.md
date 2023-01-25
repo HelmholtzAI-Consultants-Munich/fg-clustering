@@ -20,7 +20,7 @@
 
 Forest-Guided Clustering (FGC) is an explainability method for Random Forest models. Standard explainability methods (e.g. feature importance) assume independence of model features and hence, are not suited in the presence of correlated features. The Forest-Guided Clustering algorithm does not assume independence of model features, because it computes the feature importance based on subgroups of instances that follow similar decision rules within the Random Forest model. Hence, this method is well suited for cases with high correlation among model features. 
 
-For a detailed comparison of FGC and Permutation Feature Importance, have alook at this [Notebook](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/introduction_to_FGC_comparing_FGC_to_FI.ipynb).
+For a detailed comparison of FGC and Permutation Feature Importance, please have a look at the Notebook [Introduction to FGC: Comparison of Forest-Guided Clustering and Feature Importance](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/introduction_to_FGC_comparing_FGC_to_FI.ipynb).
 
 ## Documentation
 
