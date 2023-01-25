@@ -8,8 +8,8 @@
 [![test](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/test.yml/badge.svg)](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/test.yml)
 [![PyPI](https://img.shields.io/pypi/v/fgclustering.svg)](https://pypi.org/project/fgclustering)
 [![stars](https://img.shields.io/github/stars/HelmholtzAI-Consultants-Munich/forest_guided_clustering?logo=GitHub&color=yellow)](https://github.com/HelmholtzAI-Consultants-Munich/forest_guided_clustering/stargazers)
-[![cite](https://zenodo.org/badge/397931780.svg)](https://zenodo.org/badge/latestdoi/397931780)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![cite](https://zenodo.org/badge/397931780.svg)](https://zenodo.org/badge/latestdoi/397931780)
 	
 [Docs] | [Tutorials]
 
