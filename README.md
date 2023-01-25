@@ -26,9 +26,9 @@ For a detailed comparison of FGC and Permutation Feature Importance, have alook 
 
 Please see [here](https://forest-guided-clustering.readthedocs.io/) for full documentation on:
 
-- Getting started (installation, basic usage)
+- Getting Started (installation, basic usage)
 - Theoretical Background (introduction, general algorith, feature importance)
-- Tutorials (general application, special use cases)
+- Tutorials (simple use cases, special cases)
 - API documentation
 
 For a short introduction to Forest-Guided Clustering, click below:
@@ -116,7 +116,7 @@ where
 - ```data=data``` is a dataset containing the same features as required by the Random Forest model, and
 - ```target_column='target'``` is the name of the target column (i.e. *target*) in the provided dataset. 
 
-For a detailed tutorial, please have a look at the Notebook [Introduction to FGC](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/introduction_to_FGC_use_cases.ipynb).
+For detailed instructions, please have a look at the Notebook [Introduction to FGC: Simple Use Cases](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/introduction_to_FGC_use_cases.ipynb).
 
 **Usage on big datasets**
 
@@ -126,7 +126,7 @@ If you are working with the dataset containing large number of samples, you can 
 - Use the faster implementation of the pam method that K-Medoids algorithm uses to find the clusters by setting the parameter  ```method_clustering``` to *fasterpam* in the ```run()``` function.
 - Use subsampling technique
 
-For a detailed tutorial on the usage on big datasets, please have a look att the Notebook [FGC for Big Datasets](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/special_case_big_data_with_FGC.ipynb).
+For detailed instructions, please have a look at the Notebook [Special Case: FGC for Big Datasets](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/special_case_big_data_with_FGC.ipynb).
 
 ## Contributing
  

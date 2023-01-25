@@ -16,7 +16,7 @@ For a short introduction to Forest-Guided Clustering, click below:
 
 .. vimeo:: 746443233?h=07ddf2290b
 
-For a detailed comparison of FGC and Permutation Feature Importance, have alook at this :doc:`../_tutorials/introduction_to_FGC_comparing_FGC_to_FI`.
+For a detailed comparison of FGC and Permutation Feature Importance, have a look at this Notebook :doc:`../_tutorials/introduction_to_FGC_comparing_FGC_to_FI`.
 
 
 
@@ -41,11 +41,11 @@ For a detailed comparison of FGC and Permutation Feature Importance, have alook 
    :maxdepth: 1
    :caption: TUTORIALS
 
-   _tutorials/introduction_to_FGC
-   _tutorials/comparing_FGC_to_feature_importance
-   _tutorials/inference_with_FGC
-   _tutorials/impact_of_model_complexity_on_FGC
-   _tutorials/big_data_with_FGC
+   _tutorials/introduction_to_FGC_use_cases
+   _tutorials/introduction_to_FGC_comparing_FGC_to_FI
+   _tutorials/special_case_inference_with_FGC
+   _tutorials/special_case_impact_of_model_complexity_on_FGC
+   _tutorials/special_case_big_data_with_FGC
 
 
 .. toctree::
