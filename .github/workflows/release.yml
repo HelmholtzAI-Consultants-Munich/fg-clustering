@@ -1,4 +1,4 @@
-name: testing_releasing
+name: release
 
 on:
   release:
