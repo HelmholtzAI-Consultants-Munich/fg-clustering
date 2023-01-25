@@ -33,13 +33,13 @@ dependencies = ["pandas","numpy","matplotlib","seaborn>=0.12","scikit-learn","km
 #[tool.setuptools.dynamic]
 #version = {attr = "fgclustering.VERSION"}
 
-[tool.setuptools-git-versioning]
-enabled = true
+#[tool.setuptools-git-versioning]
+#enabled = true
 #count_commits_from_version_file = true
 #version_callback = "fgclustering:get_version"
 
-#[tool.setuptools_scm]
-#write_to = "fgclustering/_version.py"
+[tool.setuptools_scm]
+write_to = "fgclustering/_version.py"
 
 [project.urls]
 documentation = "https://forest-guided-clustering.readthedocs.io/en/latest/"
