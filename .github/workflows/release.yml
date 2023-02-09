@@ -12,6 +12,8 @@ jobs:
 #     needs: testing
     name: Publish to PyPI
     runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 6
     steps:
       - name: Checkout Repository 
         uses: actions/checkout@v3
@@ -29,6 +31,6 @@ jobs:
       - name: Upload to PyPI
         env:
           TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_TEST_FGC }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_TEST_API_TOKEN }}
         run: | 
           twine upload --repository-url=https://test.pypi.org/legacy/ dist/*
