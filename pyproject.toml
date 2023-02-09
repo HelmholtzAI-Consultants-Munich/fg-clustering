@@ -9,7 +9,7 @@ write_to = "fgclustering/_version.py"
 packages = ["fgclustering"]
 
 [project]
-name = "fgclustering2"
+name = "fgclustering"
 dynamic = ["version"]
 authors = [
   {name="Lisa Barros de Andrade e Sousa", email="lisa.barros.andrade.sousa@gmail.com"},
