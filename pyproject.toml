@@ -1,12 +1,14 @@
 [build-system]
 requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools_scm]
-write_to = "fgclustering/_version.py"
 
 [tool.setuptools]
 packages = ["fgclustering"]
+
+[tool.setuptools.dynamic]
+readme = {file = "README.md"}
+
+[tool.setuptools_scm]
+write_to = "fgclustering/_version.py"
 
 [project]
 name = "fgclustering"
@@ -30,7 +32,23 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = ["pandas","numpy","matplotlib","seaborn>=0.12","scikit-learn","kmedoids","scipy","tqdm","statsmodels>=0.13.5","numexpr>=2.8.4","numba"]
+dependencies = ["pandas",
+                "numpy",
+                "matplotlib",
+                "seaborn>=0.12",
+                "scikit-learn",
+                "kmedoids",
+                "scipy",
+                "tqdm",
+                "statsmodels>=0.13.5",
+                "numexpr>=2.8.4",
+                "numba"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+]
 
 [project.urls]
 documentation = "https://forest-guided-clustering.readthedocs.io/en/latest/"
