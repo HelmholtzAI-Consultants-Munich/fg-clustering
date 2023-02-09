@@ -23,7 +23,7 @@ To get explainability of your Random Forest model via Forest-Guided Clustering, 
 
 where 
 
-- ``model=rf`` is a Random Forest Classifier or Regressor object,
+- ``model=rf`` is a trained Random Forest Classifier or Regressor object,
 - ``data=data`` is a dataset containing the same features as required by the Random Forest model, and
 - ``target_column='target'`` is the name of the target column (i.e. *target*) in the provided dataset. 
 
