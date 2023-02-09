@@ -5,10 +5,20 @@ on:
     branches:
       - main
       - dev
+    paths-ignore:
+      - 'README.md'
+      - 'pyproject.toml'
+      - 'docs/**'
+      - 'tutorials/**'   
   pull_request:
     branches:
       - main
       - dev
+    paths-ignore:
+      - 'README.md'
+      - 'pyproject.toml'
+      - 'docs/**'
+      - 'tutorials/**'
   workflow_dispatch:
   workflow_call:
 
