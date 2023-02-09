@@ -156,3 +156,4 @@ If Forest-Guided Clustering is useful for your research, consider citing the pac
 
 ```fgclustering``` is released under the MIT license. See [LICENSE](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/LICENSE) for additional details about it.
 
+## Test - to be deleted
