@@ -7,7 +7,7 @@ on:
     
 jobs:
   testing:
-    uses: ./.github/workflows/testing.yml
+    uses: ./.github/workflows/test.yml
   publish:
     needs: testing
     name: Publish to PyPI
