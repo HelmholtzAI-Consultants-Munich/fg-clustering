@@ -32,8 +32,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = ["warnings",
-                "pandas",
+dependencies = ["pandas",
                 "numpy",
                 "matplotlib",
                 "seaborn>=0.12",
