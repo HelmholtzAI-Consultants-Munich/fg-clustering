@@ -10,7 +10,7 @@ on:
       - 'pyproject.toml'
       - 'docs/**'
       - 'tutorials/**'
-      - '.github/workflows/'
+      - '.github/workflows/**'
   pull_request:
     branches:
       - main
@@ -20,7 +20,7 @@ on:
       - 'pyproject.toml'
       - 'docs/**'
       - 'tutorials/**'
-      - '.github/workflows/'
+      - '.github/workflows/**'
   workflow_dispatch:
   workflow_call:
 
