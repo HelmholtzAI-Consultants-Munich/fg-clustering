@@ -37,7 +37,7 @@ For a detailed comparison of FGC and Permutation Feature Importance, have a look
    _theoretical_background/feature_importance.rst
 
 
-.. toctree::
+.. nbgallery::
    :maxdepth: 1
    :caption: TUTORIALS
 
