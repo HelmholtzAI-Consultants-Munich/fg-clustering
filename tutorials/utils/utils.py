@@ -58,7 +58,7 @@ def plot_correlation_matrix(data):
     mask = np.triu(np.ones_like(corr, dtype=bool))
     np.fill_diagonal(mask, False)
     sns.heatmap(
-        corr,
+        round(corr, 2),
         mask=mask,
         cmap=sns.diverging_palette(220, 10, as_cmap=True),
         square=True,
