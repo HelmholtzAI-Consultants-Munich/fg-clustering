@@ -9,7 +9,8 @@ on:
       - 'README.md'
       - 'pyproject.toml'
       - 'docs/**'
-      - 'tutorials/**'   
+      - 'tutorials/**'
+      - '.github/workflows/**'
   pull_request:
     branches:
       - main
@@ -19,6 +20,7 @@ on:
       - 'pyproject.toml'
       - 'docs/**'
       - 'tutorials/**'
+      - '.github/workflows/**'
   workflow_dispatch:
   workflow_call:
 
