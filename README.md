@@ -137,7 +137,7 @@ Contributions are more than welcome! Everything from code to notebooks to exampl
 If Forest-Guided Clustering is useful for your research, consider citing the package:
 
 ```
-@software{lisa_sousa_2022_6445529,
+@software{lisa_sousa_2022_7823042,
     author       = {Lisa Barros de Andrade e Sousa,
                      Helena Pelin,
                      Dominik Thalmeier,
@@ -146,9 +146,9 @@ If Forest-Guided Clustering is useful for your research, consider citing the pac
     month        = april,
     year         = 2022,
     publisher    = {Zenodo},
-    version      = {v0.2.0},
-    doi          = {10.5281/zenodo.7085465},
-    url          = {https://doi.org/10.5281/zenodo.7085465}
+    version      = {v1.0.3},
+    doi          = {10.5281/zenodo.7823042},
+    url          = {https://doi.org/10.5281/zenodo.7823042}
 }
 ```
 
