@@ -3,7 +3,7 @@
 <img src="https://raw.githubusercontent.com/HelmholtzAI-Consultants-Munich/fg-clustering/main/docs/source/_figures/FGC_Logo.png" width="200">
 	
 
-# Forest-Guided Clustering - Explainability for Random Forest Models
+# *Forest-Guided Clustering* - Shedding light into the Random Forest Black Box 
 
 [![test](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/test.yml/badge.svg)](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/test.yml)
 [![PyPI](https://img.shields.io/pypi/v/fgclustering.svg)](https://pypi.org/project/fgclustering)
