@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to *Forest-Guided Clustering*'s documentation
-=========================================================================
+*Forest-Guided Clustering* - Shedding light into the Random Forest Black Box 
+==============================================================================
 
 Forest-Guided Clustering (FGC) is an explainability method for Random Forest models. 
 Standard explainability methods (e.g. feature importance) assume independence of model features and hence, 
@@ -69,21 +69,20 @@ If Forest-Guided Clustering is useful for your research, consider citing the pac
 
 ::
 
-   @software{lisa_sousa_2022_6445529,
-      author       = {Lisa Barros de Andrade e Sousa,
+   @software{lisa_sousa_2022_7823042,
+       author       = {Lisa Barros de Andrade e Sousa,
                         Helena Pelin,
                         Dominik Thalmeier,
                         Marie Piraud},
-      title        = {{Forest-Guided Clustering - Explainability for Random Forest Models}},
-      month        = april,
-      year         = 2022,
-      publisher    = {Zenodo},
-      version      = {v0.2.0},
-      doi          = {10.5281/zenodo.7085465},
-      url          = {https://doi.org/10.5281/zenodo.7085465}
+       title        = {{Forest-Guided Clustering - Explainability for Random Forest Models}},
+       month        = april,
+       year         = 2022,
+       publisher    = {Zenodo},
+       version      = {v1.0.3},
+       doi          = {10.5281/zenodo.7823042},
+       url          = {https://doi.org/10.5281/zenodo.7823042}
    }
-
-
+ 
 License
 --------
 
