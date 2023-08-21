@@ -17,7 +17,7 @@ are square distances in a euclidean space and can therefore be used as distance 
 
 Optimize number of clusters
 -----------------------------
-Having a distance matrix :math:`M^{distance}_{ij}` we can use  `k-medoids clustering <https://en.wikipedia.org/wiki/K-medoids>` 
+Having a distance matrix :math:`M^{distance}_{ij}` we can use  `k-medoids clustering <https://en.wikipedia.org/wiki/K-medoids>`_ 
 to find subgroups for which the data points follow similar decision paths in the RF model. We use k-medoids, as, in contrast to k-means, 
 it does not require an embedding of the data points in a metric space but can be applied directly to a distance matrix.
 
