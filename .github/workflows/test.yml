@@ -32,7 +32,7 @@ jobs:
       max-parallel: 12
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
         
     steps:
     - name: Checkout Repository 
@@ -48,8 +48,7 @@ jobs:
       run: |
         #$CONDA is an environment variable pointing to the root of the miniconda directory
         echo $CONDA/bin >> $GITHUB_PATH
-        conda install python=${{ matrix.python-version }}
-        
+
     - name: Setup Conda for Windows
       if: matrix.os == 'windows-latest'
       uses: s-weigand/setup-conda@v1
@@ -57,10 +56,17 @@ jobs:
         update-conda: true
         python-version: ${{ matrix.python-version }}
         conda-channels: anaconda, conda-forge
-        
+
+    - name: Update conda and add channels
+      run: |
+        conda config --add channels conda-forge
+        conda update conda
+        conda update --all
+
     - name: check python and conda version
       run: |
         conda --version
+        conda config --show channels
         which python
         python --version
     
@@ -68,7 +74,6 @@ jobs:
       run: |
         conda install -c conda-forge rust
         python -m pip install --upgrade pip
-        python --version
         pip install pytest
         pip install -e .
     
