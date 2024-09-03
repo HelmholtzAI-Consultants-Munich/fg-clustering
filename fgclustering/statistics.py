@@ -91,7 +91,7 @@ def _anova_test(list_of_df):
     return anova.pvalue
 
 
-def _chisquare_test(df, list_of_df):
+def _chisquare_test(data_feature, list_of_df):
     """Perform chi square test on categorical features.
 
     :param df: Dataframe with feature and cluster.
@@ -102,21 +102,21 @@ def _chisquare_test(df, list_of_df):
     :return: P-value of chi square test.
     :rtype: float
     """
-    cat_vals = df.feature.unique()
-    count_global = np.array([(df.feature == cat_val).sum() for cat_val in cat_vals])
-    count_global = count_global / count_global.sum()
+    cat_vals, counts_global = np.unique(data_feature, return_counts=True)
+    count_global = counts_global / counts_global.sum()
 
-    p_values = []
-    for df_ in list_of_df:
-        counts_clusters = np.array([(df_ == cat_val).sum() for cat_val in cat_vals])
-        number_datapoints_in_cluster = counts_clusters.sum()
-        p_values.append(chisquare(counts_clusters, f_exp=count_global * number_datapoints_in_cluster).pvalue)
+    p_values = [
+        chisquare(
+            np.array([(df_ == cat_val).sum() for cat_val in cat_vals]), f_exp=count_global * len(df_)
+        ).pvalue
+        for df_ in list_of_df
+    ]
 
-    _, p_values = multitest.fdrcorrection(p_values)
-    return min(p_values)
+    _, p_values_corrected = multitest.fdrcorrection(p_values)
+    return min(p_values_corrected)
 
 
-def _rank_features(X, y, p_value_of_features):
+def _rank_features(data_clustering, p_value_of_features):
     """Rank features by lowest p-value.
 
     :param X: Feature matrix.
@@ -128,16 +128,16 @@ def _rank_features(X, y, p_value_of_features):
     :return: Ranked feature matrix.
     :rtype: pandas.DataFrame
     """
-    data_clustering_ranked = X.copy()
-    data_clustering_ranked["target"] = y
-    p_value_of_features["target"] = -1
-    p_value_of_features["cluster"] = -1
+    # Convert p-value dictionary to a DataFrame and sort by p-value
+    p_value_of_features_ranked = pd.DataFrame(p_value_of_features, index=["p_value"]).sort_values(
+        by="p_value", axis=1
+    )
 
-    # sort features by p-value
-    features_sorted = [k for k, v in sorted(p_value_of_features.items(), key=lambda item: item[1])]
-    data_clustering_ranked = data_clustering_ranked.reindex(features_sorted, axis=1)
+    # Reorder columns based on sorted p-values
+    sorted_features = ["cluster", "target"] + p_value_of_features_ranked.columns.tolist()
+    data_clustering_ranked = data_clustering[sorted_features]
 
-    return data_clustering_ranked
+    return data_clustering_ranked, p_value_of_features_ranked
 
 
 def _sort_clusters_by_target(data_clustering_ranked, model_type):
@@ -151,26 +151,24 @@ def _sort_clusters_by_target(data_clustering_ranked, model_type):
     :rtype: pandas.DataFrame
     """
     # When using a classifier, the target value is label encoded, such that we can sort the clusters by target values
+    original_target = data_clustering_ranked["target"].copy()
+
     if model_type == "classifier":
-        data_clustering_ranked["target_encoded"] = (
-            data_clustering_ranked["target"].astype("category").cat.codes
-        )
-    else:
-        data_clustering_ranked["target_encoded"] = data_clustering_ranked["target"]
+        data_clustering_ranked["target"] = data_clustering_ranked["target"].astype("category").cat.codes
 
     # Compute mean target values for each cluster and sort by mean values
-    cluster_means = data_clustering_ranked.groupby(["cluster"])[["cluster", "target_encoded"]].mean()
-    cluster_means = cluster_means.sort_values(by="target_encoded").index
+    cluster_means = data_clustering_ranked.groupby(["cluster"])[["cluster", "target"]].mean()
+    cluster_means = cluster_means.sort_values(by="target").index
 
-    # Map the sorted clusters to a new order and replace clusters with the new mapping
-    mapping = {cluster: i for i, cluster in enumerate(cluster_means)}
-    data_clustering_ranked["cluster"] = data_clustering_ranked["cluster"].map(mapping) + 1
+    # Map the sorted clusters to a new order,  replace clusters with the new mapping and ensure the 'cluster' column is a categorical type with ordered levels
+    mapping = {cluster: i + 1 for i, cluster in enumerate(cluster_means)}
+    data_clustering_ranked["cluster"] = pd.Categorical(
+        data_clustering_ranked["cluster"].map(mapping), ordered=True
+    )
 
-    # Ensure the 'cluster' column is a categorical type with ordered levels
-    data_clustering_ranked["cluster"] = pd.Categorical(data_clustering_ranked["cluster"], ordered=True)
+    # Restore the original target values
+    data_clustering_ranked["target"] = original_target
 
-    # Remove encoded values
-    data_clustering_ranked.drop(["target_encoded"], axis=1, inplace=True)
     return data_clustering_ranked
 
 
@@ -192,32 +190,34 @@ def calculate_global_feature_importance(X, y, cluster_labels, model_type):
         and dictionary with computed p-values of all features.
     :rtype: pandas.DataFrame and dict
     """
-    X = X.copy()
-    X["cluster"] = cluster_labels
-    p_value_of_features = dict()
+    data_clustering = pd.concat([X, y.rename("target"), pd.Series(cluster_labels, name="cluster")], axis=1)
+    p_value_of_features = {}
 
     # statistical test for each feature
-    for feature in X.columns:
-        assert isinstance(X[feature].dtype, pd.CategoricalDtype) or pd.api.types.is_numeric_dtype(
-            X[feature]
-        ), f"Feature {feature} has to be of type category of numeric!"
+    for feature in data_clustering.columns:
+        if feature not in ["cluster", "target"]:
+            data_feature = data_clustering[feature]
 
-        df = pd.DataFrame({"cluster": X["cluster"], "feature": X[feature]})
-        list_of_df = [df.feature[df.cluster == cluster] for cluster in set(df.cluster)]
+            list_of_df = [
+                data_feature[data_clustering["cluster"] == cluster]
+                for cluster in data_clustering["cluster"].unique()
+            ]
 
-        if isinstance(X[feature].dtype, pd.CategoricalDtype):
-            chisquare_p_value = _chisquare_test(df, list_of_df)
-            p_value_of_features[feature] = chisquare_p_value
+            # Perform statistical test based on feature type
+            if isinstance(data_feature.dtype, pd.CategoricalDtype):
+                p_value_of_features[feature] = _chisquare_test(data_feature, list_of_df)
+            elif pd.api.types.is_numeric_dtype(data_feature):
+                p_value_of_features[feature] = _anova_test(list_of_df)
+            else:
+                raise ValueError(
+                    f"Feature {feature} has dytpye {data_feature.dtype} but has to be of type category or numeric!"
+                )
 
-        else:
-            anova_p_value = _anova_test(list_of_df)
-            p_value_of_features[feature] = anova_p_value
-
-    data_clustering_ranked = _rank_features(X, y, p_value_of_features)
+    data_clustering_ranked, p_value_of_features_ranked = _rank_features(data_clustering, p_value_of_features)
     data_clustering_ranked = _sort_clusters_by_target(data_clustering_ranked, model_type)
     data_clustering_ranked.sort_values(by=["cluster", "target"], axis=0, inplace=True)
 
-    return data_clustering_ranked, p_value_of_features
+    return data_clustering_ranked, p_value_of_features_ranked
 
 
 def _calculate_p_value_categorical(X_feature_cluster, X_feature, cluster, cluster_size, bootstraps):
@@ -310,12 +310,6 @@ def calculate_local_feature_importance(data_clustering_ranked, bootstraps_p_valu
     p_value_of_features_per_cluster = pd.DataFrame(columns=clusters.unique(), index=features)
 
     for feature in data_clustering_ranked.columns:
-        assert isinstance(
-            data_clustering_ranked[feature].dtype, pd.CategoricalDtype
-        ) or pd.api.types.is_numeric_dtype(
-            data_clustering_ranked[feature]
-        ), f"Feature {feature} has dytpye {data_clustering_ranked[feature].dtype} but has to be of type category or numeric!"
-
         if isinstance(data_clustering_ranked[feature].dtype, pd.CategoricalDtype):
             for cluster in clusters.unique():
                 X_feature_cluster = data_clustering_ranked.loc[clusters == cluster, feature]
@@ -328,7 +322,7 @@ def calculate_local_feature_importance(data_clustering_ranked, bootstraps_p_valu
                     bootstraps_p_value,
                 )
 
-        else:
+        elif pd.api.types.is_numeric_dtype(data_clustering_ranked[feature]):
             for cluster in clusters.unique():
                 X_feature_cluster = data_clustering_ranked.loc[clusters == cluster, feature]
                 X_feature = data_clustering_ranked[feature]
@@ -338,5 +332,10 @@ def calculate_local_feature_importance(data_clustering_ranked, bootstraps_p_valu
                     clusters_size.loc[cluster],
                     bootstraps_p_value,
                 )
+
+        else:
+            raise ValueError(
+                f"Feature {feature} has dytpye {data_clustering_ranked[feature].dtype} but has to be of type category or numeric!"
+            )
 
     return p_value_of_features_per_cluster
