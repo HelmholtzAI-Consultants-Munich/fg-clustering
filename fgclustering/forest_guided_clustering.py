@@ -2,6 +2,7 @@
 # imports
 ############################################
 
+import pandas as pd
 import kmedoids
 import fgclustering.utils as utils
 import fgclustering.optimizer as optimizer
@@ -16,35 +17,37 @@ import warnings
 
 
 class FgClustering:
-    """Forest-Guided Clustering.
+    """
+    Forest-Guided Clustering.
 
-    Computes a feature importance based on subgroups of instances that follow similar decision
-    rules within the Random Forest model.
+    Computes feature importance based on subgroups of instances that follow similar decision
+    rules within a Random Forest model. This class is designed to handle both regression and
+    classification problems using a trained Random Forest model.
 
-    :param model: Trained Random Forest model.
-    :type model: sklearn.ensemble
-    :param data: Input data with feature matrix.
-        If target_column is a string it has to be a column in the data.
+    :param model: Trained Random Forest model, which must be an instance of
+                  `sklearn.ensemble.RandomForestRegressor` or
+                  `sklearn.ensemble.RandomForestClassifier`.
+    :type model: sklearn.ensemble.RandomForestRegressor or sklearn.ensemble.RandomForestClassifier
+    :param data: Input data containing the feature matrix. If `target_column` is a string,
+                 it should be a column name in the `data` DataFrame.
     :type data: pandas.DataFrame
-    :param target_column: Name of target column or target values as numpy array.
-    :type target_column: str or numpy.ndarray
-    :param random_state: seed for random number generator, defaults to 42
+    :param target_column: Name of the target column as a string, or target values as a numpy array or pd.Series.
+                          If provided as a string, it must correspond to a column in the `data` DataFrame.
+    :type target_column: str or numpy.ndarray or pd.Series
+    :param random_state: Seed for the random number generator, used for reproducibility. Defaults to 42.
     :type random_state: int, optional
-    :raises ValueError: error raised if Random Forest model is not a
-        sklearn.ensemble.RandomForestClassifier or sklearn.ensemble.RandomForestRegressor object
+    :raises ValueError: Raised if `model` is not an instance of `sklearn.ensemble.RandomForestRegressor`
+                        or `sklearn.ensemble.RandomForestClassifier`.
     """
 
     def __init__(self, model, data, target_column, random_state=42):
         self.random_state = random_state
 
         # check if random forest is regressor or classifier
-        is_regressor = "RandomForestRegressor" in str(type(model))
-        is_classifier = "RandomForestClassifier" in str(type(model))
-
-        if is_regressor is True:
+        if "RandomForestRegressor" in str(type(model)):
             self.model_type = "regression"
             print("Interpreting RandomForestRegressor")
-        elif is_classifier is True:
+        elif "RandomForestClassifier" in str(type(model)):
             self.model_type = "classifier"
             print("Interpreting RandomForestClassifier")
         else:
@@ -56,8 +59,11 @@ class FgClustering:
             self.y = data.loc[:, target_column]
             self.X = data.drop(columns=[target_column])
         else:
-            self.y = target_column
+            self.y = pd.Series(target_column)
             self.X = data
+
+        self.y.reset_index(inplace=True, drop=True)
+        self.X.reset_index(inplace=True, drop=True)
 
         self.proximity_matrix = utils.proximityMatrix(model, self.X)
         self.distance_matrix = 1 - self.proximity_matrix
@@ -103,21 +109,56 @@ class FgClustering:
         :param verbose: print the output of fgc cluster optimization process (the Jaccard index and score for each cluster number); defaults to 1 (printing). Set to 0 for no outputs.
         :type verbose: {0,1}, optional
         """
+        """
+        Runs the forest-guided clustering model to compute the optimal number of clusters using k-medoids clustering,
+        based on the distance matrix derived from the Random Forest proximity matrix. The method can either optimize 
+        the number of clusters or use a specified number.
 
+        :param number_of_clusters: Number of clusters for the k-medoids clustering. If `None`, the number of clusters 
+                                    will be optimized based on the distance matrix, defaults to None.
+        :type number_of_clusters: int, optional
+        :param max_K: Maximum number of clusters to consider when computing cluster scores. Used if `number_of_clusters` 
+                    is not provided. Defaults to 8.
+        :type max_K: int, optional
+        :param method_clustering: Clustering algorithm to use. Options include 'fasterpam', 'fastpam1', 'pam', 'alternate', 
+                                'fastermsc', 'fastmsc', 'pamsil', and 'pammedsil'. Defaults to 'pam'. Use 'fasterpam' 
+                                for larger datasets. Refer to the k-medoids documentation for more details.
+        :type method_clustering: {'fasterpam', 'fastpam1', 'pam', 'alternate', 'fastermsc', 'fastmsc', 'pamsil', 
+                                'pammedsil'}, optional
+        :param init_clustering: Method for initializing medoids. Options include 'random', 'first', and 'build'. Defaults 
+                                to 'random'. See the k-medoids documentation for more information.
+        :type init_clustering: {'random', 'first', 'build'}, optional
+        :param max_iter_clustering: Maximum number of iterations for the k-medoids algorithm, defaults to 100.
+        :type max_iter_clustering: int, optional
+        :param discart_value_JI: Minimum Jaccard Index value for determining cluster stability. Clusters with Jaccard 
+                                Index below this value are discarded, defaults to 0.6.
+        :type discart_value_JI: float, optional
+        :param bootstraps_JI: Number of bootstrap iterations to compute the Jaccard Index, defaults to 100.
+        :type bootstraps_JI: int, optional
+        :param bootstraps_p_value: Number of bootstrap iterations to compute the p-value for feature importance, defaults 
+                                    to 100.
+        :type bootstraps_p_value: int, optional
+        :param n_jobs: Number of parallel jobs to run when computing the Jaccard Index bootstraps. Defaults to 1, meaning 
+                    no parallel computation.
+        :type n_jobs: int, optional
+        :param verbose: Verbosity level for output. If set to 1, prints the optimization process including Jaccard Index 
+                        and scores for each number of clusters. If set to 0, no output is printed. Defaults to 1.
+        :type verbose: {0, 1}, optional
+        """
         if number_of_clusters is None:
             self.k = optimizer.optimizeK(
-                self.distance_matrix,
-                self.y.to_numpy(),
-                self.model_type,
-                max_K,
-                method_clustering,
-                init_clustering,
-                max_iter_clustering,
-                discart_value_JI,
-                bootstraps_JI,
-                self.random_state,
-                n_jobs,
-                verbose,
+                distance_matrix=self.distance_matrix,
+                y=self.y.to_numpy(),
+                model_type=self.model_type,
+                max_K=max_K,
+                method_clustering=method_clustering,
+                init_clustering=init_clustering,
+                max_iter_clustering=max_iter_clustering,
+                discart_value_JI=discart_value_JI,
+                bootstraps_JI=bootstraps_JI,
+                random_state=self.random_state,
+                n_jobs=n_jobs,
+                verbose=verbose,
             )
 
             if self.k == 1:
@@ -143,106 +184,150 @@ class FgClustering:
             .labels_
         )
 
-        (
-            self._data_clustering_ranked,
-            self.p_value_of_features,
-        ) = stats.calculate_global_feature_importance(
-            self.X, self.y, self.cluster_labels, self.model_type
-        )
-        self._p_value_of_features_per_cluster = (
-            stats.calculate_local_feature_importance(
-                self._data_clustering_ranked, bootstraps_p_value
+        self.data_clustering_ranked, self.p_value_of_features_ranked = (
+            stats.calculate_global_feature_importance(
+                X=self.X, y=self.y, cluster_labels=self.cluster_labels, model_type=self.model_type
             )
+        )
+
+        self.p_value_of_features_per_cluster = stats.calculate_local_feature_importance(
+            data_clustering_ranked=self.data_clustering_ranked, bootstraps_p_value=bootstraps_p_value
         )
 
     def calculate_statistics(self, data, target_column, bootstraps_p_value=100):
-        """Recalculates p-values for each feature (over all clusters and per cluster) based on the new feature matrix. This impacts all plotting functions.
-        Note: the new feature matrix must have the same number of samples and the same ordering of samples as the original feature matrix.
+        """
+        Recalculates p-values for each feature based on the new feature matrix, affecting all related plotting functions.
+        The new feature matrix must have the same number of samples and the same ordering of samples as the original matrix.
 
-        :param X: Feature Matrix.
-        :type X: pandas.DataFrame
-        :param bootstraps_p_value: Number of bootstraps to compute the p-value of feature importance, defaults to 100
+        :param data: Input data containing the new feature matrix. If `target_column` is a string,
+                     it should be a column name in the `data` DataFrame.
+        :type data: pandas.DataFrame
+        :param target_column: Name of the target column as a string, or target values as a numpy array or pd.Series.
+                              If provided as a string, it must correspond to a column in the `data` DataFrame.
+        :type target_column: str or numpy.ndarray or pd.Series
+        :param bootstraps_p_value: Number of bootstraps to use for calculating the p-value of feature importance. Defaults
+                                    to 100.
         :type bootstraps_p_value: int, optional
         """
         if type(target_column) == str:
+            y = data.loc[:, target_column]
             X = data.drop(columns=[target_column])
         else:
+            y = pd.Series(target_column)
             X = data
-        (
-            self._data_clustering_ranked,
-            self.p_value_of_features,
-        ) = stats.calculate_global_feature_importance(
-            X, self.y, self.cluster_labels, self.model_type
-        )
-        self._p_value_of_features_per_cluster = (
-            stats.calculate_local_feature_importance(
-                self._data_clustering_ranked, bootstraps_p_value
+
+        y.reset_index(inplace=True, drop=True)
+        X.reset_index(inplace=True, drop=True)
+
+        self.data_clustering_ranked, self.p_value_of_features_ranked = (
+            stats.calculate_global_feature_importance(
+                X=X, y=y, cluster_labels=self.cluster_labels, model_type=self.model_type
             )
         )
+        self.p_value_of_features_per_cluster = stats.calculate_local_feature_importance(
+            data_clustering_ranked=self.data_clustering_ranked, bootstraps_p_value=bootstraps_p_value
+        )
 
-    def plot_global_feature_importance(self, save=None):
-        """Plot global feature importance based on p-values given as input, the p-values are computed using an Anova (for continuous
-        variable) or a Chi-Square (for categorical variables) test. The features importance is defined by 1-p_value.
-
-        :param save: Filename to save plot.
-        :type save: str
-
+    def plot_global_feature_importance(self, thr_pvalue=1, top_n=None, save=None):
         """
-        plotting._plot_global_feature_importance(self.p_value_of_features, save)
+        Plots global feature importance based on p-values. The p-values are computed using ANOVA (for continuous variables)
+        or Chi-Square (for categorical variables) tests. Feature importance is defined as 1 minus the p-value.
 
-    def plot_local_feature_importance(self, thr_pvalue=1, num_cols=4, save=None):
-        """Plot local feature importance to show the importance of each feature for each cluster,
-        measured by variance and impurity of the feature within the cluster, i.e. the higher
-        the feature importance, the lower the feature variance / impurity within the cluster.
-
-        :param thr_pvalue: P-value threshold for feature filtering, defaults to 1
+        :param thr_pvalue: Threshold p-value for filtering features. Features with p-values below this threshold are considered
+                        significant for plotting. Defaults to 1 (no filtering).
         :type thr_pvalue: float, optional
-        :param save: Filename to save plot, if None the figure is not saved, defaults to None
+        :param top_n: Number of top features to display in the plot. If None, all significant features are displayed. Defaults
+                    to None.
+        :type top_n: int, optional
+        :param save: Filename to save the plot. If None, the plot is not saved. Defaults to None.
         :type save: str, optional
-        :param num_cols: Number of plots in one row, defaults to 4.
-        :type num_cols: int, optional
         """
-        # drop feature with insignificant global feature p-values
-        p_value_of_features_per_cluster = self._p_value_of_features_per_cluster.copy()
-        for row in p_value_of_features_per_cluster.index:
-            if self.p_value_of_features[row] > thr_pvalue:
-                p_value_of_features_per_cluster.drop(row, axis=0, inplace=True)
+        # drop insignificant features
+        selected_features = self.p_value_of_features_ranked.loc["p_value"] < thr_pvalue
+        selected_features = self.p_value_of_features_ranked.columns[selected_features].tolist()
+
+        # select top n features for plotting
+        if top_n:
+            selected_features = selected_features[:top_n]
+
+        plotting._plot_global_feature_importance(
+            self.p_value_of_features_ranked[selected_features], top_n, save
+        )
+
+    def plot_local_feature_importance(self, thr_pvalue=1, top_n=None, num_cols=4, save=None):
+        """
+        Plot local feature importance to display the importance of each feature within each cluster.
+        Importance is measured by the variance and impurity of the feature within the cluster;
+        a higher feature importance indicates lower variance/impurity.
+
+        :param thr_pvalue: P-value threshold for filtering features. Only features with p-values below this threshold
+                        are considered significant and plotted. Defaults to 1 (no filtering).
+        :type thr_pvalue: float, optional
+        :param top_n: Number of top features to display in the plot. If None, all significant features are included.
+                    Defaults to None.
+        :type top_n: int, optional
+        :param num_cols: Number of plots per row in the output figure. Defaults to 4.
+        :type num_cols: int, optional
+        :param save: Filename to save the plot. If None, the plot will not be saved. Defaults to None.
+        :type save: str, optional
+        """
+        # drop insignificant features
+        selected_features = self.p_value_of_features_ranked.loc["p_value"] < thr_pvalue
+        selected_features = self.p_value_of_features_ranked.columns[selected_features].tolist()
+
+        # select top n features for plotting
+        if top_n:
+            selected_features = selected_features[:top_n]
 
         plotting._plot_local_feature_importance(
-            p_value_of_features_per_cluster, thr_pvalue, num_cols, save
+            self.p_value_of_features_per_cluster.loc[selected_features], thr_pvalue, top_n, num_cols, save
         )
 
     def plot_decision_paths(
-        self, distributions=True, heatmap=True, thr_pvalue=1, num_cols=6, save=None
+        self, distributions=True, heatmap=True, thr_pvalue=1, top_n=None, num_cols=6, save=None
     ):
-        """Plot decision paths of the Random Forest model.
-        If distributions = True, feature distributions per cluster are plotted as boxplots (for continuous features) or barplots (for categorical features).
-        If heatmap = True, feature values are plotted in a heatmap sorted by clusters.
-        For both plots, features are filtered and ranked by p-values of a statistical test (ANOVA for continuous features, chi-square for categorical features).
-
-        :param distributions: Plot feature distributions, defaults to True
-        :type distributions: boolean, optional
-        :param heatmap: Plot feature heatmap, defaults to True
-        :type heatmap: boolean, optional
-        :param thr_pvalue: P-value threshold for feature filtering, defaults to 1
-        :type thr_pvalue: float, optional
-        :param save: Filename to save plot, if None the figure is not saved, defaults to None
-        :type save: str, optional
-        :param num_cols: Number of plots in one row for the distributions plot, defaults to 6.
-        :type num_cols: int, optional
         """
-        # drop insignificant values
-        data_clustering_ranked = self._data_clustering_ranked.copy()
-        for column in data_clustering_ranked.columns:
-            if self.p_value_of_features[column] > thr_pvalue:
-                data_clustering_ranked.drop(column, axis=1, inplace=True)
+        Plot decision paths of the Random Forest model. This function generates visualizations
+        to help understand feature importance and distribution across clusters.
+
+        If `distributions` is `True`, it plots feature distributions per cluster using boxplots
+        for continuous features and barplots for categorical features.
+
+        If `heatmap` is `True`, it plots a heatmap of feature values sorted by clusters.
+
+        Both plots filter and rank features based on p-values obtained from statistical tests
+        (ANOVA for continuous features and chi-square for categorical features).
+        In addition, all features or only the `top_n`features can be plotted. If `top_n`is `None` all features are plotted.
+
+        :param distributions: Whether to plot feature distributions, defaults to `True`.
+        :type distributions: bool, optional
+        :param heatmap: Whether to plot the feature heatmap, defaults to `True`.
+        :type heatmap: bool, optional
+        :param thr_pvalue: P-value threshold for filtering features, defaults to `1`.
+        :type thr_pvalue: float, optional
+        :param top_n: Number of top features to retain after p-value ranking, defaults to `None` (no limit).
+        :type top_n: int, optional
+        :param num_cols: Number of plots per row in the distributions plot, defaults to `6`.
+        :type num_cols: int, optional
+        :param save: Filename to save the plot. If `None`, the figure is not saved, defaults to `None`.
+        :type save: str, optional
+        """
+        # drop insignificant features
+        selected_features = self.p_value_of_features_ranked.loc["p_value"] < thr_pvalue
+        selected_features = self.p_value_of_features_ranked.columns[selected_features].tolist()
+
+        # select top n features for plotting
+        if top_n:
+            selected_features = selected_features[:top_n]
+
+        selected_features = ["cluster", "target"] + selected_features
 
         if heatmap:
             plotting._plot_heatmap(
-                data_clustering_ranked, thr_pvalue, self.model_type, save
+                self.data_clustering_ranked[selected_features], thr_pvalue, top_n, self.model_type, save
             )
 
         if distributions:
             plotting._plot_distributions(
-                data_clustering_ranked, thr_pvalue, num_cols, save
+                self.data_clustering_ranked[selected_features], thr_pvalue, top_n, num_cols, save
             )
