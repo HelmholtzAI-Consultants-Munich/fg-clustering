@@ -17,7 +17,7 @@ import fgclustering.utils as utils
 ############################################
 
 
-def _plot_global_feature_importance(p_value_of_features, save):
+def _plot_global_feature_importance(p_value_of_features_ranked, top_n, save):
     """Plot global feature importance based on p-values given as input.
 
     :param p_value_of_features: dictionary where keys are names of features and values are p-values of these features
@@ -25,39 +25,31 @@ def _plot_global_feature_importance(p_value_of_features, save):
     :param save: Filename to save plot.
     :type save: str
     """
-    p_value_of_features = p_value_of_features.copy()
-    p_value_of_features.pop("target")
-    p_value_of_features.pop("cluster")
-    importance = pd.DataFrame(p_value_of_features, index=[0])
-    importance = pd.melt(importance)
-    importance.sort_values(by="value", ascending=True, inplace=True)
-    importance.value = 1 - importance.value
+    # Transform the DataFrame and calculate feature importance
+    importance = pd.melt(p_value_of_features_ranked, var_name="Feature", value_name="p_value")
+    importance["Importance"] = 1 - importance["p_value"]
+    importance.sort_values(by="Importance", ascending=False, inplace=True)
 
-    n_features = importance.shape[0]
-    figure_size = max(6.5, int(np.ceil(5 * n_features / 25)))
+    # Determine figure size dynamically based on the number of features
+    n_features = len(importance)
+    figure_height = max(6.5, int(np.ceil(5 * n_features / 25)))
 
+    # Plotting
+    plt.figure(figsize=(6.5, figure_height))
     sns.set_theme(style="whitegrid")
-    plt.figure(
-        figsize=(6.5, figure_size)
-    )  # keep width default, change height depending on the number of features
-    plot = sns.barplot(data=importance, x="value", y="variable", color="#3470a3")
-    plot.set_xlabel("importance")
-    plot.set_ylabel("feature")
-    plt.title("Global Feature Importance")
+    sns.barplot(data=importance, x="Importance", y="Feature", color="#3470a3")
+
+    plt.title(f"Global Feature Importance for {'top ' + str(top_n) if top_n else 'all'} features")
     plt.tight_layout()
 
-    if save is not None:
-        plt.savefig(
-            "{}_global_feature_importance.png".format(save),
-            bbox_inches="tight",
-            dpi=300,
-        )
+    # Save plot if a filename is provided
+    if save:
+        plt.savefig(f"{save}_global_feature_importance.png", bbox_inches="tight", dpi=300)
+
     plt.show()
 
 
-def _plot_local_feature_importance(
-    p_value_of_features_per_cluster, thr_pvalue, num_cols, save
-):
+def _plot_local_feature_importance(p_value_of_features_per_cluster, thr_pvalue, top_n, num_cols, save):
     """Plot local feature importance to show the importance of each feature for each cluster.
 
     :param p_value_of_features_per_cluster: p-value matrix of all features per cluster.
@@ -69,36 +61,43 @@ def _plot_local_feature_importance(
     :param save: Filename to save plot.
     :type save: str
     """
+
     importance = 1 - p_value_of_features_per_cluster
 
-    X_barplot = pd.melt(importance, ignore_index=False)
-    X_barplot = X_barplot.rename_axis("feature").reset_index(level=0, inplace=False)
-    X_barplot = X_barplot.sort_values("value", ascending=False)
+    # Reshape and sort the data
+    X_barplot = (
+        importance.melt(ignore_index=False, var_name="Cluster", value_name="Importance")
+        .rename_axis("Feature")
+        .reset_index(level=0, inplace=False)
+        .sort_values("Importance", ascending=False)
+    )
 
-    n_features = importance.shape[0]
-    figure_size = max(6.5, int(np.ceil(5 * n_features / 25)))
+    # Determine figure size based on the number of features and clusters
+    n_features = len(X_barplot["Feature"].unique())
+    figure_height = max(6.5, int(np.ceil(5 * n_features / 25)))
     num_cols = min(num_cols, len(importance.columns))
 
+    # Set up the Seaborn theme and create the FacetGrid
     sns.set_theme(style="whitegrid")
-    plot = sns.FacetGrid(
-        X_barplot, col="variable", sharey=False, col_wrap=num_cols, height=figure_size
-    )
-    plot.map(sns.barplot, "value", "feature", color="#3470a3")
-    plot.set_axis_labels("importance", "feature")
-    plot.set_titles(col_template="Cluster {col_name}")
-    plt.suptitle(
-        f"Local Feature Importance - Showing features with p-value < {thr_pvalue}"
-    )
-    plt.tight_layout()
+    g = sns.FacetGrid(X_barplot, col="Cluster", sharey=False, col_wrap=num_cols, height=figure_height)
+    g.map(sns.barplot, "Importance", "Feature", order=None, color="#3470a3")
 
-    if save is not None:
-        plt.savefig(
-            "{}_local_feature_importance.png".format(save), bbox_inches="tight", dpi=300
-        )
+    # Label the axes and set the plot titles
+    g.set_titles(col_template="Cluster {col_name}")
+    plt.suptitle(
+        f"Local Feature Importance - Showing {'top ' + str(top_n) if top_n else 'all'} features with p-value < {thr_pvalue}",
+        fontsize=14,
+    )
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+
+    # Save the plot if a save path is provided
+    if save:
+        plt.savefig(f"{save}_local_feature_importance.png", bbox_inches="tight", dpi=300)
+
     plt.show()
 
 
-def _plot_heatmap(data_clustering_ranked, thr_pvalue, model_type, save):
+def _plot_heatmap(data_clustering_ranked, thr_pvalue, top_n, model_type, save):
     """Plot feature heatmap sorted by clusters, where features are filtered and ranked
     with statistical tests (ANOVA for continuous featres, chi square for categorical features).
 
@@ -116,13 +115,8 @@ def _plot_heatmap(data_clustering_ranked, thr_pvalue, model_type, save):
 
     for feature in data_clustering_ranked.columns:
         if pd.api.types.is_string_dtype(data_clustering_ranked[feature]):
-            data_clustering_ranked[feature] = data_clustering_ranked[feature].astype(
-                "category"
-            )
-        if (
-            pd.api.types.is_categorical_dtype(data_clustering_ranked[feature])
-            and feature != "cluster"
-        ):
+            data_clustering_ranked[feature] = data_clustering_ranked[feature].astype("category")
+        if isinstance(data_clustering_ranked[feature].dtype, pd.CategoricalDtype) and feature != "cluster":
             data_clustering_ranked[feature] = data_clustering_ranked[feature].cat.codes
 
     data_scaled = utils.scale_minmax(data_clustering_ranked)
@@ -159,28 +153,24 @@ def _plot_heatmap(data_clustering_ranked, thr_pvalue, model_type, save):
     for feature in range(n_features):
         for sample in range(n_samples):
             if feature == 0:
-                heatmap_[feature, sample, :] = cmap_target(
-                    data_heatmap.iloc[sample, feature]
-                )
+                heatmap_[feature, sample, :] = cmap_target(data_heatmap.iloc[sample, feature])
             else:
-                heatmap_[feature, sample, :] = cmap_features(
-                    data_heatmap.iloc[sample, feature]
-                )
+                heatmap_[feature, sample, :] = cmap_features(data_heatmap.iloc[sample, feature])
 
     figure_size = max(6.5, int(np.ceil(5 * n_features / 25)))
 
     sns.set_theme(style="white")
-    fig = plt.figure(figsize=(figure_size, figure_size))
-    img = plt.imshow(heatmap_, interpolation="none", aspect="auto")
+    fig, ax = plt.subplots(figsize=(figure_size, figure_size))  # Create figure and axes
+    img = ax.imshow(heatmap_, interpolation="none", aspect="auto")  # Use the axes for plotting
 
     plt.suptitle(
-        f"Subgroups of instances that follow similar decision paths in the RF model \n Showing features with p-value < {thr_pvalue}"
+        f"Subgroups of instances that follow similar decision paths in the RF model \n Showing {'top ' + str(top_n) if top_n else 'all'} features with p-value < {thr_pvalue}"
     )
     plt.xticks([], [])
     plt.yticks(range(n_features), data_heatmap.columns)
 
     # remove bounding box
-    for spine in plt.gca().spines.values():
+    for spine in ax.spines.values():
         spine.set_visible(False)
 
     if model_type == "regression":
@@ -188,8 +178,8 @@ def _plot_heatmap(data_clustering_ranked, thr_pvalue, model_type, save):
             vmin=target_values_original.min(), vmax=target_values_original.max()
         )
         cbar_target = plt.colorbar(
-            matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap_target)
-        )
+            matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap_target), ax=ax
+        )  # Add ax argument
         cbar_target.set_label("target")
     else:
         legend_elements = [
@@ -198,11 +188,9 @@ def _plot_heatmap(data_clustering_ranked, thr_pvalue, model_type, save):
                 edgecolor=cmap_target(tv_n),
                 label=f"{tv_o}",
             )
-            for tv_n, tv_o in zip(
-                target_values_scaled.unique(), target_values_original.unique()
-            )
+            for tv_n, tv_o in zip(target_values_scaled.unique(), target_values_original.unique())
         ]
-        ll = plt.legend(
+        ll = ax.legend(
             handles=legend_elements,
             bbox_to_anchor=(0, 0),
             loc="upper left",
@@ -212,8 +200,8 @@ def _plot_heatmap(data_clustering_ranked, thr_pvalue, model_type, save):
 
     norm = matplotlib.colors.Normalize(vmin=0, vmax=1)
     cbar_features = plt.colorbar(
-        matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap_features)
-    )
+        matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap_features), ax=ax
+    )  # Add ax argument
     cbar_features.set_label("standardized feature values")
 
     if save is not None:
@@ -221,7 +209,7 @@ def _plot_heatmap(data_clustering_ranked, thr_pvalue, model_type, save):
     plt.show()
 
 
-def _plot_distributions(data_clustering_ranked, thr_pvalue, num_cols, save):
+def _plot_distributions(data_clustering_ranked, thr_pvalue, top_n, num_cols, save):
     """Plot feature boxplots (for continuous features) or barplots (for categorical features) divided by clusters,
     where features are filtered and ranked by p-value of a statistical test (ANOVA for continuous features,
     chi square for categorical features).
@@ -235,42 +223,31 @@ def _plot_distributions(data_clustering_ranked, thr_pvalue, num_cols, save):
     :param save: Filename to save plot.
     :type save: str
     """
-    data_clustering_ranked = data_clustering_ranked.copy()
+    features_to_plot = data_clustering_ranked.drop("cluster", axis=1, inplace=False).columns.to_list()
 
-    variables_to_plot = data_clustering_ranked.drop(
-        ["target", "cluster"], axis=1, inplace=False
-    ).columns.to_list()
-    variables_to_plot = [
-        "target"
-    ] + variables_to_plot  # adding target, to plot it first
+    num_rows = int(np.ceil(len(features_to_plot) / num_cols))
 
-    num_rows = int(np.ceil(len(variables_to_plot) / num_cols))
     plt.figure(figsize=(num_cols * 4.5, num_rows * 4.5))
-    plt.tight_layout()
     plt.subplots_adjust(top=0.95, hspace=0.8, wspace=0.8)
     plt.suptitle(
-        f"Distribution of feature values across subgroups - Showing features with p-value < {thr_pvalue}",
+        f"Distribution of feature values across subgroups - Showing {'top ' + str(top_n) if top_n else 'all'} features with p-value < {thr_pvalue}",
         fontsize=14,
     )
 
-    for n, feature in enumerate(variables_to_plot):
+    for n, feature in enumerate(features_to_plot):
         # add a new subplot iteratively
         ax = plt.subplot(num_rows, num_cols, n + 1)
-        if data_clustering_ranked[
-            feature
-        ].nunique() < 5 or pd.api.types.is_categorical_dtype(
-            data_clustering_ranked[feature]
+        if data_clustering_ranked[feature].nunique() < 5 or isinstance(
+            data_clustering_ranked[feature].dtype, pd.CategoricalDtype
         ):
             sns.countplot(
                 x="cluster",
                 hue=feature,
                 data=data_clustering_ranked,
                 ax=ax,
-                palette=sns.color_palette(
-                    "Blues_r", n_colors=len(np.unique(data_clustering_ranked[feature]))
-                ),
+                palette="Blues_r",
             )
-            ax.set_title("Feature: {}".format(feature))
+            ax.set_title(f"Feature: {feature}")
             ax.legend(bbox_to_anchor=(1, 1), loc=2)
         else:
             sns.boxplot(
@@ -280,8 +257,10 @@ def _plot_distributions(data_clustering_ranked, thr_pvalue, num_cols, save):
                 ax=ax,
                 color="#3470a3",
             )
-            ax.set_title("Feature: {}".format(feature))
+            ax.set_title(f"Feature: {feature}")
+
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
 
     if save is not None:
-        plt.savefig("{}_boxplots.png".format(save), bbox_inches="tight", dpi=300)
+        plt.savefig(f"{save}_boxplots.png", bbox_inches="tight", dpi=300)
     plt.show()
