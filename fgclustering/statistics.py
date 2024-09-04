@@ -6,8 +6,11 @@ import numpy as np
 import pandas as pd
 
 from bisect import bisect
-from scipy.stats import f_oneway, chisquare
-from statsmodels.stats import multitest
+from scipy.stats import f_oneway
+
+from statsmodels.stats.multitest import fdrcorrection
+from statsmodels.stats.oneway import anova_oneway
+from statsmodels.stats.proportion import proportions_chisquare
 from sklearn.utils import resample
 
 
@@ -91,7 +94,7 @@ def _anova_test(list_of_df):
     return anova.pvalue
 
 
-def _chisquare_test(data_feature, list_of_df):
+def _chisquare_test(list_of_df):
     """Perform chi square test on categorical features.
 
     :param df: Dataframe with feature and cluster.
@@ -102,21 +105,39 @@ def _chisquare_test(data_feature, list_of_df):
     :return: P-value of chi square test.
     :rtype: float
     """
-    cat_vals, counts_global = np.unique(data_feature, return_counts=True)
-    count_global = counts_global / counts_global.sum()
+    # Retrieve how many categories exist
+    cat_vals = list({value for df_ in list_of_df for value in df_})
 
-    p_values = [
-        chisquare(
-            np.array([(df_ == cat_val).sum() for cat_val in cat_vals]), f_exp=count_global * len(df_)
-        ).pvalue
-        for df_ in list_of_df
-    ]
+    # Observed counts for each cluster in each categories
+    # Example for three clusters and two categories
+    #            Cat 1, Cat 2
+    # np.array([[5, 60],   # Cluster 1
+    #           [20, 15],  # Cluster 2
+    #           [25, 25]]) # Cluster 3
+    # We add pseudocount 1 to avoid division by 0
+    counts_observed = np.array(
+        [
+            np.array([np.sum(np.array(cluster) == category) + 1 for category in cat_vals]).tolist()
+            for cluster in list_of_df
+        ]
+    )
 
-    _, p_values_corrected = multitest.fdrcorrection(p_values)
-    return min(p_values_corrected)
+    # Total counts across categories
+    counts_category_total = counts_observed.sum(axis=0)
+
+    # Expected counts under the null hypothesis of equal preferences across categories
+    # We add pseudocount 1 to avoid division by 0
+    counts_expected = (
+        np.outer(counts_observed.sum(axis=1), counts_category_total) / counts_category_total.sum() + 1
+    )
+
+    # Perform the chi-square test
+    _, p_value, _ = proportions_chisquare(counts_observed, counts_expected)
+
+    return p_value
 
 
-def _rank_features(data_clustering, p_value_of_features):
+def _rank_features(data_clustering, p_value_of_features_ranked):
     """Rank features by lowest p-value.
 
     :param X: Feature matrix.
@@ -128,16 +149,11 @@ def _rank_features(data_clustering, p_value_of_features):
     :return: Ranked feature matrix.
     :rtype: pandas.DataFrame
     """
-    # Convert p-value dictionary to a DataFrame and sort by p-value
-    p_value_of_features_ranked = pd.DataFrame(p_value_of_features, index=["p_value"]).sort_values(
-        by="p_value", axis=1
-    )
-
     # Reorder columns based on sorted p-values
     sorted_features = ["cluster", "target"] + p_value_of_features_ranked.columns.tolist()
     data_clustering_ranked = data_clustering[sorted_features]
 
-    return data_clustering_ranked, p_value_of_features_ranked
+    return data_clustering_ranked
 
 
 def _sort_clusters_by_target(data_clustering_ranked, model_type):
@@ -199,13 +215,13 @@ def calculate_global_feature_importance(X, y, cluster_labels, model_type):
             data_feature = data_clustering[feature]
 
             list_of_df = [
-                data_feature[data_clustering["cluster"] == cluster]
+                data_feature[data_clustering["cluster"] == cluster].to_list()
                 for cluster in data_clustering["cluster"].unique()
             ]
 
             # Perform statistical test based on feature type
             if isinstance(data_feature.dtype, pd.CategoricalDtype):
-                p_value_of_features[feature] = _chisquare_test(data_feature, list_of_df)
+                p_value_of_features[feature] = _chisquare_test(list_of_df)
             elif pd.api.types.is_numeric_dtype(data_feature):
                 p_value_of_features[feature] = _anova_test(list_of_df)
             else:
@@ -213,7 +229,22 @@ def calculate_global_feature_importance(X, y, cluster_labels, model_type):
                     f"Feature {feature} has dytpye {data_feature.dtype} but has to be of type category or numeric!"
                 )
 
-    data_clustering_ranked, p_value_of_features_ranked = _rank_features(data_clustering, p_value_of_features)
+    print(p_value_of_features)
+    # Convert p-value dictionary to a DataFrame and sort by p-value
+    p_value_of_features_ranked = (
+        pd.DataFrame.from_dict(p_value_of_features, orient="index", columns=["p_value"])
+        .T.fillna(
+            1
+        )  # NaN can be produced if categorical features are dummy encoded and one feature is not present in one cluster
+        .sort_values(by="p_value", axis=1)
+    )
+
+    # correct p-values for multiple testing
+    _, p_values_corrected = fdrcorrection(p_value_of_features_ranked.loc["p_value"].tolist())
+    p_value_of_features_ranked.loc["p_value"] = p_values_corrected
+
+    # sort and rank clustering dataframe
+    data_clustering_ranked = _rank_features(data_clustering, p_value_of_features_ranked)
     data_clustering_ranked = _sort_clusters_by_target(data_clustering_ranked, model_type)
     data_clustering_ranked.sort_values(by=["cluster", "target"], axis=0, inplace=True)
 
