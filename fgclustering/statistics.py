@@ -229,7 +229,6 @@ def calculate_global_feature_importance(X, y, cluster_labels, model_type):
                     f"Feature {feature} has dytpye {data_feature.dtype} but has to be of type category or numeric!"
                 )
 
-    print(p_value_of_features)
     # Convert p-value dictionary to a DataFrame and sort by p-value
     p_value_of_features_ranked = (
         pd.DataFrame.from_dict(p_value_of_features, orient="index", columns=["p_value"])
