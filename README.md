@@ -101,8 +101,7 @@ fgc = FgClustering(model=rf, data=data, target_column='target')
 fgc.run()
    
 # visualize results
-fgc.plot_global_feature_importance()
-fgc.plot_local_feature_importance()
+fgc.plot_feature_importance()
 fgc.plot_decision_paths()
    
 # obtain optimal number of clusters and vector that contains the cluster label of each data point
