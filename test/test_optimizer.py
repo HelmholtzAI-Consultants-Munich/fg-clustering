@@ -75,9 +75,7 @@ def test_optimizeK():
         verbose,
     )
 
-    assert (
-        k == 2
-    ), "Error optimal number of clusters for classification problem is not equal to 2"
+    assert k == 2, "Error optimal number of clusters for classification problem is not equal to 2"
 
     ### test regression
     max_K = 7
@@ -152,7 +150,7 @@ def test_compute_stability_indices():
         .labels_
     )
     labels = cluster_method(distance_matrix)
-    print(np.unique(labels))
+
     result = _compute_stability_indices_parallel(
         distance_matrix, labels, cluster_method, bootstraps_JI, n_jobs
     )
@@ -174,14 +172,11 @@ def test_compute_stability_indices():
         .labels_
     )
     labels = cluster_method(distance_matrix)
-    print(np.unique(labels))
     result = _compute_stability_indices_parallel(
         distance_matrix, labels, cluster_method, bootstraps_JI, n_jobs
     )
 
-    assert (
-        min(result[0], result[1]) < 1.0
-    ), "Clusters that should be unstable are found to be stable"
+    assert min(result[0], result[1]) < 1.0, "Clusters that should be unstable are found to be stable"
 
 
 def test_translate_cluster_labels_to_dictionary_of_index_sets_per_cluster():
@@ -190,10 +185,8 @@ def test_translate_cluster_labels_to_dictionary_of_index_sets_per_cluster():
     mapping = {0: 10, 1: 11, 2: 12, 3: 13, 4: 14, 5: 15}
 
     # test translation without mapping
-    dictionary_of_index_sets_per_cluster = (
-        _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(
-            labels, mapping=False
-        )
+    dictionary_of_index_sets_per_cluster = _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(
+        labels, mapping=False
     )
     assert dictionary_of_index_sets_per_cluster == {
         1: set([0, 4]),
@@ -202,10 +195,8 @@ def test_translate_cluster_labels_to_dictionary_of_index_sets_per_cluster():
     }, "error: wrong dictionary of index sets"
 
     # test translation with mapping
-    dictionary_of_index_sets_per_cluster = (
-        _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(
-            labels, mapping=mapping
-        )
+    dictionary_of_index_sets_per_cluster = _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(
+        labels, mapping=mapping
     )
     assert dictionary_of_index_sets_per_cluster == {
         1: set([10, 14]),

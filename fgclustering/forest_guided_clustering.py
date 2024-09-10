@@ -2,12 +2,16 @@
 # imports
 ############################################
 
+import numpy as np
 import pandas as pd
 import kmedoids
 import fgclustering.utils as utils
 import fgclustering.optimizer as optimizer
 import fgclustering.plotting as plotting
 import fgclustering.statistics as stats
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+
+from typing import Union
 
 import warnings
 
@@ -40,7 +44,13 @@ class FgClustering:
                         or `sklearn.ensemble.RandomForestClassifier`.
     """
 
-    def __init__(self, model, data, target_column, random_state=42):
+    def __init__(
+        self,
+        model: Union[RandomForestClassifier, RandomForestRegressor],
+        data: pd.DataFrame,
+        target_column: Union[str, np.ndarray, pd.Series],
+        random_state: int = 42,
+    ):
         self.random_state = random_state
 
         # check if random forest is regressor or classifier
@@ -72,16 +82,16 @@ class FgClustering:
 
     def run(
         self,
-        number_of_clusters=None,
-        max_K=8,
-        method_clustering="pam",
-        init_clustering="random",
-        max_iter_clustering=100,
-        discart_value_JI=0.6,
-        bootstraps_JI=100,
-        bootstraps_p_value=100,
-        n_jobs=1,
-        verbose=1,
+        number_of_clusters: int = None,
+        max_K: int = 8,
+        method_clustering: str = "pam",
+        init_clustering: str = "random",
+        max_iter_clustering: int = 100,
+        discart_value_JI: float = 0.6,
+        bootstraps_JI: int = 100,
+        bootstraps_p_value: int = 100,
+        n_jobs: int = 1,
+        verbose: int = 1,
     ):
         """Runs the forest-guided clustering model. The optimal number of clusters for a k-medoids clustering is computed,
         based on the distance matrix computed from the Random Forest proximity matrix.
@@ -228,42 +238,26 @@ class FgClustering:
             data_clustering_ranked=self.data_clustering_ranked, bootstraps_p_value=bootstraps_p_value
         )
 
-    def plot_global_feature_importance(self, thr_pvalue=1, top_n=None, save=None):
+    def plot_feature_importance(
+        self, thr_pvalue: float = 1, top_n: int = None, num_cols: int = 4, save: str = None
+    ):
         """
-        Plots global feature importance based on p-values. The p-values are computed using ANOVA (for continuous variables)
-        or Chi-Square (for categorical variables) tests. Feature importance is defined as 1 minus the p-value.
+        Plot feature importance based on p-values for global and local feature importance.
+        For the global feature importance, p-values are computed using ANOVA (for continuous variables)
+        or Chi-Square (for categorical variables) tests. The local feature importance, p-values are measured by the
+        variance and impurity of the feature within the cluster, i.e. a smaller p-value indicates lower variance/impurity.
+        Feature importance is defined as log transformation of the p-value with a small offset.
 
-        :param thr_pvalue: Threshold p-value for filtering features. Features with p-values below this threshold are considered
-                        significant for plotting. Defaults to 1 (no filtering).
+        $transformed_value=-log10(p-value + \epsilon) / -log10(\epsilon)$
+
+        where $\epsilon$ is a small positive constant (1e-50) that avoids issues with log10(0), but also significant distortion
+        because $\epsilon$ is very small.
+        Displays both global and local importance for top n selected features.
+
+        :param thr_pvalue: P-value threshold for display. Only features with p-values below this threshold
+                        are considered significant. Defaults to 1 (no filtering).
         :type thr_pvalue: float, optional
-        :param top_n: Number of top features to display in the plot. If None, all significant features are displayed. Defaults
-                    to None.
-        :type top_n: int, optional
-        :param save: Filename to save the plot. If None, the plot is not saved. Defaults to None.
-        :type save: str, optional
-        """
-        # drop insignificant features
-        selected_features = self.p_value_of_features_ranked.loc["p_value"] < thr_pvalue
-        selected_features = self.p_value_of_features_ranked.columns[selected_features].tolist()
-
-        # select top n features for plotting
-        if top_n:
-            selected_features = selected_features[:top_n]
-
-        plotting._plot_global_feature_importance(
-            self.p_value_of_features_ranked[selected_features], top_n, save
-        )
-
-    def plot_local_feature_importance(self, thr_pvalue=1, top_n=None, num_cols=4, save=None):
-        """
-        Plot local feature importance to display the importance of each feature within each cluster.
-        Importance is measured by the variance and impurity of the feature within the cluster;
-        a higher feature importance indicates lower variance/impurity.
-
-        :param thr_pvalue: P-value threshold for filtering features. Only features with p-values below this threshold
-                        are considered significant and plotted. Defaults to 1 (no filtering).
-        :type thr_pvalue: float, optional
-        :param top_n: Number of top features to display in the plot. If None, all significant features are included.
+        :param top_n: Number of top features to display in the plot. If None, all features are included.
                     Defaults to None.
         :type top_n: int, optional
         :param num_cols: Number of plots per row in the output figure. Defaults to 4.
@@ -271,20 +265,29 @@ class FgClustering:
         :param save: Filename to save the plot. If None, the plot will not be saved. Defaults to None.
         :type save: str, optional
         """
-        # drop insignificant features
-        selected_features = self.p_value_of_features_ranked.loc["p_value"] < thr_pvalue
-        selected_features = self.p_value_of_features_ranked.columns[selected_features].tolist()
 
         # select top n features for plotting
+        selected_features = self.p_value_of_features_ranked.columns.tolist()
         if top_n:
             selected_features = selected_features[:top_n]
 
-        plotting._plot_local_feature_importance(
-            self.p_value_of_features_per_cluster.loc[selected_features], thr_pvalue, top_n, num_cols, save
+        plotting._plot_feature_importance(
+            self.p_value_of_features_ranked[selected_features],
+            self.p_value_of_features_per_cluster.loc[selected_features],
+            thr_pvalue,
+            top_n,
+            num_cols,
+            save,
         )
 
     def plot_decision_paths(
-        self, distributions=True, heatmap=True, thr_pvalue=1, top_n=None, num_cols=6, save=None
+        self,
+        distributions: bool = True,
+        heatmap: bool = True,
+        thr_pvalue: float = 1,
+        top_n: int = None,
+        num_cols: int = 6,
+        save: str = None,
     ):
         """
         Plot decision paths of the Random Forest model. This function generates visualizations
@@ -322,12 +325,12 @@ class FgClustering:
 
         selected_features = ["cluster", "target"] + selected_features
 
-        if heatmap:
-            plotting._plot_heatmap(
-                self.data_clustering_ranked[selected_features], thr_pvalue, top_n, self.model_type, save
-            )
-
         if distributions:
             plotting._plot_distributions(
                 self.data_clustering_ranked[selected_features], thr_pvalue, top_n, num_cols, save
+            )
+
+        if heatmap:
+            plotting._plot_heatmap(
+                self.data_clustering_ranked[selected_features], thr_pvalue, top_n, self.model_type, save
             )

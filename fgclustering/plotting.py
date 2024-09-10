@@ -17,87 +17,108 @@ import fgclustering.utils as utils
 ############################################
 
 
-def _plot_global_feature_importance(p_value_of_features_ranked, top_n, save):
-    """Plot global feature importance based on p-values given as input.
-
-    :param p_value_of_features: dictionary where keys are names of features and values are p-values of these features
-    :type p_value_of_features: dict
-    :param save: Filename to save plot.
-    :type save: str
+def log_transform(p_values: list, epsilon: float = 1e-50):
     """
-    # Transform the DataFrame and calculate feature importance
-    importance = pd.melt(p_value_of_features_ranked, var_name="Feature", value_name="p_value")
-    importance["Importance"] = 1 - importance["p_value"]
-    importance.sort_values(by="Importance", ascending=False, inplace=True)
+    Apply a log transformation to p-values to enhance numerical stability and highlight differences.
+    Adds a small constant `epsilon` to avoid taking the log of zero and normalizes by dividing by
+    the log of `epsilon`.
+
+    :param p_values: List of p-values to be transformed.
+    :type p_values: list
+    :param epsilon: Small constant added to p-values to avoid log of zero. Defaults to 1e-50.
+    :type epsilon: float, optional
+    :return: Transformed p-values after log transformation.
+    :rtype: numpy.ndarray
+    """
+    # add a small constant epsilon
+    p_values = np.clip(p_values, epsilon, 1)
+    return -np.log(p_values) / -np.log(epsilon)
+
+
+def _plot_feature_importance(
+    p_value_of_features_ranked: pd.DataFrame,
+    p_value_of_features_per_cluster: pd.DataFrame,
+    thr_pvalue: float,
+    top_n: int,
+    num_cols: int,
+    save: str,
+):
+    """
+    Generate and display a plot showing the importance of features based on p-values.
+    The plot includes both global feature importance and local feature importance for each cluster.
+    Global importance is based on all clusters combined, while local importance is specific to each cluster.
+
+    :param p_value_of_features_ranked: DataFrame containing p-values of features, ranked by p-value.
+    :type p_value_of_features_ranked: pandas.DataFrame
+    :param p_value_of_features_per_cluster: DataFrame containing p-values of features for each cluster.
+    :type p_value_of_features_per_cluster: pandas.DataFrame
+    :param thr_pvalue: P-value threshold for display. Only features with p-values below this threshold
+                    are considered significant. Defaults to 1 (no filtering).
+    :type thr_pvalue: float, optional
+    :param top_n: Number of top features to display in the plot. If None, all features are included.
+                Defaults to None.
+    :type top_n: int, optional
+    :param num_cols: Number of plots per row in the output figure. Defaults to 4.
+    :type num_cols: int, optional
+    :param save: Filename to save the plot. If None, the plot will not be saved. Defaults to None.
+    :type save: str, optional
+    """
 
     # Determine figure size dynamically based on the number of features
-    n_features = len(importance)
-    figure_height = max(6.5, int(np.ceil(5 * n_features / 25)))
+    num_features = len(p_value_of_features_ranked.columns)
+    figsize_width = 6.5
+    figsize_height = max(figsize_width, int(np.ceil(5 * num_features / 25)))
 
-    # Plotting
-    plt.figure(figsize=(6.5, figure_height))
-    sns.set_theme(style="whitegrid")
-    sns.barplot(data=importance, x="Importance", y="Feature", color="#3470a3")
+    num_subplots = 1 + p_value_of_features_per_cluster.shape[1]
+    num_cols = min(num_cols, num_subplots)
+    num_rows = int(np.ceil(num_subplots / num_cols))
 
-    plt.title(f"Global Feature Importance for {'top ' + str(top_n) if top_n else 'all'} features")
-    plt.tight_layout()
-
-    # Save plot if a filename is provided
-    if save:
-        plt.savefig(f"{save}_global_feature_importance.png", bbox_inches="tight", dpi=300)
-
-    plt.show()
-
-
-def _plot_local_feature_importance(p_value_of_features_per_cluster, thr_pvalue, top_n, num_cols, save):
-    """Plot local feature importance to show the importance of each feature for each cluster.
-
-    :param p_value_of_features_per_cluster: p-value matrix of all features per cluster.
-    :type p_value_of_features_per_cluster: pandas.DataFrame
-    :param thr_pvalue: P-value threshold used for feature filtering
-    :type thr_pvalue: float, optional
-    :param num_cols: Number of plots in one row.
-    :type num_cols: int
-    :param save: Filename to save plot.
-    :type save: str
-    """
-
-    importance = 1 - p_value_of_features_per_cluster
-
-    # Reshape and sort the data
-    X_barplot = (
-        importance.melt(ignore_index=False, var_name="Cluster", value_name="Importance")
-        .rename_axis("Feature")
-        .reset_index(level=0, inplace=False)
-        .sort_values("Importance", ascending=False)
-    )
-
-    # Determine figure size based on the number of features and clusters
-    n_features = len(X_barplot["Feature"].unique())
-    figure_height = max(6.5, int(np.ceil(5 * n_features / 25)))
-    num_cols = min(num_cols, len(importance.columns))
-
-    # Set up the Seaborn theme and create the FacetGrid
-    sns.set_theme(style="whitegrid")
-    g = sns.FacetGrid(X_barplot, col="Cluster", sharey=False, col_wrap=num_cols, height=figure_height)
-    g.map(sns.barplot, "Importance", "Feature", order=None, color="#3470a3")
-
-    # Label the axes and set the plot titles
-    g.set_titles(col_template="Cluster {col_name}")
+    plt.figure(figsize=(num_cols * figsize_width, num_rows * figsize_height))
+    plt.subplots_adjust(top=0.95, hspace=0.8, wspace=0.8)
     plt.suptitle(
-        f"Local Feature Importance - Showing {'top ' + str(top_n) if top_n else 'all'} features with p-value < {thr_pvalue}",
+        f"Feature Importance - Showing {'top ' + str(top_n) if top_n else 'all'} features",
         fontsize=14,
     )
+    sns.set_theme(style="whitegrid")
+
+    # Plot global feature importance
+    importance_global = pd.DataFrame(
+        {
+            "Feature": p_value_of_features_ranked.columns,
+            "Importance": log_transform(p_value_of_features_ranked.loc["p_value"].to_list()),
+        }
+    ).sort_values(by="Importance", ascending=False)
+
+    ax = plt.subplot(num_rows, num_cols, 1)
+    sns.barplot(data=importance_global, x="Importance", y="Feature", color="#3470a3")
+    ax.axvline(x=log_transform(thr_pvalue), color="red", linestyle="--", label=f"thr p-value = {thr_pvalue}")
+    ax.set_title(f"Cluster all")
+    ax.legend(bbox_to_anchor=(1, 1), loc=2)
+
+    # Plot local feature importance
+    for n, cluster in enumerate(p_value_of_features_per_cluster.columns):
+        importance_local = pd.DataFrame(
+            {
+                "Feature": p_value_of_features_per_cluster.index,
+                "Importance": log_transform(p_value_of_features_per_cluster[cluster].to_list()),
+            }
+        ).sort_values(by="Importance", ascending=False)
+        ax = plt.subplot(num_rows, num_cols, n + 2)
+        sns.barplot(data=importance_local, x="Importance", y="Feature", color="#3470a3")
+        ax.axvline(x=log_transform(thr_pvalue), color="red", linestyle="--")
+        ax.set_title(f"Cluster {cluster}")
+        # ax.legend(bbox_to_anchor=(1, 1), loc=2)
+
     plt.tight_layout(rect=[0, 0, 1, 0.95])
 
-    # Save the plot if a save path is provided
-    if save:
-        plt.savefig(f"{save}_local_feature_importance.png", bbox_inches="tight", dpi=300)
-
+    if save is not None:
+        plt.savefig(f"{save}_feature_importance.png", bbox_inches="tight", dpi=300)
     plt.show()
 
 
-def _plot_heatmap(data_clustering_ranked, thr_pvalue, top_n, model_type, save):
+def _plot_heatmap(
+    data_clustering_ranked: pd.DataFrame, thr_pvalue: float, top_n: int, model_type: str, save: str
+):
     """Plot feature heatmap sorted by clusters, where features are filtered and ranked
     with statistical tests (ANOVA for continuous featres, chi square for categorical features).
 
@@ -209,7 +230,9 @@ def _plot_heatmap(data_clustering_ranked, thr_pvalue, top_n, model_type, save):
     plt.show()
 
 
-def _plot_distributions(data_clustering_ranked, thr_pvalue, top_n, num_cols, save):
+def _plot_distributions(
+    data_clustering_ranked: pd.DataFrame, thr_pvalue: float, top_n: int, num_cols: int, save: str
+):
     """Plot feature boxplots (for continuous features) or barplots (for categorical features) divided by clusters,
     where features are filtered and ranked by p-value of a statistical test (ANOVA for continuous features,
     chi square for categorical features).
