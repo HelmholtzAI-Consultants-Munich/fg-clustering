@@ -131,6 +131,8 @@ For detailed instructions, please have a look at the Notebook [Special Case: FGC
  
 Contributions are more than welcome! Everything from code to notebooks to examples and documentation are all equally valuable so please don't feel you can't contribute. To contribute please fork the project make your changes and submit a pull request. We will do our best to work through any issues with you and get your code merged into the main branch.
 
+For any further inquiries please send an email to [Lisa Barros de Andrade e Sousa](mailto:lisa.barros@helmholtz-munich.de).
+
 ## How to cite
 
 If Forest-Guided Clustering is useful for your research, consider citing the package:
