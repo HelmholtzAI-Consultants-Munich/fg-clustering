@@ -5,7 +5,7 @@ requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
 packages = ["fgclustering"]
 
 [tool.setuptools.dynamic]
-readme = {file = "README.md"}
+readme = { file = "README.md" }
 
 [tool.setuptools_scm]
 write_to = "fgclustering/_version.py"
@@ -14,41 +14,41 @@ write_to = "fgclustering/_version.py"
 name = "fgclustering"
 dynamic = ["version"]
 authors = [
-  {name="Lisa Barros de Andrade e Sousa", email="lisa.barros.andrade.sousa@gmail.com"},
-  {name="Helena Pelin", email="helena.pelin@helmholtz-muenchen.de"},
-  {name="Dominik Thalmeier"},
-  {name="Marie Piraud", email="marie.piraud@helmholtz-muenchen.de"},
+  { name = "Lisa Barros de Andrade e Sousa", email = "lisa.barros.andrade.sousa@gmail.com" },
+  { name = "Helena Pelin", email = "helena.pelin@helmholtz-muenchen.de" },
+  { name = "Dominik Thalmeier" },
+  { name = "Marie Piraud", email = "marie.piraud@helmholtz-muenchen.de" },
 ]
 maintainers = [
-  {name="Lisa Barros de Andrade e Sousa", email="lisa.barros.andrade.sousa@gmail.com"},
-  {name="Helena Pelin", email="helena.pelin@helmholtz-muenchen.de"},
+  { name = "Lisa Barros de Andrade e Sousa", email = "lisa.barros.andrade.sousa@gmail.com" },
+  { name = "Helena Pelin", email = "helena.pelin@helmholtz-muenchen.de" },
 ]
 description = "Forest-Guided Clustering - Explainability method for Random Forest models."
 keywords = ["random forest", "xai", "explainable ai"]
 readme = "README.md"
 requires-python = ">=3.7"
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
 ]
-dependencies = ["pandas",
-                "numpy",
-                "matplotlib",
-                "seaborn>=0.12",
-                "scikit-learn",
-                "kmedoids",
-                "scipy",
-                "tqdm",
-                "statsmodels>=0.13.5",
-                "numexpr>=2.8.4",
-                "numba"
+dependencies = [
+  "pandas",
+  "numpy",
+  "matplotlib",
+  "seaborn>=0.12",
+  "scikit-learn",
+  "kmedoids",
+  "scipy",
+  "tqdm",
+  "statsmodels>=0.13.5",
+  "numexpr>=2.8.4",
+  "numba",
+  "plotly",
 ]
 
 [project.optional-dependencies]
-dev = [
-  "pytest",
-]
+dev = ["pytest"]
 
 [project.urls]
 documentation = "https://forest-guided-clustering.readthedocs.io/en/latest/"
