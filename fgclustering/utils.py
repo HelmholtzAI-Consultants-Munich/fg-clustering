@@ -2,52 +2,33 @@
 # imports
 ############################################
 
+import matplotlib.colors
 import numpy as np
-import pandas as pd
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from numba import njit, prange
+
+import matplotlib
 
 ############################################
 # functions
 ############################################
 
 
-def scale_standard(X):
-    """Feature Scaling with StandardScaler.
-
-    :param X: Feature matrix.
-    :type X: pandas.DataFrame
-    :return: Standardized feature matrix.
-    :rtype: pandas.DataFrame
+def log_transform(p_values: list, epsilon: float = 1e-50):
     """
-    X = X.copy()
-    SCALE = StandardScaler()
-    SCALE.fit(X)
+    Apply a log transformation to p-values to enhance numerical stability and highlight differences.
+    Adds a small constant `epsilon` to avoid taking the log of zero and normalizes by dividing by
+    the log of `epsilon`.
 
-    X_scale = pd.DataFrame(SCALE.transform(X))
-    X_scale.columns = X.columns
-    X_scale.reset_index(inplace=True, drop=True)
-
-    return X_scale
-
-
-def scale_minmax(X):
-    """Feature Scaling with MinMaxScaler.
-
-    :param X: Feature matrix.
-    :type X: pandas.DataFrame
-    :return: Standardized feature matrix.
-    :rtype: pandas.DataFrame
+    :param p_values: List of p-values to be transformed.
+    :type p_values: list
+    :param epsilon: Small constant added to p-values to avoid log of zero. Defaults to 1e-50.
+    :type epsilon: float, optional
+    :return: Transformed p-values after log transformation.
+    :rtype: numpy.ndarray
     """
-    X = X.copy()
-    SCALE = MinMaxScaler()
-    SCALE.fit(X)
-
-    X_scale = pd.DataFrame(SCALE.transform(X))
-    X_scale.columns = X.columns
-    X_scale.reset_index(inplace=True, drop=True)
-
-    return X_scale
+    # add a small constant epsilon
+    p_values = np.clip(p_values, epsilon, 1)
+    return -np.log(p_values) / -np.log(epsilon)
 
 
 @njit
@@ -92,3 +73,22 @@ def proximityMatrix(model, X, normalize=True):
     terminals = model.apply(X)
 
     return _calculate_proximityMatrix(terminals, normalize)
+
+
+def matplotlib_to_plotly(cmap_name: str, pl_entries: int = 255):
+    """
+    Converts a Matplotlib colormap to a Plotly colorscale.
+
+    :param cmap_name: Name of the Matplotlib colormap.
+    :type cmap_name: str
+    :param pl_entries: Number of color entries in the Plotly colorscale.
+    :type pl_entries: int
+    :return: A Plotly-compatible colorscale
+    :rtype: list
+    """
+    cmap = matplotlib.colormaps.get_cmap(cmap_name)
+    h = np.linspace(0, 1, pl_entries)
+    colors = cmap(h)[:, :3]
+    colors = [matplotlib.colors.rgb2hex(color) for color in colors]
+    colorscale = [[i / (pl_entries - 1), color] for i, color in enumerate(colors)]
+    return colorscale
