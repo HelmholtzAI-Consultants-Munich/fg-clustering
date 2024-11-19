@@ -58,7 +58,7 @@ class FgClustering:
             self.model_type = "regression"
             print("Interpreting RandomForestRegressor")
         elif "RandomForestClassifier" in str(type(model)):
-            self.model_type = "classifier"
+            self.model_type = "classification"
             print("Interpreting RandomForestClassifier")
         else:
             raise ValueError(
@@ -82,7 +82,7 @@ class FgClustering:
 
     def run(
         self,
-        number_of_clusters: int = None,
+        k: int = None,
         max_K: int = 8,
         method_clustering: str = "pam",
         init_clustering: str = "random",
@@ -155,7 +155,7 @@ class FgClustering:
                         and scores for each number of clusters. If set to 0, no output is printed. Defaults to 1.
         :type verbose: {0, 1}, optional
         """
-        if number_of_clusters is None:
+        if k is None:
             self.k = optimizer.optimizeK(
                 distance_matrix=self.distance_matrix,
                 y=self.y.to_numpy(),
@@ -178,7 +178,7 @@ class FgClustering:
             print(f"Optimal number of cluster is: {self.k}")
 
         else:
-            self.k = number_of_clusters
+            self.k = k
             print(f"Use {self.k} as number of cluster")
 
         self.cluster_labels = (
@@ -284,6 +284,7 @@ class FgClustering:
         self,
         distributions: bool = True,
         heatmap: bool = True,
+        heatmap_type: str = "static",
         thr_pvalue: float = 1,
         top_n: int = None,
         num_cols: int = 6,
@@ -331,6 +332,19 @@ class FgClustering:
             )
 
         if heatmap:
-            plotting._plot_heatmap(
-                self.data_clustering_ranked[selected_features], thr_pvalue, top_n, self.model_type, save
-            )
+            if self.model_type == "regression":
+                plotting._plot_heatmap_regression(
+                    self.data_clustering_ranked[selected_features],
+                    thr_pvalue,
+                    top_n,
+                    heatmap_type,
+                    save,
+                )
+            elif self.model_type == "classification":
+                plotting._plot_heatmap_classification(
+                    self.data_clustering_ranked[selected_features],
+                    thr_pvalue,
+                    top_n,
+                    heatmap_type,
+                    save,
+                )
