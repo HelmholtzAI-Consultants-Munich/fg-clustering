@@ -6,13 +6,13 @@ import numpy as np
 import pandas as pd
 
 from bisect import bisect
-from scipy.stats import f_oneway
+from scipy.stats import f_oneway, chisquare
 
 from statsmodels.stats.multitest import fdrcorrection
-from statsmodels.stats.oneway import anova_oneway
 from statsmodels.stats.proportion import proportions_chisquare
 from sklearn.utils import resample
 
+from statsmodels.stats import multitest
 
 ############################################
 # functions
@@ -106,7 +106,7 @@ def _chisquare_test(list_of_df):
     :rtype: float
     """
     # Retrieve how many categories exist
-    cat_vals = list({value for df_ in list_of_df for value in df_})
+    # cat_vals = list({value for df_ in list_of_df for value in df_})
 
     # Observed counts for each cluster in each categories
     # Example for three clusters and two categories
@@ -115,26 +115,42 @@ def _chisquare_test(list_of_df):
     #           [20, 15],  # Cluster 2
     #           [25, 25]]) # Cluster 3
     # We add pseudocount 1 to avoid division by 0
-    counts_observed = np.array(
-        [
-            np.array([np.sum(np.array(cluster) == category) + 1 for category in cat_vals]).tolist()
-            for cluster in list_of_df
-        ]
-    )
+    # counts_observed = np.array(
+    #     [
+    #         np.array([np.sum(np.array(cluster) == category) + 1 for category in cat_vals]).tolist()
+    #         for cluster in list_of_df
+    #     ]
+    # )
 
     # Total counts across categories
-    counts_category_total = counts_observed.sum(axis=0)
+    # counts_category_total = counts_observed.sum(axis=0)
 
     # Expected counts under the null hypothesis of equal preferences across categories
     # We add pseudocount 1 to avoid division by 0
-    counts_expected = (
-        np.outer(counts_observed.sum(axis=1), counts_category_total) / counts_category_total.sum() + 1
-    )
+    # counts_expected = (
+    #     np.outer(counts_observed.sum(axis=1), counts_category_total) / counts_category_total.sum() + 1
+    # )
 
     # Perform the chi-square test
-    _, p_value, _ = proportions_chisquare(counts_observed, counts_expected)
+    # _, p_value, _ = proportions_chisquare(counts_observed, counts_expected)
 
-    return p_value
+    # return p_value
+
+    data = [value for df_ in list_of_df for value in df_]
+
+    cat_vals, counts_global = np.unique(data, return_counts=True)
+    count_global = counts_global / counts_global.sum()
+
+    p_values = [
+        chisquare(
+            np.array([np.sum(np.array(df_) == category) for category in cat_vals]).tolist(),
+            f_exp=count_global * len(df_),
+        ).pvalue
+        for df_ in list_of_df
+    ]
+
+    _, p_values_corrected = multitest.fdrcorrection(p_values)
+    return min(p_values_corrected)
 
 
 def _rank_features(data_clustering, p_value_of_features_ranked):
@@ -169,7 +185,7 @@ def _sort_clusters_by_target(data_clustering_ranked, model_type):
     # When using a classifier, the target value is label encoded, such that we can sort the clusters by target values
     original_target = data_clustering_ranked["target"].copy()
 
-    if model_type == "classifier":
+    if model_type == "classification":
         data_clustering_ranked["target"] = data_clustering_ranked["target"].astype("category").cat.codes
 
     # Compute mean target values for each cluster and sort by mean values

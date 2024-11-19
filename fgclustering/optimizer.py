@@ -20,9 +20,7 @@ import fgclustering.statistics as statistics
 ############################################
 
 
-def _compute_jaccard_matrix(
-    clusters, indices_bootstrap_clusters, indices_original_clusters
-):
+def _compute_jaccard_matrix(clusters, indices_bootstrap_clusters, indices_original_clusters):
     """Compute Jaccard Index between all possible cluster combinations of original vs bootstrapped clustering.
 
     :param clusters: Clustering labels.
@@ -101,16 +99,13 @@ def _bootstrap_matrix(M):
     )  # Sort samples to increase speed. Does not affect downstream analysis because M is symmetric
     M_bootstrapped = _get_bootstrap(M, bootstrapped_samples)
     mapping_bootstrapped_indices_to_original_indices = {
-        bootstrapped: original
-        for bootstrapped, original in enumerate(bootstrapped_samples)
+        bootstrapped: original for bootstrapped, original in enumerate(bootstrapped_samples)
     }
 
     return M_bootstrapped, mapping_bootstrapped_indices_to_original_indices
 
 
-def _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(
-    labels, mapping=False
-):
+def _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(labels, mapping=False):
     """Create dictionary that maps indices to cluster labels.
 
     :param labels: Clustering labels.
@@ -136,9 +131,7 @@ def _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(
     return indices_clusters
 
 
-def _compute_stability_indices(
-    distance_matrix, cluster_method, clusters, indices_original_clusters
-):
+def _compute_stability_indices(distance_matrix, cluster_method, clusters, indices_original_clusters):
     """Function that parallelizes the bootstrapping loop in the _compute_stability_indices function.
     Compute stability of each cluster via Jaccard Index of original clustering vs clustering of one bootstraped sample.
 
@@ -162,15 +155,11 @@ def _compute_stability_indices(
     bootstrapped_labels = cluster_method(bootstrapped_distance_matrix)
 
     # now compute the indices for the different clusters
-    indices_bootstrap_clusters = (
-        _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(
-            bootstrapped_labels,
-            mapping=mapping_bootstrapped_indices_to_original_indices,
-        )
+    indices_bootstrap_clusters = _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(
+        bootstrapped_labels,
+        mapping=mapping_bootstrapped_indices_to_original_indices,
     )
-    jaccard_matrix = _compute_jaccard_matrix(
-        clusters, indices_bootstrap_clusters, indices_original_clusters
-    )
+    jaccard_matrix = _compute_jaccard_matrix(clusters, indices_bootstrap_clusters, indices_original_clusters)
 
     # compute optimal jaccard index for each cluster -> choose maximum possible jaccard index first
     for cluster_round in range(len(jaccard_matrix)):
@@ -186,9 +175,7 @@ def _compute_stability_indices(
     return index_per_cluster
 
 
-def _compute_stability_indices_parallel(
-    distance_matrix, labels, cluster_method, bootstraps, n_jobs
-):
+def _compute_stability_indices_parallel(distance_matrix, labels, cluster_method, bootstraps, n_jobs):
     """Compute stability of each cluster via Jaccard Index of bootstraped vs original clustering.
 
     :param distance_matrix: Proximity matrix of Random Forest model.
@@ -205,9 +192,7 @@ def _compute_stability_indices_parallel(
     :rtype: dict
     """
     clusters = np.unique(labels)
-    indices_original_clusters = (
-        _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(labels)
-    )
+    indices_original_clusters = _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(labels)
 
     # Compute Jaccard Index per bootstrapped sample
     index_per_cluster = Parallel(n_jobs=n_jobs)(
@@ -217,13 +202,9 @@ def _compute_stability_indices_parallel(
         for i in range(bootstraps)
     )
     # Sum Jaccard values of the same keys across dictionaries
-    index_per_cluster = dict(
-        functools.reduce(operator.add, map(collections.Counter, index_per_cluster))
-    )
+    index_per_cluster = dict(functools.reduce(operator.add, map(collections.Counter, index_per_cluster)))
     # normalize:
-    index_per_cluster = {
-        cluster: index_per_cluster[cluster] / bootstraps for cluster in clusters
-    }
+    index_per_cluster = {cluster: index_per_cluster[cluster] / bootstraps for cluster in clusters}
 
     return index_per_cluster
 
@@ -304,17 +285,13 @@ def optimizeK(
         index_per_cluster = _compute_stability_indices_parallel(
             distance_matrix, labels, cluster_method, bootstraps_JI, n_jobs
         )
-        min_index = min(
-            [index_per_cluster[cluster] for cluster in index_per_cluster.keys()]
-        )
+        min_index = min([index_per_cluster[cluster] for cluster in index_per_cluster.keys()])
 
-        # only continue if jaccard indices are all larger than 0.6 (thus all clusters are stable)
+        # only continue if jaccard indices are all larger than discart_value_JI (thus all clusters are stable)
         if not disable:
-            print(
-                "For number of cluster {} the Jaccard Index is {}".format(k, min_index)
-            )
+            print("For number of cluster {} the Jaccard Index is {}".format(k, min_index))
         if min_index > discart_value_JI:
-            if model_type == "classifier":
+            if model_type == "classification":
                 # compute balanced purities
                 score = statistics.compute_balanced_average_impurity(y, labels)
             elif model_type == "regression":

@@ -35,7 +35,7 @@ def test_optimizeK():
 
     ### test classification
     max_K = 5
-    model_type = "classifier"
+    model_type = "classification"
 
     # test data
     X, y = make_classification(
