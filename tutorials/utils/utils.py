@@ -4,31 +4,28 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def plot_permutation_feature_importance(result, data, title):
-    perm_sorted_idx = result.importances_mean.argsort()
-    perm_indices = np.arange(0, len(result.importances_mean)) + 0.5
+def plot_permutation_feature_importance(result, data, title, figsize=(5, 4)):
+    # Sort the features by importance mean
+    perm_sorted_idx = result.importances_mean.argsort()[::-1]
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
-    fig.suptitle(title)
-    ax1.barh(
-        perm_indices,
-        result.importances_mean[perm_sorted_idx],
-        height=0.7,
-        color="#3470a3",
+    # Prepare the data for Seaborn's boxplot (convert to long format)
+    feature_importances = result.importances[perm_sorted_idx].T
+    df = pd.DataFrame(feature_importances, columns=data.columns[perm_sorted_idx])
+    df_long = df.melt(var_name="Feature", value_name="Importance")
+
+    # Create the figure and plot
+    fig, ax = plt.subplots(figsize=figsize)
+    sns.boxplot(
+        data=df_long, x="Importance", y="Feature", ax=ax, flierprops=dict(marker=".", alpha=0.5, markersize=2)
     )
-    ax1.set_yticks(perm_indices)
-    ax1.set_yticklabels(data.columns[perm_sorted_idx])
-    ax1.set_ylim((0, len(result.importances_mean)))
-    ax2.boxplot(
-        result.importances[perm_sorted_idx].T,
-        vert=False,
-        labels=data.columns[perm_sorted_idx],
-    )
+
+    # Set title and layout
+    ax.set_title(title)
     fig.tight_layout()
     plt.show()
 
 
-def plot_impurity_feature_importance(importance, names, title):
+def plot_impurity_feature_importance(importance, names, title, figsize=(5, 4)):
     # Create arrays from feature importance and feature names
     feature_importance = np.array(importance)
     feature_names = np.array(names)
@@ -41,19 +38,17 @@ def plot_impurity_feature_importance(importance, names, title):
     fi_df.sort_values(by=["feature_importance"], ascending=False, inplace=True)
 
     # Define size of bar plot
-    plt.figure(figsize=(5, 4))
+    plt.figure(figsize=figsize)
     # Plot Searborn bar chart
-    sns.barplot(
-        x=fi_df["feature_importance"], y=fi_df["feature_names"], color="#3470a3"
-    )
+    sns.barplot(x=fi_df["feature_importance"], y=fi_df["feature_names"], color="#3470a3")
     # Add chart labels
     plt.title(title)
     plt.xlabel("feature importance")
     plt.ylabel("feature names")
 
 
-def plot_correlation_matrix(data):
-    f, ax = plt.subplots(figsize=(5, 5))
+def plot_correlation_matrix(data, figsize=(5, 5)):
+    f, ax = plt.subplots(figsize=figsize)
     corr = data.corr()
     mask = np.triu(np.ones_like(corr, dtype=bool))
     np.fill_diagonal(mask, False)
