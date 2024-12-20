@@ -43,7 +43,7 @@ For a short introduction to Forest-Guided Clustering, click below:
 
 ### Requirements
 
-This packages was tested for ```Python 3.7 - 3.11``` on ubuntu, macos and windows. It depends on the ```kmedoids``` python package. If you are using windows or macos, you may need to first install Rust/Cargo with:
+This packages was tested for ```Python 3.7 - 3.12``` on ubuntu, macos and windows. It depends on the ```kmedoids``` python package. If you are using windows or macos, you may need to first install Rust/Cargo with:
 
 ```
 conda install -c conda-forge rust
