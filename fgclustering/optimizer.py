@@ -265,7 +265,7 @@ def optimizeK(
     optimal_k = 1
     disable = True if verbose == 0 else False
 
-    for k in tqdm(range(2, max_K), disable=disable):
+    for k in tqdm(range(2, max_K + 1), disable=disable):
         # compute clusters
         cluster_method = (
             lambda X: kmedoids.KMedoids(
@@ -285,12 +285,12 @@ def optimizeK(
         index_per_cluster = _compute_stability_indices_parallel(
             distance_matrix, labels, cluster_method, bootstraps_JI, n_jobs
         )
-        min_index = min([index_per_cluster[cluster] for cluster in index_per_cluster.keys()])
+        mean_index = np.mean([index_per_cluster[cluster] for cluster in index_per_cluster.keys()])
 
         # only continue if jaccard indices are all larger than discart_value_JI (thus all clusters are stable)
         if not disable:
-            print("For number of cluster {} the Jaccard Index is {}".format(k, min_index))
-        if min_index > discart_value_JI:
+            print(f"For number of cluster {k} the mean Jaccard Index across clusters is {mean_index}")
+        if mean_index > discart_value_JI:
             if model_type == "classification":
                 # compute balanced purities
                 score = statistics.compute_balanced_average_impurity(y, labels)
@@ -302,9 +302,14 @@ def optimizeK(
                 score_min = score
 
             if not disable:
-                print("For number of cluster {} the score is {}".format(k, score))
+                print("The stability of each cluster is:")
+                for cluster, stability in index_per_cluster.items():
+                    print(f"  Cluster {int(cluster)+1}: Stability {stability:.5f}")
+                print(f"For number of cluster {k} the score is {score}")
+                print("\n")
         else:
             if not disable:
                 print("Clustering is instable, no score computed!")
+                print("\n")
 
     return optimal_k

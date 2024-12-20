@@ -34,7 +34,7 @@ def test_optimizeK():
     verbose = 1
 
     ### test classification
-    max_K = 5
+    max_K = 7
     model_type = "classification"
 
     # test data
@@ -75,12 +75,14 @@ def test_optimizeK():
         verbose,
     )
 
-    assert k == 2, "Error optimal number of clusters for classification problem is not equal to 2"
+    assert (
+        k == 6
+    ), f"Error optimal number of clusters for classification problem is {k} which does not equal to 6"
 
     ### test regression
     max_K = 7
     model_type = "regression"
-    discart_value_JI = 0.7
+    discart_value_JI = 0.8
 
     # test data
     X, y = make_regression(

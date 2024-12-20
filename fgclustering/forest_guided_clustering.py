@@ -83,75 +83,49 @@ class FgClustering:
     def run(
         self,
         k: int = None,
-        max_K: int = 8,
+        max_K: int = 5,
         method_clustering: str = "pam",
         init_clustering: str = "random",
         max_iter_clustering: int = 100,
-        discart_value_JI: float = 0.6,
+        discart_value_JI: float = 0.7,
         bootstraps_JI: int = 100,
         bootstraps_p_value: int = 100,
         n_jobs: int = 1,
         verbose: int = 1,
     ):
-        """Runs the forest-guided clustering model. The optimal number of clusters for a k-medoids clustering is computed,
-        based on the distance matrix computed from the Random Forest proximity matrix.
-
-        :param number_of_clusters: Number of clusters for the k-medoids clustering.
-            Leave None if number of clusters should be optimized, defaults to None
-        :type number_of_clusters: int, optional
-        :param max_K: Maximum number of clusters for cluster score computation, defaults to 8
-        :type max_K: int, optional
-        :param method_clustering: Which algorithm to use. 'alternate' is faster while 'pam' is more accurate, defaults to 'pam'. Use 'fasterpam' for big datasets. See python kmedoids documentation for other implemented methods.
-        :type method_clustering: {'fasterpam', 'fastpam1', 'pam', 'alternate', 'fastermsc', 'fastmsc', 'pamsil', and 'pammedsil'}, optional
-        :param init_clustering: Specify medoid initialization method. See python kmedoids documentation for parameter description, defaults to 'random'
-        :type init_clustering: {'random', 'first', 'build'}, optional
-        :param max_iter_clustering: Number of iterations for k-medoids clustering, defaults to 100
-        :type max_iter_clustering: int, optional
-        :param discart_value_JI: Minimum Jaccard Index for cluster stability, defaults to 0.6
-        :type discart_value_JI: float, optional
-        :param bootstraps_JI: Number of bootstraps to compute the Jaccard Index, defaults to 100
-        :type bootstraps_JI: int, optional
-        :param bootstraps_p_value: Number of bootstraps to compute the p-value of feature importance, defaults to 100
-        :type bootstraps_p_value: int, optional
-        :param n_jobs: maximum number of jobs to run in parallel when creating bootstraps to compute the Jaccard index.
-            n_jobs=1 means no parallel computing is used, defaults to 1
-        :type n_jobs: int, optional
-        :param verbose: print the output of fgc cluster optimization process (the Jaccard index and score for each cluster number); defaults to 1 (printing). Set to 0 for no outputs.
-        :type verbose: {0,1}, optional
-        """
         """
         Runs the forest-guided clustering model to compute the optimal number of clusters using k-medoids clustering,
-        based on the distance matrix derived from the Random Forest proximity matrix. The method can either optimize 
+        based on the distance matrix derived from the Random Forest proximity matrix. The method can either optimize
         the number of clusters or use a specified number.
 
-        :param number_of_clusters: Number of clusters for the k-medoids clustering. If `None`, the number of clusters 
+        :param k: Number of clusters for the k-medoids clustering. If `None`, the number of clusters
                                     will be optimized based on the distance matrix, defaults to None.
-        :type number_of_clusters: int, optional
-        :param max_K: Maximum number of clusters to consider when computing cluster scores. Used if `number_of_clusters` 
-                    is not provided. Defaults to 8.
+        :type k: int, optional
+        :param max_K: Maximum number of clusters to consider when computing cluster scores. Used if `k` is not provided.
+                        Defaults to 8.
         :type max_K: int, optional
-        :param method_clustering: Clustering algorithm to use. Options include 'fasterpam', 'fastpam1', 'pam', 'alternate', 
-                                'fastermsc', 'fastmsc', 'pamsil', and 'pammedsil'. Defaults to 'pam'. Use 'fasterpam' 
+        :param method_clustering: Clustering algorithm to use. Options include 'fasterpam', 'fastpam1', 'pam', 'alternate',
+                                'fastermsc', 'fastmsc', 'pamsil', and 'pammedsil'. Defaults to 'pam'. Use 'fasterpam'
                                 for larger datasets. Refer to the k-medoids documentation for more details.
-        :type method_clustering: {'fasterpam', 'fastpam1', 'pam', 'alternate', 'fastermsc', 'fastmsc', 'pamsil', 
+        :type method_clustering: {'fasterpam', 'fastpam1', 'pam', 'alternate', 'fastermsc', 'fastmsc', 'pamsil',
                                 'pammedsil'}, optional
-        :param init_clustering: Method for initializing medoids. Options include 'random', 'first', and 'build'. Defaults 
+        :param init_clustering: Method for initializing medoids. Options include 'random', 'first', and 'build'. Defaults
                                 to 'random'. See the k-medoids documentation for more information.
         :type init_clustering: {'random', 'first', 'build'}, optional
         :param max_iter_clustering: Maximum number of iterations for the k-medoids algorithm, defaults to 100.
         :type max_iter_clustering: int, optional
-        :param discart_value_JI: Minimum Jaccard Index value for determining cluster stability. Clusters with Jaccard 
+        :param discart_value_JI: Minimum Jaccard Index value for determining cluster stability. Clusters with Jaccard
                                 Index below this value are discarded, defaults to 0.6.
         :type discart_value_JI: float, optional
         :param bootstraps_JI: Number of bootstrap iterations to compute the Jaccard Index, defaults to 100.
         :type bootstraps_JI: int, optional
-        :param bootstraps_p_value: Number of bootstrap iterations to compute the p-value for feature importance, defaults 
+        :param bootstraps_p_value: Number of bootstrap iterations to compute the p-value for feature importance, defaults
                                     to 100.
         :type bootstraps_p_value: int, optional
-        :param n_jobs: Number of parallel jobs to run when computing the Jaccard Index bootstraps. Defaults to 1, meaning 
+        :param n_jobs: Number of parallel jobs to run when computing the Jaccard Index bootstraps. Defaults to 1, meaning
                     no parallel computation.
         :type n_jobs: int, optional
-        :param verbose: Verbosity level for output. If set to 1, prints the optimization process including Jaccard Index 
+        :param verbose: Verbosity level for output. If set to 1, prints the optimization process including Jaccard Index
                         and scores for each number of clusters. If set to 0, no output is printed. Defaults to 1.
         :type verbose: {0, 1}, optional
         """
