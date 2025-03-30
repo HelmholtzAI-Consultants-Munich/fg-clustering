@@ -213,7 +213,7 @@ class FgClustering:
         )
 
     def plot_feature_importance(
-        self, thr_pvalue: float = 1, top_n: int = None, num_cols: int = 4, save: str = None
+        self, thr_pvalue: float = 1, top_n: int = None, num_cols: int = 4, save: str = None, cmap_target_dict: dict = None
     ):
         """
         Plot feature importance based on p-values for global and local feature importance.
@@ -238,6 +238,8 @@ class FgClustering:
         :type num_cols: int, optional
         :param save: Filename to save the plot. If None, the plot will not be saved. Defaults to None.
         :type save: str, optional
+        :param cmap_target_dict: Dict of colours to map categorical targets
+        :type cmap_target_dict: dict
         """
 
         # select top n features for plotting
@@ -252,6 +254,7 @@ class FgClustering:
             top_n,
             num_cols,
             save,
+            cmap_target_dict
         )
 
     def plot_decision_paths(
@@ -263,6 +266,7 @@ class FgClustering:
         top_n: int = None,
         num_cols: int = 6,
         save: str = None,
+        cmap_target_dict: dict = None
     ):
         """
         Plot decision paths of the Random Forest model. This function generates visualizations
@@ -289,6 +293,8 @@ class FgClustering:
         :type num_cols: int, optional
         :param save: Filename to save the plot. If `None`, the figure is not saved, defaults to `None`.
         :type save: str, optional
+        :param cmap_target_dict: Dict of colours to map categorical targets
+        :type cmap_target_dict: dict
         """
         # drop insignificant features
         selected_features = self.p_value_of_features_ranked.loc["p_value"] < thr_pvalue
@@ -302,7 +308,7 @@ class FgClustering:
 
         if distributions:
             plotting._plot_distributions(
-                self.data_clustering_ranked[selected_features], thr_pvalue, top_n, num_cols, save
+                self.data_clustering_ranked[selected_features], thr_pvalue, top_n, num_cols, save, cmap_target_dict
             )
 
         if heatmap:
@@ -321,4 +327,5 @@ class FgClustering:
                     top_n,
                     heatmap_type,
                     save,
+                    cmap_target_dict,
                 )
