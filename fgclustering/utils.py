@@ -13,24 +13,6 @@ import matplotlib
 ############################################
 
 
-def log_transform(p_values: list, epsilon: float = 1e-50):
-    """
-    Apply a log transformation to p-values to enhance numerical stability and highlight differences.
-    Adds a small constant `epsilon` to avoid taking the log of zero and normalizes by dividing by
-    the log of `epsilon`.
-
-    :param p_values: List of p-values to be transformed.
-    :type p_values: list
-    :param epsilon: Small constant added to p-values to avoid log of zero. Defaults to 1e-50.
-    :type epsilon: float, optional
-    :return: Transformed p-values after log transformation.
-    :rtype: numpy.ndarray
-    """
-    # add a small constant epsilon
-    p_values = np.clip(p_values, epsilon, 1)
-    return -np.log(p_values) / -np.log(epsilon)
-
-
 @njit
 def _calculate_proximityMatrix(terminals, normalize):
     """Calculate proximity matrix given leaf indices from the random forest model.

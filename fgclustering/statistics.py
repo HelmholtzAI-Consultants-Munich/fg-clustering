@@ -15,7 +15,7 @@ from pandas.api.types import is_numeric_dtype, is_categorical_dtype
 
 def compute_balanced_average_impurity(categorical_values, cluster_labels, rescaling_factor=None):
     """Compute balanced average impurity as score for categorical values in a clustering.
-    Impurity score is an Gini Coefficient of the classes within each cluster.
+    Impurity score is a Gini Coefficient of the classes within each cluster.
     The class sizes are balanced by rescaling with the inverse size of the class in the overall dataset.
 
     :param categorical_values: Values of categorical feature / target.
@@ -189,7 +189,7 @@ def wasserstein_distance_func(values_all, values_cluster, is_categorical=False):
     if is_categorical:
         dummies_all = pd.get_dummies(values_all, drop_first=True)
         dummies_cluster = pd.get_dummies(values_cluster, drop_first=True)
-        dummies_all, dummies_cluster = dummies_all.align(dummies_cluster, join='outer', fill_value=0)
+        dummies_all, dummies_cluster = dummies_all.align(dummies_cluster, join="outer", fill_value=0)
 
         distances = [
             wasserstein_distance(dummies_all[col], dummies_cluster[col])
@@ -241,54 +241,7 @@ def jensen_shannon_distance_func(values_all, values_cluster, is_categorical=Fals
         p_ref = hist_ref / np.sum(hist_ref) if np.sum(hist_ref) > 0 else np.ones_like(hist_ref) / len(hist_ref)
         p_cluster = hist_cluster / np.sum(hist_cluster) if np.sum(hist_cluster) > 0 else np.ones_like(hist_cluster) / len(hist_cluster)
 
-        return jensenshannon(p_ref, p_cluster), {'bins': bins}
-
-
-
-def calculate_wasserstein_distance(X, clusters, scale=True, verbose=False):
-    """
-    Wrapper to calculate normalized Wasserstein distances between cluster-wise and overall feature distributions.
-
-    :param X: Feature matrix (DataFrame or array-like).
-    :param clusters: Cluster labels (array-like, same length as rows in X).
-    :param scale: Whether to scale numeric features by their standard deviation.
-    :param verbose: Whether to print details during processing.
-    :return: DataFrame of normalized Wasserstein distances (features × clusters).
-    """
-    
-    return calculate_feature_cluster_distances(X, clusters, wasserstein_distance_func, scale=scale, verbose=verbose)
-
-
-def calculate_jensen_shannon_distance(X, clusters, verbose=False):
-    """
-    Wrapper to calculate normalized Jensen-Shannon distances between cluster-wise and overall feature distributions.
-
-    :param X: Feature matrix (DataFrame or array-like).
-    :param clusters: Cluster labels (array-like, same length as rows in X).
-    :param verbose: Whether to print details during processing.
-    :return: DataFrame of normalized Jensen-Shannon distances (features × clusters).
-    """
-    
-    return calculate_feature_cluster_distances(X, clusters, jensen_shannon_distance_func, scale=False, verbose=verbose)
-
-
-def _rank_features(data_clustering, p_value_of_features_ranked):
-    """Rank features by lowest p-value.
-
-    :param X: Feature matrix.
-    :type X: pandas.DataFrame
-    :param y: Target column.
-    :type y: pandas.Series
-    :param p_value_of_features: Computed p-values of all features.
-    :type p_value_of_features: dict
-    :return: Ranked feature matrix.
-    :rtype: pandas.DataFrame
-    """
-    # Reorder columns based on sorted p-values
-    sorted_features = ["cluster", "target"] + p_value_of_features_ranked.columns.tolist()
-    data_clustering_ranked = data_clustering[sorted_features]
-
-    return data_clustering_ranked
+        return jensenshannon(p_ref, p_cluster), {"bins": bins}
 
 
 def _sort_clusters_by_target(data_clustering_ranked, model_type):
@@ -323,114 +276,65 @@ def _sort_clusters_by_target(data_clustering_ranked, model_type):
     return data_clustering_ranked
 
 
-def calculate_local_feature_importance(data_clustering_ranked, bootstraps_p_value):
-    """Calculate local importance of each feature within each cluster.
+def calculate_feature_importance(X, y, clusters, distance_func="wasserstein", model_type="", scale=False, verbose=False):
+    """Calculate importance of each feature within each cluster and then over all clusters. 
     
-    :param data_clustering_ranked: Filtered and ranked data frame incl features, target and cluster numbers.
-    :type data_clustering_ranked: pandas.DataFrame
-    :param bootstraps_p_value: Number of bootstraps to be drawn for computation of p-value.
-    :type bootstraps_p_value: int
-    :return: Distance matrix of all features per cluster.
-    :rtype: pandas.DataFrame
-    """
-    data_clustering_ranked = data_clustering_ranked.copy()
-    clusters = data_clustering_ranked["cluster"]
-    clusters_size = clusters.value_counts()
-    data_clustering_ranked.drop(["cluster", "target"], axis=1, inplace=True)
-
-    features = data_clustering_ranked.columns.tolist()
-    p_value_of_features_per_cluster = pd.DataFrame(columns=clusters.unique(), index=features)
-
-    for feature in data_clustering_ranked.columns:
-        if isinstance(data_clustering_ranked[feature].dtype, pd.CategoricalDtype):
-            for cluster in clusters.unique():
-                X_feature_cluster = data_clustering_ranked.loc[clusters == cluster, feature]
-                X_feature = data_clustering_ranked[feature]
-                p_value_of_features_per_cluster.loc[feature, cluster] = _calculate_p_value_categorical(
-                    X_feature_cluster,
-                    X_feature,
-                    cluster,
-                    clusters_size.loc[cluster],
-                    bootstraps_p_value,
-                )
-
-        elif pd.api.types.is_numeric_dtype(data_clustering_ranked[feature]):
-            for cluster in clusters.unique():
-                X_feature_cluster = data_clustering_ranked.loc[clusters == cluster, feature]
-                X_feature = data_clustering_ranked[feature]
-                p_value_of_features_per_cluster.loc[feature, cluster] = _calculate_p_value_continuous(
-                    X_feature_cluster,
-                    X_feature,
-                    clusters_size.loc[cluster],
-                    bootstraps_p_value,
-                )
-
-        else:
-            raise ValueError(
-                f"Feature {feature} has dytpye {data_clustering_ranked[feature].dtype} but has to be of type category or numeric!"
-            )
-
-    return p_value_of_features_per_cluster
-
-
-def calculate_global_feature_importance(X, y, cluster_labels, model_type):
-    """Calculate global feature importance for each feature.
-
     :param X: Feature matrix.
     :type X: pandas.DataFrame
-    :param y: Target column.
+    :param y: Target variable.
     :type y: pandas.Series
-    :param cluster_labels: Clustering labels.
-    :type cluster_labels: numpy.ndarray
-    :param model_type: Model type of Random Forest model: classifier or regression.
+    :param clusters: Cluster labels.
+    :type clusters: array-like
+    :param distance_func: Defines which distance should be calculated. Possible values: 'wasserstein', 'jensen-shannon'. 
+                        Wasserstein is primarily built for continuous features, Jensen-Shannon for categorical features. 
+    :type distance_func: str
+    :param model_type: Type of model used to determine sorting order of target variable in clusters (e.g., "regression" or "classification").
     :type model_type: str
-    :return: Data Frame incl features, target and cluster numbers ranked by distance
-        and dictionary with computed distance of all features.
-    :rtype: pandas.DataFrame and dict
+    :param scale: Whether to scale numeric features by their standard deviation - only in case of Wasserstein. 
+    :type scale: bool
+    :param verbose: Whether to print details during processing.
+    :type verbose: bool
+    :return: 
+        - feature_importance_local (pd.DataFrame): Feature distances per cluster.
+        - feature_importance_global (pd.Series): Mean importance across all clusters.
+        - data_clustering_sorted (pd.DataFrame): Clustered and sorted dataset.
+    :rtype: Tuple[pd.DataFrame, pd.Series, pd.DataFrame]
     """
-    data_clustering = pd.concat([X, y.rename("target"), pd.Series(cluster_labels, name="cluster")], axis=1)
-    p_value_of_features = {}
 
-    # statistical test for each feature
-    for feature in data_clustering.columns:
-        if feature not in ["cluster", "target"]:
-            data_feature = data_clustering[feature]
+    data_clustering = pd.concat([X, y.rename("target"), pd.Series(clusters, name="cluster")], axis=1)
 
-            list_of_df = [
-                data_feature[data_clustering["cluster"] == cluster].to_list()
-                for cluster in data_clustering["cluster"].unique()
-            ]
+    # Calculate distances
+    if distance_func == "wasserstein":
+        feature_importance_local = calculate_feature_cluster_distances(
+            X=X, 
+            clusters=clusters, 
+            distance_func=wasserstein_distance_func, 
+            scale=scale, 
+            verbose=verbose
+        )
+    elif distance_func == "jensen-shannon":
+        feature_importance_local = calculate_feature_cluster_distances(
+            X=X, 
+            clusters=clusters, 
+            distance_func=jensen_shannon_distance_func, 
+            scale=False, # No scaling in case of Jensen-Shannon
+            verbose=verbose
+        )
+    else:
+        raise ValueError("Invalid distance_func. Choose 'wasserstein' or 'jensen-shannon'.")
 
-            # Perform statistical test based on feature type
-            if isinstance(data_feature.dtype, pd.CategoricalDtype):
-                p_value_of_features[feature] = _chisquare_test(list_of_df)
-            elif pd.api.types.is_numeric_dtype(data_feature):
-                p_value_of_features[feature] = _anova_test(list_of_df)
-            else:
-                raise ValueError(
-                    f"Feature {feature} has dytpye {data_feature.dtype} but has to be of type category or numeric!"
-                )
+    # Aggregate over all clusters
+    feature_importance_global = feature_importance_local.mean(axis=1)
+    # Sort features by mean and extract names
+    sorted_feature_names = feature_importance_global.sort_values(ascending=False).index.tolist()
+    sorted_features = ["cluster", "target"] + sorted_feature_names
+    data_clustering_ranked = data_clustering[sorted_features]
 
-    # Convert p-value dictionary to a DataFrame and sort by p-value
-    p_value_of_features_ranked = (
-        pd.DataFrame.from_dict(p_value_of_features, orient="index", columns=["p_value"])
-        .T.fillna(
-            1
-        )  # NaN can be produced if categorical features are dummy encoded and one feature is not present in one cluster
-        .sort_values(by="p_value", axis=1)
-    )
-
-    # correct p-values for multiple testing
-    _, p_values_corrected = fdrcorrection(p_value_of_features_ranked.loc["p_value"].tolist())
-    p_value_of_features_ranked.loc["p_value"] = p_values_corrected
-
-    # sort and rank clustering dataframe
-    data_clustering_ranked = _rank_features(data_clustering, p_value_of_features_ranked)
+    
+    # Sort and rank clustering dataframe 
     data_clustering_ranked = _sort_clusters_by_target(data_clustering_ranked, model_type)
-    data_clustering_ranked.sort_values(by=["cluster", "target"], axis=0, inplace=True)
+    data_clustering_ranked = data_clustering_ranked.sort_values(by=["cluster", "target"])
 
-    return data_clustering_ranked, p_value_of_features_ranked
-
-
+    return feature_importance_local, feature_importance_global, data_clustering_ranked
 
 

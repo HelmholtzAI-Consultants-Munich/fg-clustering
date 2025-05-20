@@ -20,25 +20,25 @@ import fgclustering.utils as utils
 
 
 def _plot_feature_importance(
-    p_value_of_features_ranked: pd.DataFrame,
-    p_value_of_features_per_cluster: pd.DataFrame,
-    thr_pvalue: float,
+    distance_of_features_ranked: pd.DataFrame,
+    distance_of_features_per_cluster: pd.DataFrame,
+    thr_distance: float,
     top_n: int,
     num_cols: int,
     save: str,
 ):
     """
-    Generate and display a plot showing the importance of features based on p-values.
+    Generate and display a plot showing the importance of features based on distances.
     The plot includes both global feature importance and local feature importance for each cluster.
     Global importance is based on all clusters combined, while local importance is specific to each cluster.
 
-    :param p_value_of_features_ranked: DataFrame containing p-values of features, ranked by p-value.
-    :type p_value_of_features_ranked: pandas.DataFrame
-    :param p_value_of_features_per_cluster: DataFrame containing p-values of features for each cluster.
-    :type p_value_of_features_per_cluster: pandas.DataFrame
-    :param thr_pvalue: P-value threshold for display. Only features with p-values below this threshold
-                    are considered significant. Defaults to 1 (no filtering).
-    :type thr_pvalue: float, optional
+    :param distance_of_features_ranked: DataFrame containing distances of features, ranked by distance.
+    :type distance_of_features_ranked: pandas.DataFrame
+    :param distance_of_features_per_cluster: DataFrame containing distances of features for each cluster.
+    :type distance_of_features_per_cluster: pandas.DataFrame
+    :param thr_distance: Distance threshold for display. Only features with distances above this threshold
+                    are considered. Defaults to 1 (no filtering).
+    :type thr_distance: float, optional
     :param top_n: Number of top features to display in the plot. If None, all features are included.
                 Defaults to None.
     :type top_n: int, optional
@@ -49,11 +49,11 @@ def _plot_feature_importance(
     """
 
     # Determine figure size dynamically based on the number of features
-    num_features = len(p_value_of_features_ranked.columns)
+    num_features = len(distance_of_features_ranked.columns)
     figsize_width = 6.5
     figsize_height = max(figsize_width, int(np.ceil(5 * num_features / 25)))
 
-    num_subplots = 1 + p_value_of_features_per_cluster.shape[1]
+    num_subplots = 1 + distance_of_features_per_cluster.shape[1]
     num_cols = min(num_cols, num_subplots)
     num_rows = int(np.ceil(num_subplots / num_cols))
 
@@ -68,30 +68,30 @@ def _plot_feature_importance(
     # Plot global feature importance
     importance_global = pd.DataFrame(
         {
-            "Feature": p_value_of_features_ranked.columns,
-            "Importance": utils.log_transform(p_value_of_features_ranked.loc["p_value"].to_list()),
+            "Feature": distance_of_features_ranked.columns,
+            "Importance": distance_of_features_ranked.to_list(),
         }
     ).sort_values(by="Importance", ascending=False)
 
     ax = plt.subplot(num_rows, num_cols, 1)
     sns.barplot(data=importance_global, x="Importance", y="Feature", color="#3470a3")
     ax.axvline(
-        x=utils.log_transform(thr_pvalue), color="red", linestyle="--", label=f"thr p-value = {thr_pvalue}"
+        x=thr_distance, color="red", linestyle="--", label=f"thr distance = {thr_distance}"
     )
     ax.set_title(f"Cluster all")
     ax.legend(bbox_to_anchor=(1, 1), loc=2)
 
     # Plot local feature importance
-    for n, cluster in enumerate(p_value_of_features_per_cluster.columns):
+    for n, cluster in enumerate(distance_of_features_per_cluster.columns):
         importance_local = pd.DataFrame(
             {
-                "Feature": p_value_of_features_per_cluster.index,
-                "Importance": utils.log_transform(p_value_of_features_per_cluster[cluster].to_list()),
+                "Feature": distance_of_features_per_cluster.index,
+                "Importance": distance_of_features_per_cluster[cluster].to_list(),
             }
         ).sort_values(by="Importance", ascending=False)
         ax = plt.subplot(num_rows, num_cols, n + 2)
         sns.barplot(data=importance_local, x="Importance", y="Feature", color="#3470a3")
-        ax.axvline(x=utils.log_transform(thr_pvalue), color="red", linestyle="--")
+        ax.axvline(x=thr_distance, color="red", linestyle="--")
         ax.set_title(f"Cluster {cluster}")
         # ax.legend(bbox_to_anchor=(1, 1), loc=2)
 
@@ -103,16 +103,16 @@ def _plot_feature_importance(
 
 
 def _plot_distributions(
-    data_clustering_ranked: pd.DataFrame, thr_pvalue: float, top_n: int, num_cols: int, save: str
+    data_clustering_ranked: pd.DataFrame, thr_distance: float, top_n: int, num_cols: int, save: str
 ):
-    """Plot feature boxplots (for continuous features) or barplots (for categorical features) divided by clusters,
-    where features are filtered and ranked by p-value of a statistical test (ANOVA for continuous features,
-    chi square for categorical features).
+    """
+    Plot feature boxplots (for continuous features) or barplots (for categorical features) divided by clusters,
+    where features are filtered and ranked by distribution distances.
 
     :param data_clustering_ranked: Filtered and ranked data frame incl features, target and cluster numbers.
     :type data_clustering_ranked: pandas.DataFrame
-    :param thr_pvalue: P-value threshold used for feature filtering
-    :type thr_pvalue: float, optional
+    :param thr_distance: Distance threshold used for feature filtering
+    :type thr_distance: float, optional
     :param num_cols: Number of plots in one row.
     :type num_cols: int
     :param save: Filename to save plot.
@@ -125,7 +125,7 @@ def _plot_distributions(
     plt.figure(figsize=(num_cols * 4.5, num_rows * 4.5))
     plt.subplots_adjust(top=0.95, hspace=0.8, wspace=0.8)
     plt.suptitle(
-        f"Distribution of feature values across subgroups - Showing {'top ' + str(top_n) if top_n else 'all'} features with p-value < {thr_pvalue}",
+        f"Distribution of feature values across subgroups - Showing {'top ' + str(top_n) if top_n else 'all'} features with distance > {thr_distance}",
         fontsize=14,
     )
 
@@ -163,7 +163,7 @@ def _plot_distributions(
 
 def _plot_heatmap_classification(
     data_clustering_ranked: pd.DataFrame,
-    thr_pvalue: float,
+    thr_distance: float,
     top_n: int,
     heatmap_type: str,
     save: str,
@@ -174,8 +174,8 @@ def _plot_heatmap_classification(
 
     :param data_clustering_ranked: A DataFrame containing the data for clustering, including target and cluster labels.
     :type data_clustering_ranked: pd.DataFrame
-    :param thr_pvalue: Threshold for feature p-value significance in the heatmap.
-    :type thr_pvalue: float
+    :param thr_distance: Threshold for feature distance in the heatmap.
+    :type thr_distance: float
     :param top_n: Number of top features to display in the heatmap, or None to display all features.
     :type top_n: int
     :param heatmap_type: Type of heatmap to generate: "static" for Matplotlib or "interactive" for Plotly.
@@ -202,7 +202,7 @@ def _plot_heatmap_classification(
     boundaries = np.where(np.diff(cluster_labels) != 0)[0] + 1
 
     target_color, features_color, boundaries_color, boundaries_width, title = _get_heatmap_plotting_settings(
-        target, top_n, thr_pvalue
+        target, top_n, thr_distance
     )
 
     if heatmap_type == "static":
@@ -287,7 +287,7 @@ def _plot_heatmap_classification(
 
 def _plot_heatmap_regression(
     data_clustering_ranked: pd.DataFrame,
-    thr_pvalue: float,
+    thr_distance: float,
     top_n: int,
     heatmap_type: str,
     save: str,
@@ -298,8 +298,8 @@ def _plot_heatmap_regression(
 
     :param data_clustering_ranked: A DataFrame containing the data for clustering, including target and cluster labels.
     :type data_clustering_ranked: pd.DataFrame
-    :param thr_pvalue: Threshold for feature p-value significance in the heatmap.
-    :type thr_pvalue: float
+    :param thr_distance: Threshold for feature distance in the heatmap.
+    :type thr_distance: float
     :param top_n: Number of top features to display in the heatmap, or None to display all features.
     :type top_n: int
     :param heatmap_type: Type of heatmap to generate: "static" for Matplotlib or "interactive" for Plotly.
@@ -322,7 +322,7 @@ def _plot_heatmap_regression(
     # Determine cluster boundaries for separator lines
     boundaries = np.where(np.diff(cluster_labels) != 0)[0] + 1
     target_color, features_color, boundaries_color, boundaries_width, title = _get_heatmap_plotting_settings(
-        target, top_n, thr_pvalue
+        target, top_n, thr_distance
     )
 
     if heatmap_type == "static":
@@ -399,7 +399,7 @@ def _process_features_for_heatmap(features):
     return features
 
 
-def _get_heatmap_plotting_settings(target, top_n, thr_pvalue):
+def _get_heatmap_plotting_settings(target, top_n, thr_distance):
     """
     Configures plotting settings for heatmap visualizations, including color schemes,
     boundary thickness, and plot title.
@@ -408,8 +408,8 @@ def _get_heatmap_plotting_settings(target, top_n, thr_pvalue):
     :type target: pd.DataFrame
     :param top_n: Number of top features to display, or None to display all features.
     :type top_n: int or None
-    :param thr_pvalue: Threshold for p-value significance in feature selection.
-    :type thr_pvalue: float
+    :param thr_distance: Threshold for distance in feature selection.
+    :type thr_distance: float
     :return: Tuple containing color settings for target and features, boundary color, boundary length, and plot title.
     :rtype: tuple(str, str, str, int, str)
     """
@@ -419,7 +419,7 @@ def _get_heatmap_plotting_settings(target, top_n, thr_pvalue):
 
     boundaries_width = int(np.ceil(np.log(target.shape[1])))
 
-    title = f"Subgroups of instances that follow similar decision paths in the RF model \n Showing {'top ' + str(top_n) if top_n else 'all'} features with p-value < {thr_pvalue}"
+    title = f"Subgroups of instances that follow similar decision paths in the RF model \n Showing {'top ' + str(top_n) if top_n else 'all'} features with distance > {thr_distance}"
 
     return color_target, color_features, boundaries_color, boundaries_width, title
 
