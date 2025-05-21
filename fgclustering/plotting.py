@@ -20,7 +20,7 @@ import fgclustering.utils as utils
 
 
 def _plot_feature_importance(
-    distance_of_features_ranked: pd.DataFrame,
+    distance_of_features_ranked: pd.Series,
     distance_of_features_per_cluster: pd.DataFrame,
     thr_distance: float,
     top_n: int,
@@ -32,12 +32,12 @@ def _plot_feature_importance(
     The plot includes both global feature importance and local feature importance for each cluster.
     Global importance is based on all clusters combined, while local importance is specific to each cluster.
 
-    :param distance_of_features_ranked: DataFrame containing distances of features, ranked by distance.
-    :type distance_of_features_ranked: pandas.DataFrame
+    :param distance_of_features_ranked: Series containing distances of features, ranked by distance.
+    :type distance_of_features_ranked: pandas.Series
     :param distance_of_features_per_cluster: DataFrame containing distances of features for each cluster.
     :type distance_of_features_per_cluster: pandas.DataFrame
     :param thr_distance: Distance threshold for display. Only features with distances above this threshold
-                    are considered. Defaults to 1 (no filtering).
+                    are considered. Defaults to 0 (no filtering).
     :type thr_distance: float, optional
     :param top_n: Number of top features to display in the plot. If None, all features are included.
                 Defaults to None.
@@ -49,7 +49,7 @@ def _plot_feature_importance(
     """
 
     # Determine figure size dynamically based on the number of features
-    num_features = len(distance_of_features_ranked.columns)
+    num_features = len(distance_of_features_ranked.index)
     figsize_width = 6.5
     figsize_height = max(figsize_width, int(np.ceil(5 * num_features / 25)))
 
@@ -68,7 +68,7 @@ def _plot_feature_importance(
     # Plot global feature importance
     importance_global = pd.DataFrame(
         {
-            "Feature": distance_of_features_ranked.columns,
+            "Feature": distance_of_features_ranked.index,
             "Importance": distance_of_features_ranked.to_list(),
         }
     ).sort_values(by="Importance", ascending=False)

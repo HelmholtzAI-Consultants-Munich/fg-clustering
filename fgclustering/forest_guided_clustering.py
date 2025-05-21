@@ -185,7 +185,7 @@ class FgClustering:
         )
 
     
-    def calculate_statistics(self, data, target_column, distance_func = "wasserstein", scale=True):
+    def calculate_statistics(self, data, target_column, distance_func = "wasserstein", scale=True, verbose=False):
         """
         Recalculates distances for each feature based on the new feature matrix, affecting all related plotting functions.
         The new feature matrix must have the same number of samples and the same ordering of samples as the original matrix.
@@ -226,14 +226,14 @@ class FgClustering:
         )
 
     def plot_feature_importance(
-        self, thr_distance: float = 1, top_n: int = None, num_cols: int = 4, save: str = None
+        self, thr_distance: float = 0, top_n: int = None, num_cols: int = 4, save: str = None
     ):
         """
         Plot feature importance based on global and local feature importance.
         Displays both global and local importance for top n selected features.
 
         :param thr_distance: Distance threshold for display. Only features with distance above this threshold. 
-                            Defaults to 1 (no filtering).
+                            Defaults to 0 (no filtering).
         :type thr_distance: float, optional
         :param top_n: Number of top features to display in the plot. If None, all features are included.
                     Defaults to None.
@@ -245,7 +245,12 @@ class FgClustering:
         """
 
         # select top n features for plotting
-        selected_features = self.distance_of_features_ranked.columns.tolist()
+        assert isinstance(self.distance_of_features_ranked, pd.Series), (
+            f"Expected `distance_of_features_ranked` to be a Series, but got {type(self.distance_of_features_ranked)} "
+            f"with shape {getattr(self.distance_of_features_ranked, 'shape', 'N/A')}."
+        )
+
+        selected_features = self.distance_of_features_ranked.index.tolist()
         if top_n:
             selected_features = selected_features[:top_n]
 
@@ -263,7 +268,7 @@ class FgClustering:
         distributions: bool = True,
         heatmap: bool = True,
         heatmap_type: str = "static",
-        thr_distance: float = 1,
+        thr_distance: float = 0,
         top_n: int = None,
         num_cols: int = 6,
         save: str = None,
@@ -284,7 +289,7 @@ class FgClustering:
         :type distributions: bool, optional
         :param heatmap: Whether to plot the feature heatmap, defaults to `True`.
         :type heatmap: bool, optional
-        :param thr_distance: Distance threshold for filtering features, defaults to `1`.
+        :param thr_distance: Distance threshold for filtering features, defaults to `0`.
         :type thr_distance: float, optional
         :param top_n: Number of top features to retain after p-value ranking, defaults to `None` (no limit).
         :type top_n: int, optional
@@ -294,8 +299,15 @@ class FgClustering:
         :type save: str, optional
         """
         # drop insignificant features
-        selected_features = self.distance_of_features_ranked.loc["mean"] > thr_pvalue
-        selected_features = self.distance_of_features_ranked.columns[selected_features].tolist()
+        selected_features = self.distance_of_features_ranked > thr_distance
+        selected_features = self.distance_of_features_ranked.index[selected_features].tolist()
+
+        # give warning if no features selected
+        if not selected_features:
+            raise ValueError(
+                f"No features passed the distance threshold of {thr_distance}. "
+                f"Nothing to plot. Consider lowering the threshold."
+            )
 
         # select top n features for plotting
         if top_n:
