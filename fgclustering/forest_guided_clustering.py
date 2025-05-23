@@ -253,8 +253,8 @@ class FgClustering:
             thr_pvalue,
             top_n,
             num_cols,
+            cmap_target_dict,
             save,
-            cmap_target_dict
         )
 
     def plot_decision_paths(
@@ -265,8 +265,8 @@ class FgClustering:
         thr_pvalue: float = 1,
         top_n: int = None,
         num_cols: int = 6,
+        cmap_target_dict: dict = None,
         save: str = None,
-        cmap_target_dict: dict = None
     ):
         """
         Plot decision paths of the Random Forest model. This function generates visualizations
@@ -291,10 +291,10 @@ class FgClustering:
         :type top_n: int, optional
         :param num_cols: Number of plots per row in the distributions plot, defaults to `6`.
         :type num_cols: int, optional
-        :param save: Filename to save the plot. If `None`, the figure is not saved, defaults to `None`.
-        :type save: str, optional
         :param cmap_target_dict: Dict of colours to map categorical targets
         :type cmap_target_dict: dict
+        :param save: Filename to save the plot. If `None`, the figure is not saved, defaults to `None`.
+        :type save: str, optional
         """
         # drop insignificant features
         selected_features = self.p_value_of_features_ranked.loc["p_value"] < thr_pvalue
@@ -308,7 +308,12 @@ class FgClustering:
 
         if distributions:
             plotting._plot_distributions(
-                self.data_clustering_ranked[selected_features], thr_pvalue, top_n, num_cols, save, cmap_target_dict
+                self.data_clustering_ranked[selected_features], 
+                thr_pvalue, 
+                top_n, 
+                num_cols, 
+                cmap_target_dict, 
+                save,
             )
 
         if heatmap:
@@ -326,6 +331,6 @@ class FgClustering:
                     thr_pvalue,
                     top_n,
                     heatmap_type,
-                    save,
                     cmap_target_dict,
+                    save,
                 )
