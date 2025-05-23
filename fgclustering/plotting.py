@@ -103,7 +103,7 @@ def _plot_feature_importance(
 
 
 def _plot_distributions(
-    data_clustering_ranked: pd.DataFrame, thr_pvalue: float, top_n: int, num_cols: int, save: str, cmap_target_dict: dict
+    data_clustering_ranked: pd.DataFrame, thr_pvalue: float, top_n: int, num_cols: int, cmap_target_dict: dict, save: str
 ):
     """Plot feature boxplots (for continuous features) or barplots (for categorical features) divided by clusters,
     where features are filtered and ranked by p-value of a statistical test (ANOVA for continuous features,
@@ -115,10 +115,10 @@ def _plot_distributions(
     :type thr_pvalue: float, optional
     :param num_cols: Number of plots in one row.
     :type num_cols: int
-    :param save: Filename to save plot.
-    :type save: str
     :param cmap_target_dict: Dict of colours to map categorical targets
     :type cmap_target_dict: dict
+    :param save: Filename to save plot.
+    :type save: str
     """
     features_to_plot = data_clustering_ranked.drop("cluster", axis=1, inplace=False).columns.to_list()
 
@@ -174,8 +174,8 @@ def _plot_heatmap_classification(
     thr_pvalue: float,
     top_n: int,
     heatmap_type: str,
+    cmap_target_dict: dict,
     save: str,
-    cmap_target_dict: dict
 ):
     """
     Generates a classification heatmap visualization for clustered data, supporting both static and interactive plots.
@@ -189,10 +189,10 @@ def _plot_heatmap_classification(
     :type top_n: int
     :param heatmap_type: Type of heatmap to generate: "static" for Matplotlib or "interactive" for Plotly.
     :type heatmap_type: str
-    :param save: File path for saving the heatmap. Only supported for static heatmaps.
-    :type save: str
     :param cmap_target_dict: Dict of colours to map categorical targets
     :type cmap_target_dict: dict
+    :param save: File path for saving the heatmap. Only supported for static heatmaps.
+    :type save: str
     :return: None
     """
     cluster_labels = data_clustering_ranked["cluster"]
