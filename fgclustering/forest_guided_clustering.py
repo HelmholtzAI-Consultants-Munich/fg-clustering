@@ -213,7 +213,7 @@ class FgClustering:
         )
 
     def plot_feature_importance(
-        self, thr_pvalue: float = 1, top_n: int = None, num_cols: int = 4, save: str = None, cmap_target_dict: dict = None
+        self, thr_pvalue: float = 1, top_n: int = None, num_cols: int = 4, cmap_target_dict: dict = None, save: str = None
     ):
         """
         Plot feature importance based on p-values for global and local feature importance.
@@ -236,10 +236,10 @@ class FgClustering:
         :type top_n: int, optional
         :param num_cols: Number of plots per row in the output figure. Defaults to 4.
         :type num_cols: int, optional
-        :param save: Filename to save the plot. If None, the plot will not be saved. Defaults to None.
-        :type save: str, optional
         :param cmap_target_dict: Dict of colours to map categorical targets
         :type cmap_target_dict: dict
+        :param save: Filename to save the plot. If None, the plot will not be saved. Defaults to None.
+        :type save: str, optional
         """
 
         # select top n features for plotting
