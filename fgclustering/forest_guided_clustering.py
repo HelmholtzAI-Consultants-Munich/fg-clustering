@@ -240,6 +240,8 @@ class FgClustering:
         :type top_n: int, optional
         :param num_cols: Number of plots per row in the output figure. Defaults to 4.
         :type num_cols: int, optional
+        :param cmap_target_dict: Dict of colours to map categorical targets
+        :type cmap_target_dict: dict
         :param save: Filename to save the plot. If None, the plot will not be saved. Defaults to None.
         :type save: str, optional
         """
@@ -260,6 +262,7 @@ class FgClustering:
             thr_distance,
             top_n,
             num_cols,
+            cmap_target_dict,
             save,
         )
 
@@ -271,6 +274,7 @@ class FgClustering:
         thr_distance: float = 0,
         top_n: int = None,
         num_cols: int = 6,
+        cmap_target_dict: dict = None,
         save: str = None,
     ):
         """
@@ -295,6 +299,8 @@ class FgClustering:
         :type top_n: int, optional
         :param num_cols: Number of plots per row in the distributions plot, defaults to `6`.
         :type num_cols: int, optional
+        :param cmap_target_dict: Dict of colours to map categorical targets
+        :type cmap_target_dict: dict
         :param save: Filename to save the plot. If `None`, the figure is not saved, defaults to `None`.
         :type save: str, optional
         """
@@ -317,6 +323,7 @@ class FgClustering:
 
         if distributions:
             plotting._plot_distributions(
+
                 self.data_clustering_ranked[selected_features], thr_distance, top_n, num_cols, save
             )
 
@@ -335,5 +342,6 @@ class FgClustering:
                     thr_distance,
                     top_n,
                     heatmap_type,
+                    cmap_target_dict,
                     save,
                 )
