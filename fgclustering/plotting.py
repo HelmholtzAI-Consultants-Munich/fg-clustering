@@ -103,7 +103,7 @@ def _plot_feature_importance(
 
 
 def _plot_distributions(
-    data_clustering_ranked: pd.DataFrame, thr_pvalue: float, top_n: int, num_cols: int, save: str
+    data_clustering_ranked: pd.DataFrame, thr_pvalue: float, top_n: int, num_cols: int, cmap_target_dict: dict, save: str
 ):
     """Plot feature boxplots (for continuous features) or barplots (for categorical features) divided by clusters,
     where features are filtered and ranked by p-value of a statistical test (ANOVA for continuous features,
@@ -115,6 +115,8 @@ def _plot_distributions(
     :type thr_pvalue: float, optional
     :param num_cols: Number of plots in one row.
     :type num_cols: int
+    :param cmap_target_dict: Dict of colours to map categorical targets
+    :type cmap_target_dict: dict
     :param save: Filename to save plot.
     :type save: str
     """
@@ -129,6 +131,12 @@ def _plot_distributions(
         fontsize=14,
     )
 
+    if cmap_target_dict is not None:
+        color_palette = sns.color_palette(list(cmap_target_dict.values()))
+        cmap_target = sns.color_palette(color_palette, as_cmap=True)
+    else:
+        cmap_target = "Blues_r"
+
     for n, feature in enumerate(features_to_plot):
         # add a new subplot iteratively
         ax = plt.subplot(num_rows, num_cols, n + 1)
@@ -140,7 +148,7 @@ def _plot_distributions(
                 hue=feature,
                 data=data_clustering_ranked,
                 ax=ax,
-                palette="Blues_r",
+                palette=cmap_target,
             )
             ax.set_title(f"Feature: {feature}")
             ax.legend(bbox_to_anchor=(1, 1), loc=2)
@@ -166,6 +174,7 @@ def _plot_heatmap_classification(
     thr_pvalue: float,
     top_n: int,
     heatmap_type: str,
+    cmap_target_dict: dict,
     save: str,
 ):
     """
@@ -180,9 +189,10 @@ def _plot_heatmap_classification(
     :type top_n: int
     :param heatmap_type: Type of heatmap to generate: "static" for Matplotlib or "interactive" for Plotly.
     :type heatmap_type: str
+    :param cmap_target_dict: Dict of colours to map categorical targets
+    :type cmap_target_dict: dict
     :param save: File path for saving the heatmap. Only supported for static heatmaps.
     :type save: str
-    :raises RuntimeError: If `heatmap_type` is "interactive" and `save` is specified, as saving interactive plots is not implemented.
     :return: None
     """
     cluster_labels = data_clustering_ranked["cluster"]
@@ -205,11 +215,17 @@ def _plot_heatmap_classification(
         target, top_n, thr_pvalue
     )
 
+
     if heatmap_type == "static":
         # Get plotting settings
 
-        color_palette = sns.color_palette(target_color, n_colors=len(categories))
-        cmap_target = sns.color_palette(color_palette, as_cmap=True)
+        if cmap_target_dict is not None:
+            color_palette = sns.color_palette(list(cmap_target_dict.values()))
+            cmap_target = sns.color_palette(color_palette, as_cmap=True)
+        else:
+            color_palette = sns.color_palette(target_color, n_colors=len(categories))
+            cmap_target = sns.color_palette(color_palette, as_cmap=True)
+
         color_map = {i: color_palette[i] for i in range(len(categories))}
 
         fig, ax_target, ax_target_cb, ax_features, ax_features_cb, target_plot, feature_plot = (
@@ -245,11 +261,19 @@ def _plot_heatmap_classification(
         plt.show()
 
     elif heatmap_type == "interactive":
-        # Create a color scale for the target categories
-        color_palette_rgb = [
-            f"rgb({int(r * 255)},{int(g * 255)},{int(b * 255)})"
-            for r, g, b in sns.color_palette(target_color, n_colors=len(categories))
-        ]
+        if cmap_target_dict is not None:
+            # Create a color scale for the target categories
+            color_palette_rgb = [
+                f"rgb({int(r * 255)},{int(g * 255)},{int(b * 255)})"
+                for r, g, b in sns.color_palette(list(cmap_target_dict.values()))
+            ]
+        else:
+            # Create a color scale for the target categories
+            color_palette_rgb = [
+                f"rgb({int(r * 255)},{int(g * 255)},{int(b * 255)})"
+                for r, g, b in sns.color_palette(target_color, n_colors=len(categories))
+            ]
+
         color_map = {i: color_palette_rgb[i] for i in range(len(categories))}
         colorscale = [[i / (len(categories) - 1), color_map[i]] for i in range(len(categories))]
 
@@ -277,12 +301,11 @@ def _plot_heatmap_classification(
                     name=category,
                 )
             )
-        fig.show()
 
         if save:
-            raise RuntimeError(
-                "Saving interactive plots is not implemented. Please set heatmap_type='static' to save the plot."
-            )
+            fig.write_html(f"{save}_heatmap.html")
+        else:
+            fig.show()
 
 
 def _plot_heatmap_regression(
