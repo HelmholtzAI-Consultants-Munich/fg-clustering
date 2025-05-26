@@ -74,11 +74,12 @@ def compute_total_within_cluster_variation(continuous_values, cluster_labels):
 
     return score
 
+
 def calculate_feature_cluster_distances(X, clusters, distance_func, scale=False, verbose=False):
     """
     Calculate distance between overall feature distribution and cluster-wise feature distributions.
     Supports numeric and categorical features, using a specified distance function (e.g. Wasserstein, Jensen-Shannon).
-    Distances are normalized per cluster to [0, 1] range.
+    Distances are scaled to be 1 as maximum for each cluster. 
     
     :param X: Feature matrix (pandas DataFrame or convertible object).
     :type X: pd.DataFrame or array-like
@@ -86,7 +87,8 @@ def calculate_feature_cluster_distances(X, clusters, distance_func, scale=False,
     :type clusters: array-like
     :param distance_func: Callable distance function that takes (all_values, cluster_values, is_categorical) and returns (distance, meta).
     :type distance_func: function
-    :param scale: Whether to scale numeric features by their standard deviation before distance computation, defaults to False.
+    :param scale: Whether to scale numeric features by their standard deviation before distance computation, defaults to False. 
+                Scaling is recommended for Wasserstein distance calculation. 
     :type scale: bool
     :param verbose: Whether to print detailed output during processing, defaults to False.
     :type verbose: bool
@@ -181,12 +183,19 @@ def wasserstein_distance_func(values_all, values_cluster, is_categorical=False):
     - For categorical data, one-hot encodes the values and computes Wasserstein distances per dummy column.
 
     :param values_all: Full (background) distribution.
+    :type values_all: pd.Series
     :param values_cluster: Cluster-specific distribution.
+    :type values_cluster: pd.Series
     :param is_categorical: Whether the data is categorical.
-    :return: Maximum Wasserstein distance (for categorical) or scalar distance (for numeric), and optional metadata (None).
+    :type is_categorical: bool
+    :return: 
+        - Wasserstein distance (float) – either a scalar distance (numeric) or the max distance across categories (categorical).
+        - Optional metadata (None).
+    :rtype: Tuple[float, None]
     """
     
     if is_categorical:
+        # Create dummies and make sure that each category gets a column
         dummies_all = pd.get_dummies(values_all, drop_first=True)
         dummies_cluster = pd.get_dummies(values_cluster, drop_first=True)
         dummies_all, dummies_cluster = dummies_all.align(dummies_cluster, join="outer", fill_value=0)
@@ -205,15 +214,23 @@ def jensen_shannon_distance_func(values_all, values_cluster, is_categorical=Fals
     Compute the Jensen-Shannon distance between two distributions.
 
     - For categorical data, compares normalized frequency distributions.
-    - For numeric data, applies the Freedman–Diaconis rule to bin data and compares histograms.
+    - For numeric data, applies the Freedman–Diaconis rule for number of bins, defines bin edges with respect to percentiles, 
+      and compares histograms.
 
     :param values_all: Full (background) distribution.
+    :type values_all: pd.Series
     :param values_cluster: Cluster-specific distribution.
+    :type values_cluster: pd.Series
     :param is_categorical: Whether the data is categorical.
-    :return: Jensen-Shannon distance (float), and metadata including number of bins used (for numeric).
+    :type is_categorical: bool
+    :return: 
+        - Jensen-Shannon distance (float).
+        - Optional metadata dict with bin information (for numeric) or None (for categorical).
+    :rtype: Tuple[float, Optional[Dict[str, Any]]]
     """
     
     if is_categorical:
+        # Extract the values for the two distributions and calculate the distance
         cats = values_all.unique()
         p_ref = values_all.value_counts(normalize=True).reindex(cats, fill_value=0)
         p_cluster = values_cluster.value_counts(normalize=True).reindex(cats, fill_value=0)
@@ -231,13 +248,12 @@ def jensen_shannon_distance_func(values_all, values_cluster, is_categorical=Fals
             bin_estimate = int(np.ceil(range_val / bin_width))
             bins = max(1, min(bin_estimate, n_obs, 100))
 
-
-        
-        
+        # Define bin edges and calculate histograms
         edges = np.percentile(values_all, np.linspace(0, 100, bins + 1))
         hist_ref, _ = np.histogram(values_all, bins=edges)
         hist_cluster, _ = np.histogram(values_cluster, bins=edges)
 
+        # Normalize histogram values
         p_ref = hist_ref / np.sum(hist_ref) if np.sum(hist_ref) > 0 else np.ones_like(hist_ref) / len(hist_ref)
         p_cluster = hist_cluster / np.sum(hist_cluster) if np.sum(hist_cluster) > 0 else np.ones_like(hist_cluster) / len(hist_cluster)
 
