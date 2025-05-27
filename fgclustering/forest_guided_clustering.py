@@ -89,7 +89,8 @@ class FgClustering:
         max_iter_clustering: int = 100,
         discart_value_JI: float = 0.7,
         bootstraps_JI: int = 100,
-        bootstraps_p_value: int = 100,
+        distance_func = "wasserstein", 
+        scale=True, 
         n_jobs: int = 1,
         verbose: int = 1,
     ):
@@ -119,9 +120,12 @@ class FgClustering:
         :type discart_value_JI: float, optional
         :param bootstraps_JI: Number of bootstrap iterations to compute the Jaccard Index, defaults to 100.
         :type bootstraps_JI: int, optional
-        :param bootstraps_p_value: Number of bootstrap iterations to compute the p-value for feature importance, defaults
-                                    to 100.
-        :type bootstraps_p_value: int, optional
+        :param distance_func: Defines which distance should be calculated for feature importance. Possible values: 
+                            'wasserstein', 'jensen-shannon'. Wasserstein is primarily built for continuous features, 
+                            Jensen-Shannon for categorical features. 
+        :type distance_func: str
+        :param scale: Whether to scale numeric features by their standard deviation - only in case of Wasserstein. 
+        :type scale: bool
         :param n_jobs: Number of parallel jobs to run when computing the Jaccard Index bootstraps. Defaults to 1, meaning
                     no parallel computation.
         :type n_jobs: int, optional
@@ -167,20 +171,23 @@ class FgClustering:
             .fit(self.distance_matrix)
             .labels_
         )
-
-        self.data_clustering_ranked, self.p_value_of_features_ranked = (
-            stats.calculate_global_feature_importance(
-                X=self.X, y=self.y, cluster_labels=self.cluster_labels, model_type=self.model_type
+        
+        self.distance_of_features_per_cluster, self.distance_of_features_ranked, self.data_clustering_ranked = (
+            stats.calculate_feature_importance(
+                X=self.X, 
+                y=self.y, 
+                clusters=self.cluster_labels, 
+                distance_func=distance_func, 
+                model_type=self.model_type, 
+                scale=scale, 
+                verbose=verbose
             )
         )
 
-        self.p_value_of_features_per_cluster = stats.calculate_local_feature_importance(
-            data_clustering_ranked=self.data_clustering_ranked, bootstraps_p_value=bootstraps_p_value
-        )
-
-    def calculate_statistics(self, data, target_column, bootstraps_p_value=100):
+    
+    def calculate_statistics(self, data, target_column, distance_func = "wasserstein", scale=True, verbose=False):
         """
-        Recalculates p-values for each feature based on the new feature matrix, affecting all related plotting functions.
+        Recalculates distances for each feature based on the new feature matrix, affecting all related plotting functions.
         The new feature matrix must have the same number of samples and the same ordering of samples as the original matrix.
 
         :param data: Input data containing the new feature matrix. If `target_column` is a string,
@@ -189,9 +196,12 @@ class FgClustering:
         :param target_column: Name of the target column as a string, or target values as a numpy array or pd.Series.
                               If provided as a string, it must correspond to a column in the `data` DataFrame.
         :type target_column: str or numpy.ndarray or pd.Series
-        :param bootstraps_p_value: Number of bootstraps to use for calculating the p-value of feature importance. Defaults
-                                    to 100.
-        :type bootstraps_p_value: int, optional
+        :param distance_func: Defines which distance should be calculated for feature importance. Possible values: 
+                            'wasserstein', 'jensen-shannon'. Wasserstein is primarily built for continuous features, 
+                            Jensen-Shannon for categorical features. 
+        :type distance_func: str
+        :param scale: Whether to scale numeric features by their standard deviation - only in case of Wasserstein. 
+        :type scale: bool
         """
         if type(target_column) == str:
             y = data.loc[:, target_column]
@@ -202,35 +212,29 @@ class FgClustering:
 
         y.reset_index(inplace=True, drop=True)
         X.reset_index(inplace=True, drop=True)
-
-        self.data_clustering_ranked, self.p_value_of_features_ranked = (
-            stats.calculate_global_feature_importance(
-                X=X, y=y, cluster_labels=self.cluster_labels, model_type=self.model_type
+        
+        self.distance_of_features_per_cluster, self.distance_of_features_ranked, self.data_clustering_ranked = (
+            stats.calculate_feature_importance(
+                X=X, 
+                y=y, 
+                clusters=self.cluster_labels, 
+                distance_func=distance_func, 
+                model_type=self.model_type, 
+                scale=scale, 
+                verbose=verbose
             )
-        )
-        self.p_value_of_features_per_cluster = stats.calculate_local_feature_importance(
-            data_clustering_ranked=self.data_clustering_ranked, bootstraps_p_value=bootstraps_p_value
         )
 
     def plot_feature_importance(
-        self, thr_pvalue: float = 1, top_n: int = None, num_cols: int = 4, cmap_target_dict: dict = None, save: str = None
+        self, thr_distance: float = 0, top_n: int = None, num_cols: int = 4, save: str = None
     ):
         """
-        Plot feature importance based on p-values for global and local feature importance.
-        For the global feature importance, p-values are computed using ANOVA (for continuous variables)
-        or Chi-Square (for categorical variables) tests. The local feature importance, p-values are measured by the
-        variance and impurity of the feature within the cluster, i.e. a smaller p-value indicates lower variance/impurity.
-        Feature importance is defined as log transformation of the p-value with a small offset.
-
-        $transformed_value=-log10(p-value + \epsilon) / -log10(\epsilon)$
-
-        where $\epsilon$ is a small positive constant (1e-50) that avoids issues with log10(0), but also significant distortion
-        because $\epsilon$ is very small.
+        Plot feature importance based on global and local feature importance.
         Displays both global and local importance for top n selected features.
 
-        :param thr_pvalue: P-value threshold for display. Only features with p-values below this threshold
-                        are considered significant. Defaults to 1 (no filtering).
-        :type thr_pvalue: float, optional
+        :param thr_distance: Distance threshold for display. Only features with distance above this threshold. 
+                            Defaults to 0 (no filtering).
+        :type thr_distance: float, optional
         :param top_n: Number of top features to display in the plot. If None, all features are included.
                     Defaults to None.
         :type top_n: int, optional
@@ -243,14 +247,19 @@ class FgClustering:
         """
 
         # select top n features for plotting
-        selected_features = self.p_value_of_features_ranked.columns.tolist()
+        assert isinstance(self.distance_of_features_ranked, pd.Series), (
+            f"Expected `distance_of_features_ranked` to be a Series, but got {type(self.distance_of_features_ranked)} "
+            f"with shape {getattr(self.distance_of_features_ranked, 'shape', 'N/A')}."
+        )
+
+        selected_features = self.distance_of_features_ranked.index.tolist()
         if top_n:
             selected_features = selected_features[:top_n]
 
         plotting._plot_feature_importance(
-            self.p_value_of_features_ranked[selected_features],
-            self.p_value_of_features_per_cluster.loc[selected_features],
-            thr_pvalue,
+            self.distance_of_features_ranked[selected_features],
+            self.distance_of_features_per_cluster.loc[selected_features],
+            thr_distance,
             top_n,
             num_cols,
             cmap_target_dict,
@@ -262,7 +271,7 @@ class FgClustering:
         distributions: bool = True,
         heatmap: bool = True,
         heatmap_type: str = "static",
-        thr_pvalue: float = 1,
+        thr_distance: float = 0,
         top_n: int = None,
         num_cols: int = 6,
         cmap_target_dict: dict = None,
@@ -277,16 +286,15 @@ class FgClustering:
 
         If `heatmap` is `True`, it plots a heatmap of feature values sorted by clusters.
 
-        Both plots filter and rank features based on p-values obtained from statistical tests
-        (ANOVA for continuous features and chi-square for categorical features).
-        In addition, all features or only the `top_n`features can be plotted. If `top_n`is `None` all features are plotted.
+        Both plots filter and rank features based on feature distribution differences.
+        In addition, all features or only the `top_n` features can be plotted. If `top_n`is `None` all features are plotted.
 
         :param distributions: Whether to plot feature distributions, defaults to `True`.
         :type distributions: bool, optional
         :param heatmap: Whether to plot the feature heatmap, defaults to `True`.
         :type heatmap: bool, optional
-        :param thr_pvalue: P-value threshold for filtering features, defaults to `1`.
-        :type thr_pvalue: float, optional
+        :param thr_distance: Distance threshold for filtering features, defaults to `0`.
+        :type thr_distance: float, optional
         :param top_n: Number of top features to retain after p-value ranking, defaults to `None` (no limit).
         :type top_n: int, optional
         :param num_cols: Number of plots per row in the distributions plot, defaults to `6`.
@@ -297,8 +305,15 @@ class FgClustering:
         :type save: str, optional
         """
         # drop insignificant features
-        selected_features = self.p_value_of_features_ranked.loc["p_value"] < thr_pvalue
-        selected_features = self.p_value_of_features_ranked.columns[selected_features].tolist()
+        selected_features = self.distance_of_features_ranked > thr_distance
+        selected_features = self.distance_of_features_ranked.index[selected_features].tolist()
+
+        # give warning if no features selected
+        if not selected_features:
+            raise ValueError(
+                f"No features passed the distance threshold of {thr_distance}. "
+                f"Nothing to plot. Consider lowering the threshold."
+            )
 
         # select top n features for plotting
         if top_n:
@@ -308,19 +323,15 @@ class FgClustering:
 
         if distributions:
             plotting._plot_distributions(
-                self.data_clustering_ranked[selected_features], 
-                thr_pvalue, 
-                top_n, 
-                num_cols, 
-                cmap_target_dict, 
-                save,
+
+                self.data_clustering_ranked[selected_features], thr_distance, top_n, num_cols, save
             )
 
         if heatmap:
             if self.model_type == "regression":
                 plotting._plot_heatmap_regression(
                     self.data_clustering_ranked[selected_features],
-                    thr_pvalue,
+                    thr_distance,
                     top_n,
                     heatmap_type,
                     save,
@@ -328,7 +339,7 @@ class FgClustering:
             elif self.model_type == "classification":
                 plotting._plot_heatmap_classification(
                     self.data_clustering_ranked[selected_features],
-                    thr_pvalue,
+                    thr_distance,
                     top_n,
                     heatmap_type,
                     cmap_target_dict,
