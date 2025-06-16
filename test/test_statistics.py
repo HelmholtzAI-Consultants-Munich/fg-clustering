@@ -3,14 +3,13 @@
 ############################################
 
 
+import unittest
 import numpy as np
 import pandas as pd
-from fgclustering.utils import *
-from fgclustering.statistics import (
-    compute_balanced_average_impurity,
-    compute_total_within_cluster_variation,
-    calculate_feature_importance,
-)
+
+from sklearn.datasets import make_classification, make_regression
+
+from fgclustering.statistics import FeatureImportance, DistanceJensenShannon, DistanceWasserstein
 
 
 ############################################
@@ -18,122 +17,203 @@ from fgclustering.statistics import (
 ############################################
 
 
-def test_compute_balanced_average_impurity():
-    # test data
-    categorical_values = pd.Series([0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
-    cluster_labels = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
+class TestFeatureImportance(unittest.TestCase):
+    def setUp(self):
+        self.n_samples = 100
+        self.n_features = 5
+        self.clusters = np.repeat([0, 1], self.n_samples // 2)
+        self.verbose = 0
 
-    result = compute_balanced_average_impurity(categorical_values, cluster_labels)
+    def _generate_classification_data(self):
+        X, y = make_classification(
+            n_samples=self.n_samples,
+            n_features=self.n_features,
+            n_informative=3,
+            random_state=42,
+        )
+        return pd.DataFrame(X, columns=[f"feat_{i}" for i in range(self.n_features)]), pd.Series(y)
 
-    assert result == 0.0, "error: impurity should be 0"
+    def _generate_regression_data(self):
+        X, y = make_regression(
+            n_samples=self.n_samples,
+            n_features=self.n_features,
+            n_informative=3,
+            noise=0.1,
+            random_state=1,
+        )
+        return pd.DataFrame(X, columns=[f"feat_{i}" for i in range(self.n_features)]), pd.Series(y)
 
+    def test_calculate_feature_importance_classification_wasserstein(self):
+        X, y = self._generate_classification_data()
+        fi = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=True), verbose=self.verbose)
+        local, global_, df = fi.calculate_feature_importance(X, y, self.clusters, model_type="cla")
 
-def test_compute_total_within_cluster_variation():
-    # test data
-    continuous_values = pd.Series([0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
-    cluster_labels = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
+        self.assertIsInstance(local, pd.DataFrame)
+        self.assertIsInstance(global_, pd.Series)
+        self.assertIn("cluster", df.columns)
+        self.assertIn("target", df.columns)
+        self.assertEqual(local.shape[0], X.shape[1])
 
-    result = compute_total_within_cluster_variation(continuous_values, cluster_labels)
+    def test_calculate_feature_importance_regression_jensenshannon(self):
+        X, y = self._generate_regression_data()
+        fi = FeatureImportance(
+            distance_metric=DistanceJensenShannon(scale_features=False), verbose=self.verbose
+        )
+        local, global_, df = fi.calculate_feature_importance(X, y, self.clusters, model_type="reg")
 
-    assert result == 0.0, "error: within cluster variation should be 0"
+        self.assertIsInstance(local, pd.DataFrame)
+        self.assertIsInstance(global_, pd.Series)
+        self.assertIn("cluster", df.columns)
+        self.assertIn("target", df.columns)
+        self.assertEqual(local.shape[0], X.shape[1])
 
+    def test_calculate_feature_importance_constant_column(self):
+        X, y = self._generate_classification_data()
+        X["constant"] = 1  # Add zero-variance feature
+        fi = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=True), verbose=self.verbose)
+        local, global_, _ = fi.calculate_feature_importance(X, y, self.clusters, model_type="cla")
 
-def test_calculate_global_feature_importance():
-    # test if anova test filters out features 1 and 2 which are the same in both clusters and
-    # leaves features 3 and 4 which are clearly different in both clusters
-    # parameters
-    model_type = "classifier"
+        self.assertTrue(local.loc["constant"].isna().all())
+        self.assertTrue(np.isnan(global_["constant"]))
 
-    # test data
-    X = pd.DataFrame.from_dict(
-        {
-            "col_1": [1, 1, 1, 1, 1, 0.9],
-            "col_2": [1, 1, 1, 1, 0.9, 0.5],
-            "col_3": [1, 1, 1, 0, 0, 1],
-            "col_4": [0, 0, 0, 1, 1, 1],
-        }
-    )
-    y = pd.Series([0, 0, 0, 0, 0, 0])
-    cluster_labels = np.array([0, 0, 0, 1, 1, 1])
+    def test_calculate_feature_importance_categorical_feature(self):
+        X, y = self._generate_classification_data()
+        X["cat_feat"] = np.random.choice(["A", "B", "C"], size=len(X))
+        fi = FeatureImportance(
+            distance_metric=DistanceJensenShannon(scale_features=False), verbose=self.verbose
+        )
+        local, global_, _ = fi.calculate_feature_importance(X, y, self.clusters, model_type="cla")
 
-    feature_importance_local, feature_importance_global, X_ranked = calculate_feature_importance(X, y, cluster_labels, model_type=model_type)
+        self.assertIn("cat_feat", local.index)
 
-    X_ranked.drop("cluster", axis=1, inplace=True)
-    assert list(X_ranked.columns) == [
-        "target",
-        "col_4",
-        "col_3",
-        "col_2",
-        "col_1",
-    ], "error: global feature importance returns wrong ordering"
+    def test_calculate_feature_importance_ranking_correctness(self):
+        model_type = "cla"  # classifier
 
+        # Create dataset
+        X = pd.DataFrame(
+            {
+                "col_1": [1, 1, 1, 1, 1, 0.9],
+                "col_2": [1, 1, 1, 1, 0.9, 0.5],
+                "col_3": [1, 1, 1, 0, 0, 1],
+                "col_4": [0, 0, 0, 1, 1, 1],
+            }
+        )
+        y = pd.Series([0, 0, 0, 0, 0, 0])
+        cluster_labels = np.array([0, 0, 0, 1, 1, 1])
 
-def test_calculate_local_feature_importance():
-    # test if clusterwise importance is high for feature 2 and 4 and low for feature 1 and 3
-    # parameters
-    thr_distance = 0
-    model_type = "classifier"
+        # Instantiate and compute feature importance
+        fi = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=False), verbose=0)
+        fi_local, fi_global, X_ranked = fi.calculate_feature_importance(X, y, cluster_labels, model_type)
 
-    # test data
-    X = pd.DataFrame.from_dict(
-        {
-            "col_1": [0.9, 1, 0.9, 1, 1, 0.9, 1, 0.9, 1, 0.9, 1, 0.9],
-            "col_2": [0.1, 0.1, 0.1, 0.1, 0.9, 0.9, 0.9, 0.9, 1, 1, 1, 1],
-            "col_3": [0.1, 0, 0.1, 0, 0.1, 0, 0.1, 0, 0.1, 0.1, 0, 0],
-            "col_4": [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2],
-        }
-    )
-    y = pd.Series([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
-    cluster_labels = np.array([0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2])
+        # Check ordering of features by importance (top = most important)
+        ranked_cols = [col for col in X_ranked.columns if col not in ["cluster", "target"]]
+        expected_top = ["col_4", "col_3"]
 
-    feature_importance_local, feature_importance_global, X_ranked = calculate_feature_importance(X, y, cluster_labels, model_type=model_type)
-    for column in X.columns:
-        if feature_importance_global.loc[column] > thr_distance:
-            X.drop(column, axis=1, inplace=True)
+        self.assertEqual(
+            ranked_cols[:2],
+            expected_top,
+            f"Expected top features to be {expected_top}, but got {ranked_cols[:2]}",
+        )
 
-    importance = feature_importance_local
-    result = importance.transpose().median()
-    
-    assert sum(result > 0.1) == 2, "error: wrong number of features with highest feature importance"
+    def test_calculate_feature_importance_local_feature_importance(self):
+        # Parameters
+        thr_distance = 0
+        model_type = "cla"
 
+        # Create synthetic test data
+        X = pd.DataFrame.from_dict(
+            {
+                "col_1": [0.9, 1, 0.9, 1, 1, 0.9, 1, 0.9, 1, 0.9, 1, 0.9],
+                "col_2": [0.1, 0.1, 0.1, 0.1, 0.9, 0.9, 0.9, 0.9, 1, 1, 1, 1],
+                "col_3": [0.1, 0, 0.1, 0, 0.1, 0, 0.1, 0, 0.1, 0.1, 0, 0],
+                "col_4": [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2],
+            }
+        )
+        y = pd.Series([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
+        cluster_labels = np.array([0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2])
 
-def test_feature_importance_all_below_threshold():
-    X = pd.DataFrame(
-        {
-            "col_1": [1, 1, 1, 1],
-            "col_2": [0, 0, 0, 0],
-        }
-    )
-    y = pd.Series([0, 0, 1, 1])
-    cluster_labels = np.array([0, 0, 1, 1])
-    model_type = "classifier"
+        # Run feature importance calculation
+        fi = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=False), verbose=0)
+        fi_local, fi_global, _ = fi.calculate_feature_importance(X, y, cluster_labels, model_type)
 
-    feature_importance_local, feature_importance_global, X_ranked = calculate_feature_importance(X, y, cluster_labels, model_type=model_type)
+        # Remove globally unimportant features
+        selected_cols = fi_global[fi_global > thr_distance].index
+        fi_local = fi_local.loc[selected_cols]
 
-    # Here we assume a threshold of 0.5, which no feature should exceed
-    thr_distance = 0.5
-    retained = feature_importance_global[feature_importance_global > thr_distance]
-    
-    assert retained.empty, "error: no features should pass the threshold"
+        # Compute median local importance per feature
+        median_importance = fi_local.transpose().median()
 
+        # We expect exactly two features to have median local importance > 0.1
+        self.assertEqual(
+            sum(median_importance > 0.1),
+            2,
+            f"Expected 2 important features, found {sum(median_importance > 0.1)}",
+        )
 
-def test_feature_importance_with_different_distance_funcs():
-    # Construct data with clearly distinguishable distributions
-    X = pd.DataFrame({
-        "cont_feature": [0.1, 0.2, 0.2, 0.3, 0.8, 0.9, 0.95, 1.0],  # continuous
-        "cat_feature": [0, 0, 0, 0, 1, 1, 1, 1],                    # categorical
-    })
-    y = pd.Series([0, 0, 0, 0, 1, 1, 1, 1])  # Dummy target
-    cluster_labels = np.array([0, 0, 0, 0, 1, 1, 1, 1])
+    def test_calculate_feature_importance_different_distance_funcs(self):
+        # Synthetic test data
+        X = pd.DataFrame(
+            {
+                "cont_feature": [0.1, 0.2, 0.2, 0.3, 0.8, 0.9, 0.95, 1.0],  # continuous
+                "cat_feature": [0, 0, 0, 0, 1, 1, 1, 1],  # categorical
+            }
+        )
+        y = pd.Series([0, 0, 0, 0, 1, 1, 1, 1])  # dummy target
+        cluster_labels = np.array([0, 0, 0, 0, 1, 1, 1, 1])
+        model_type = "cla"
 
-    fi_local_w, fi_global_w, _ = calculate_feature_importance(
-        X, y, cluster_labels, distance_func="wasserstein", model_type="classifier"
-    )
+        # Run for Wasserstein
+        fi_w = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=True), verbose=0)
+        fi_local_w, fi_global_w, _ = fi_w.calculate_feature_importance(X, y, cluster_labels, model_type)
 
-    fi_local_js, fi_global_js, _ = calculate_feature_importance(
-        X, y, cluster_labels, distance_func="jensen-shannon", model_type="classifier"
-    )
+        # Run for Jensen-Shannon
+        fi_js = FeatureImportance(distance_metric=DistanceJensenShannon(scale_features=False), verbose=0)
+        fi_local_js, fi_global_js, _ = fi_js.calculate_feature_importance(X, y, cluster_labels, model_type)
 
-    # They should not be exactly the same
-    assert not fi_global_w.equals(fi_global_js), "error: distance functions return identical results"
+        # Check that the global importance differs
+        self.assertFalse(
+            fi_global_w.equals(fi_global_js),
+            "Global feature importances should differ for Wasserstein vs Jensen-Shannon",
+        )
 
+        self.assertNotEqual(
+            fi_global_w["cont_feature"],
+            fi_global_js["cont_feature"],
+            "Continuous feature importance should differ between distance metrics",
+        )
+        self.assertNotEqual(
+            fi_global_w["cat_feature"],
+            fi_global_js["cat_feature"],
+            "Categorical feature importance should differ between distance metrics",
+        )
+
+    def test_sort_clusters_by_target_classification(self):
+        # Artificial data with target class labels
+        df = pd.DataFrame(
+            {
+                "cluster": [0, 0, 1, 1],
+                "target": ["B", "B", "A", "A"],
+                "feat1": [1, 2, 3, 4],
+            }
+        )
+
+        fi = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=False), verbose=0)
+        sorted_df = fi._sort_clusters_by_target(df.copy(), model_type="cla")
+
+        # Cluster with class A should come before B
+        self.assertEqual(sorted_df["cluster"].cat.categories.tolist(), [1, 2])
+
+    def test_sort_clusters_by_target_regression(self):
+        # Artificial data with numeric target values
+        df = pd.DataFrame(
+            {
+                "cluster": [0, 0, 1, 1],
+                "target": [0.1, 0.2, 1.0, 1.1],
+                "feat1": [1, 2, 3, 4],
+            }
+        )
+
+        fi = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=False), verbose=0)
+        sorted_df = fi._sort_clusters_by_target(df.copy(), model_type="reg")
+
+        self.assertEqual(sorted_df["cluster"].cat.categories.tolist(), [1, 2])
