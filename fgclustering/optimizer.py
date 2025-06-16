@@ -1,315 +1,260 @@
 ############################################
-# imports
+# Imports
 ############################################
 
+import warnings
 import numpy as np
+import pandas as pd
+
 from tqdm import tqdm
-
-import kmedoids
 from joblib import Parallel, delayed
-import collections, functools, operator
-from numba import njit, prange
+from collections import defaultdict, Counter
 
-import fgclustering.statistics as statistics
+from typing import Union, Tuple
 
-# import warnings
-# warnings.filterwarnings('ignore')
+from sklearn.utils import check_random_state
+
+from .utils import map_clusters_to_samples
+from .distance import DistanceRandomForestProximity
+from .clustering import ClusteringKMedoids, ClusteringClara
+
 
 ############################################
-# Optimize number of clusters k
+# Optimizer Class
 ############################################
 
 
-def _compute_jaccard_matrix(clusters, indices_bootstrap_clusters, indices_original_clusters):
-    """Compute Jaccard Index between all possible cluster combinations of original vs bootstrapped clustering.
+class Optimizer:
+    def __init__(
+        self,
+        distance_metric: DistanceRandomForestProximity,
+        clustering: Union[ClusteringKMedoids, ClusteringClara],
+        verbose: int,
+        random_state: int,
+    ):
+        self.distance_metric = distance_metric
+        self.clustering = clustering
+        self.verbose = verbose
+        self.random_state_ = check_random_state(random_state)
 
-    :param clusters: Clustering labels.
-    :type clusters: numpy.ndarray
-    :param indices_bootstrap_clusters: Dictionary with cluster labels as keys and index of instances that
-        belong to the respective cluster as labels for boostrapped clustering.
-    :type indices_bootstrap_clusters: dict
-    :param indices_original_clusters: Dictionary with cluster labels as keys and index of instances that
-        belong to the respective cluster as labels for original clustering.
-    :type indices_original_clusters: dict
-    :return: Jaccard Index for all cluster combinations.
-    :rtype: numpy.ndarray
-    """
-    indices_bootstrap_all = np.unique(
-        [
-            index
-            for i, cluster_bootstrap in enumerate(clusters)
-            for index in indices_bootstrap_clusters[cluster_bootstrap]
-        ]
-    )
-    jaccard_matrix = np.zeros([len(clusters), len(clusters)])
+    def optimizeK(
+        self,
+        y: pd.Series,
+        k_range: Tuple[int],
+        JI_bootstrap_iter: int,
+        JI_bootstrap_sample_size: int,
+        JI_discart_value: int,
+        model_type: str,
+        n_jobs: int,
+    ):
 
-    for i, cluster_original in enumerate(clusters):
-        for j, cluster_bootstrap in enumerate(clusters):
-            indices_bootstrap = indices_bootstrap_clusters[cluster_bootstrap]
-            indices_original = indices_original_clusters[cluster_original]
+        k = 1
+        cluster_score = np.inf
+        cluster_stability = None
+        cluster_labels = None
+        results = []
 
-            # only compute overlap for instances that were in the whole bootstrap sample
-            indices_original = indices_original.intersection(indices_bootstrap_all)
+        if self.verbose:
+            print(f"Using range k = ({k_range[0]}, {k_range[1]}) to optimize k.")
 
-            intersection = indices_original.intersection(indices_bootstrap)
-            union = indices_original.union(indices_bootstrap)
-
-            jaccard_matrix[i, j] = len(intersection) / len(union)
-
-    return jaccard_matrix
-
-
-@njit
-def _get_bootstrap(M, bootstrapped_samples):
-    """Filtering original matrix by rows and columns to create the bootstrap matrix.
-    Function is paralellized with numba and especially useful in case of big datasets, i.e., large distance matrices.
-
-    :param M: Original matrix.
-    :type M: pandas.DataFrame
-    :param bootstrapped_samples: (sorted) bootstrapped samples for bootstrap matrix creation
-    :type bootstrapped_samples: numpy array
-    :return: M_bootstrapped: bootstrapped matrix
-    :rtype: pandas.DataFrame
-    """
-
-    n = M.shape[0]
-
-    M_bootstrapped = np.empty((n, n), dtype=M.dtype).T  # transpose to get F-contiguous
-
-    for j in prange(n):
-        M_bootstrapped[:, j] = M[:, bootstrapped_samples[j]][bootstrapped_samples]
-
-    return M_bootstrapped
-
-
-def _bootstrap_matrix(M):
-    """Create a bootstrap from the original matrix.
-
-    :param M: Original matrix.
-    :type M: pandas.DataFrame
-    :return: M_bootstrapped: bootstrapped matrix;
-        mapping_bootstrapped_indices_to_original_indices: mapping from bootstrapped to original indices.
-    :rtype: pandas.DataFrame, dict
-    """
-
-    lm = len(M)
-    bootstrapped_samples = np.random.choice(np.arange(lm), lm)
-    bootstrapped_samples = np.sort(
-        bootstrapped_samples
-    )  # Sort samples to increase speed. Does not affect downstream analysis because M is symmetric
-    M_bootstrapped = _get_bootstrap(M, bootstrapped_samples)
-    mapping_bootstrapped_indices_to_original_indices = {
-        bootstrapped: original for bootstrapped, original in enumerate(bootstrapped_samples)
-    }
-
-    return M_bootstrapped, mapping_bootstrapped_indices_to_original_indices
-
-
-def _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(labels, mapping=False):
-    """Create dictionary that maps indices to cluster labels.
-
-    :param labels: Clustering labels.
-    :type labels: numpy.ndarray
-    :param mapping: Mapping of bootstrapped to original indices, defaults to False
-    :type mapping: bool, optional
-    :return: Dictionary with cluster labels as keys and index of instances that belong to the respective cluster as labels.
-    :rtype: dict
-    """
-    clusters = np.unique(labels)
-    number_datapoints = len(labels)
-    index_vector = np.arange(number_datapoints)
-
-    indices_clusters = {}
-    for cluster in clusters:
-        indices = set(index_vector[labels == cluster])
-        if mapping is not False:
-            # translate from the bootstrapped indices to the original naming of the indices
-            indices = set([mapping[index] for index in indices])
-
-        indices_clusters[cluster] = indices
-
-    return indices_clusters
-
-
-def _compute_stability_indices(distance_matrix, cluster_method, clusters, indices_original_clusters):
-    """Function that parallelizes the bootstrapping loop in the _compute_stability_indices function.
-    Compute stability of each cluster via Jaccard Index of original clustering vs clustering of one bootstraped sample.
-
-    :param distance_matrix: Proximity matrix of Random Forest model.
-    :type distance_matrix: pandas.DataFrame
-    :param cluster_method: Lambda function wrapping the k-mediods clustering function.
-    :type cluster_method: object
-    :param clusters: possible clusters (unique cluster labels)
-    :type clusters: numpy array
-    :param indices_original_clusters:  dictionary that maps indices to cluster labels
-    :type indices_original_clusters: dict
-    :return: Dictionary with Jaccard scores for each cluster in the given boostrap sample
-    :rtype: dict
-    """
-    index_per_cluster = {cluster: 0 for cluster in clusters}
-
-    (
-        bootstrapped_distance_matrix,
-        mapping_bootstrapped_indices_to_original_indices,
-    ) = _bootstrap_matrix(distance_matrix)
-    bootstrapped_labels = cluster_method(bootstrapped_distance_matrix)
-
-    # now compute the indices for the different clusters
-    indices_bootstrap_clusters = _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(
-        bootstrapped_labels,
-        mapping=mapping_bootstrapped_indices_to_original_indices,
-    )
-    jaccard_matrix = _compute_jaccard_matrix(clusters, indices_bootstrap_clusters, indices_original_clusters)
-
-    # compute optimal jaccard index for each cluster -> choose maximum possible jaccard index first
-    for cluster_round in range(len(jaccard_matrix)):
-        best_index = jaccard_matrix.max(axis=1).max()
-        original_cluster_number = jaccard_matrix.max(axis=1).argmax()
-        bootstrapped_cluster_number = jaccard_matrix[original_cluster_number].argmax()
-        jaccard_matrix[original_cluster_number] = -np.inf
-        jaccard_matrix[:, bootstrapped_cluster_number] = -np.inf
-
-        original_cluster = clusters[original_cluster_number]
-        index_per_cluster[original_cluster] += best_index
-
-    return index_per_cluster
-
-
-def _compute_stability_indices_parallel(distance_matrix, labels, cluster_method, bootstraps, n_jobs):
-    """Compute stability of each cluster via Jaccard Index of bootstraped vs original clustering.
-
-    :param distance_matrix: Proximity matrix of Random Forest model.
-    :type distance_matrix: pandas.DataFrame
-    :param labels: original cluster labels
-    :type labels: numpy array
-    :param cluster_method: Lambda function wrapping the k-mediods clustering function.
-    :type cluster_method: object
-    :param bootstraps: Number of bootstraps to compute the Jaccard Index, defaults to 300
-    :type bootstraps: int
-    :param n_jobs: number of jobs to run in parallel when computing the cluster stability. n_jobs=1 means no parallel computing is used, defaults to 1
-    :type n_jobs: int, optional
-    :return: Dictionary with cluster labels as keys and Jaccard Indices as values.
-    :rtype: dict
-    """
-    clusters = np.unique(labels)
-    indices_original_clusters = _translate_cluster_labels_to_dictionary_of_index_sets_per_cluster(labels)
-
-    # Compute Jaccard Index per bootstrapped sample
-    index_per_cluster = Parallel(n_jobs=n_jobs)(
-        delayed(_compute_stability_indices)(
-            distance_matrix, cluster_method, clusters, indices_original_clusters
-        )
-        for i in range(bootstraps)
-    )
-    # Sum Jaccard values of the same keys across dictionaries
-    index_per_cluster = dict(functools.reduce(operator.add, map(collections.Counter, index_per_cluster)))
-    # normalize:
-    index_per_cluster = {cluster: index_per_cluster[cluster] / bootstraps for cluster in clusters}
-
-    return index_per_cluster
-
-
-def optimizeK(
-    distance_matrix,
-    y,
-    model_type,
-    max_K,
-    method_clustering,
-    init_clustering,
-    max_iter_clustering,
-    discart_value_JI,
-    bootstraps_JI,
-    random_state,
-    n_jobs,
-    verbose,
-):
-    """Compute the optimal number of clusters for k-medoids clustering (trade-off between cluster purity and cluster stability).
-
-    :param distance_matrix: Proximity matrix of Random Forest model.
-    :type distance_matrix: pandas.DataFrame
-    :param y: Target column.
-    :type y: pandas.Series
-    :param model_type: Model type of Random Forest model: classifier or regression.
-    :type model_type: str
-    :param max_K: Maximum number of clusters for cluster score computation, defaults to 6
-    :type max_K: int
-    :param method_clustering: Which algorithm to use. 'alternate' is faster while 'pam' is more accurate, defaults to 'pam'
-    :type method_clustering: {'alternate', 'pam'}, optional
-    :param init_clustering: Specify medoid initialization method. To speed up computation for large datasets use 'random'.
-        See sklearn documentation for parameter description, defaults to 'k-medoids++'
-    :type init_clustering: {'random', 'heuristic', 'k-medoids++', 'build'}, optional
-    :param max_iter_clustering: Number of iterations for k-medoids clustering, defaults to 500
-    :type max_iter_clustering: int
-    :param discart_value: Minimum Jaccard Index for cluster stability, defaults to 0.6
-    :type discart_value: float
-    :param bootstraps_JI: Number of bootstraps to compute the Jaccard Index, defaults to 300
-    :type bootstraps_JI: int
-    :param random_state: Seed number for random state, defaults to 42
-    :type random_state: int
-    :param n_jobs: number of jobs to run in parallel when computing the cluster stability.
-        n_jobs=1 means no parallel computing is used, defaults to 1
-    :type n_jobs: int, optional
-    :return: Optimal number of clusters.
-    :rtype: int
-    :param verbose: print the output of fgc cluster optimization process (the Jaccard index and score for each cluster number); defaults to 1 (printing). Set to 0 for no outputs.
-    :type verbose: {0,1}, optional
-    """
-    np.random.seed(random_state)
-
-    # Check distance matrix
-    matrix_shape = distance_matrix.shape
-    assert len(matrix_shape) == 2, "error distance_matrix is not a matrix"
-    assert matrix_shape[0] == matrix_shape[1], "error distance matrix is not square"
-
-    score_min = np.inf
-    optimal_k = 1
-    disable = True if verbose == 0 else False
-
-    for k in tqdm(range(2, max_K + 1), disable=disable):
-        # compute clusters
-        cluster_method = (
-            lambda X: kmedoids.KMedoids(
-                n_clusters=k,
-                method=method_clustering,
-                init=init_clustering,
-                metric="precomputed",
-                max_iter=max_iter_clustering,
-                random_state=random_state,
+        for k_optimizer in tqdm(
+            range(k_range[0], k_range[1] + 1), desc="Optimizing k", disable=(self.verbose == 0)
+        ):
+            # compute clusters
+            cluster_labels_k = self.clustering.run_clustering(
+                k=k_optimizer, distance_metric=self.distance_metric, sample_indices=np.arange(len(y))
             )
-            .fit(X)
-            .labels_
+            # compute jaccard indices
+            JI_per_cluster_k = self._compute_JI(
+                k=k_optimizer,
+                n=len(y),
+                cluster_labels_original=cluster_labels_k,
+                JI_bootstrap_iter=JI_bootstrap_iter,
+                JI_bootstrap_sample_size=JI_bootstrap_sample_size,
+                n_jobs=n_jobs,
+            )
+            JI_k = round(np.mean([JI_per_cluster_k[cluster] for cluster in JI_per_cluster_k.keys()]), 3)
+
+            # only continue if jaccard indices are all larger than discart_value_JI (thus all clusters are stable)
+            if JI_k > JI_discart_value or (k_range[1] - k_range[0]) == 0:
+                if model_type == "cla":
+                    # compute balanced purities
+                    cluster_score_k = self._compute_balanced_average_impurity(y, cluster_labels_k)
+                elif model_type == "reg":
+                    # compute the total within cluster variation
+                    cluster_score_k = self._compute_total_within_cluster_variation(y, cluster_labels_k)
+                if cluster_score_k < cluster_score:
+                    k = k_optimizer
+                    cluster_score = cluster_score_k
+                    cluster_stability = JI_per_cluster_k
+                    cluster_labels = cluster_labels_k
+                if cluster_score_k == cluster_score:
+                    JI_opt = round(
+                        np.mean([cluster_stability[cluster] for cluster in cluster_stability.keys()]), 3
+                    )
+                    if JI_k > JI_opt:
+                        k = k_optimizer
+                        cluster_score = cluster_score_k
+                        cluster_stability = JI_per_cluster_k
+                        cluster_labels = cluster_labels_k
+
+            else:
+                cluster_score_k = None
+
+            results.append(
+                {
+                    "k": k_optimizer,
+                    "Stable": JI_k > JI_discart_value,
+                    "Mean_JI": JI_k,
+                    "Score": cluster_score_k,
+                    "Cluster_JI": dict(sorted(JI_per_cluster_k.items())),
+                }
+            )
+        if self.verbose:
+
+            if k == 1:
+                warnings.warn(f"No stable clusters were found for JI cutoff {JI_discart_value}!")
+            if k > 1 and not (k_range[1] - k_range[0]) == 0:
+                print(f"\nOptimal number of clusters k = {k}")
+            print("\nClustering Evaluation Summary:")
+            results_df = pd.DataFrame(results)
+            print(results_df[["k", "Score", "Stable", "Mean_JI", "Cluster_JI"]].to_string(index=False))
+
+        return k, cluster_score, cluster_stability, cluster_labels
+
+    def _compute_JI(
+        self,
+        k: int,
+        n: int,
+        cluster_labels_original: list,
+        JI_bootstrap_iter: int,
+        JI_bootstrap_sample_size: int,
+        n_jobs: int,
+    ):
+
+        mapping_cluster_labels_to_samples_original = map_clusters_to_samples(cluster_labels_original)
+
+        JI_per_cluster_bootstraps = Parallel(n_jobs=n_jobs)(
+            delayed(self._compute_JI_single_bootstrap)(
+                k=k,
+                n=n,
+                JI_bootstrap_sample_size=JI_bootstrap_sample_size,
+                mapping_cluster_labels_to_samples_original=mapping_cluster_labels_to_samples_original,
+            )
+            for i in range(JI_bootstrap_iter)
         )
-        labels = cluster_method(distance_matrix)
 
-        # compute jaccard indices
-        index_per_cluster = _compute_stability_indices_parallel(
-            distance_matrix, labels, cluster_method, bootstraps_JI, n_jobs
+        JI_per_cluster_sum = defaultdict(float)
+        for JI_per_cluster in JI_per_cluster_bootstraps:
+            for cluster, score in JI_per_cluster.items():
+                JI_per_cluster_sum[cluster] += score
+        JI_per_cluster_avg = {
+            int(cluster): round(float(score / JI_bootstrap_iter), 3)
+            for cluster, score in JI_per_cluster_sum.items()
+        }
+
+        return JI_per_cluster_avg
+
+    def _compute_JI_single_bootstrap(
+        self,
+        k: int,
+        n: int,
+        JI_bootstrap_sample_size: int,
+        mapping_cluster_labels_to_samples_original: dict,
+    ) -> dict:
+
+        # samples = np.random.choice(n, size=JI_bootstrap_sample_size, replace=False)
+        samples = self.random_state_.choice(n, size=JI_bootstrap_sample_size, replace=False)
+        samples = np.sort(samples)
+
+        cluster_labels_bootstrap = self.clustering.run_clustering(
+            distance_metric=self.distance_metric, sample_indices=samples, k=k
         )
-        mean_index = np.mean([index_per_cluster[cluster] for cluster in index_per_cluster.keys()])
 
-        # only continue if jaccard indices are all larger than discart_value_JI (thus all clusters are stable)
-        if not disable:
-            print(f"For number of cluster {k} the mean Jaccard Index across clusters is {mean_index}")
-        if mean_index > discart_value_JI:
-            if model_type == "classification":
-                # compute balanced purities
-                score = statistics.compute_balanced_average_impurity(y, labels)
-            elif model_type == "regression":
-                # compute the total within cluster variation
-                score = statistics.compute_total_within_cluster_variation(y, labels)
-            if score < score_min:
-                optimal_k = k
-                score_min = score
+        mapping_cluster_labels_to_samples_bootstrap = map_clusters_to_samples(
+            cluster_labels_bootstrap, samples
+        )
 
-            if not disable:
-                print("The stability of each cluster is:")
-                for cluster, stability in index_per_cluster.items():
-                    print(f"  Cluster {int(cluster)+1}: Stability {stability:.5f}")
-                print(f"For number of cluster {k} the score is {score}")
-                print("\n")
-        else:
-            if not disable:
-                print("Clustering is instable, no score computed!")
-                print("\n")
+        clusters_original = list(mapping_cluster_labels_to_samples_original.keys())
+        clusters_bootstrap = list(mapping_cluster_labels_to_samples_bootstrap.keys())
 
-    return optimal_k
+        # Determine shared sample set (only those present in bootstrap)
+        samples_bootstrap_all = set().union(*mapping_cluster_labels_to_samples_bootstrap.values())
+
+        # Filter original samples to those present in bootstrap
+        mapping_cluster_labels_to_samples_original_filtered = {
+            label: samples.intersection(samples_bootstrap_all)
+            for label, samples in mapping_cluster_labels_to_samples_original.items()
+        }
+
+        # Initialize Jaccard matrix
+        jaccard_matrix = np.zeros((len(clusters_original), len(clusters_bootstrap)))
+
+        for i, label_original in enumerate(clusters_original):
+            samples_original = np.array(
+                list(mapping_cluster_labels_to_samples_original_filtered[label_original])
+            )
+            for j, label_bootstrap in enumerate(clusters_bootstrap):
+                indices_bootstrap = np.array(
+                    list(mapping_cluster_labels_to_samples_bootstrap[label_bootstrap])
+                )
+                intersection = np.intersect1d(samples_original, indices_bootstrap, assume_unique=True)
+                union = np.union1d(samples_original, indices_bootstrap)
+                jaccard_matrix[i, j] = len(intersection) / len(union)
+
+        # Map original cluster to best Jaccard index using greedy assignment
+        JI_per_cluster = {label: 0.0 for label in clusters_original}
+
+        for _ in range(min(len(clusters_original), len(clusters_bootstrap))):
+            max_idx = np.argmax(jaccard_matrix)
+            i, j = divmod(max_idx, jaccard_matrix.shape[1])
+            JI_per_cluster[clusters_original[i]] = jaccard_matrix[i, j]
+            jaccard_matrix[i, :] = -np.inf
+            jaccard_matrix[:, j] = -np.inf
+
+        return JI_per_cluster
+
+    def _compute_balanced_average_impurity(self, categorical_values, cluster_labels, rescaling_factor=None):
+
+        unique_classes = np.unique(categorical_values)
+        unique_clusters = np.unique(cluster_labels)
+
+        # compute the number of datapoints for each class to use it then for rescaling of the
+        # class sizes within each cluster --> rescaling with inverse class size
+        if rescaling_factor is None:
+            class_counts = Counter(categorical_values)
+            rescaling_factor = {cls: 1 / class_counts[cls] for cls in unique_classes}
+
+        score_sum = 0.0
+
+        for cluster in unique_clusters:
+            categorical_values_cluster = categorical_values[cluster_labels == cluster]
+
+            # Count class occurrences in the cluster
+            cluster_class_counts = Counter(categorical_values_cluster)
+
+            # Rescaled class probabilities
+            class_probabilities_unnormalized = np.array(
+                [cluster_class_counts.get(cls, 0) * rescaling_factor[cls] for cls in unique_classes]
+            )
+
+            class_probabilities = class_probabilities_unnormalized / class_probabilities_unnormalized.sum()
+
+            # compute (balanced) gini impurity
+            gini_impurity = 1 - np.sum(class_probabilities**2)
+            score_sum += gini_impurity
+
+        return round(float(score_sum / len(unique_clusters)), 6)
+
+    def _compute_total_within_cluster_variation(self, continuous_values, cluster_labels):
+
+        total_variance = np.var(continuous_values) * len(continuous_values)
+        if total_variance == 0:
+            return 0.0
+
+        within_variance = 0.0
+        for cluster in np.unique(cluster_labels):
+            continuous_values_cluster = continuous_values[cluster_labels == cluster]
+            within_variance += np.var(continuous_values_cluster) * len(continuous_values_cluster)
+
+        return round(float(within_variance / total_variance), 6)

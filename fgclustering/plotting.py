@@ -1,5 +1,5 @@
 ############################################
-# imports
+# Imports
 ############################################
 
 import numpy as np
@@ -11,49 +11,27 @@ from plotly.subplots import make_subplots
 
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 
-import fgclustering.utils as utils
-
+from .utils import matplotlib_to_plotly
 
 ############################################
-# functions
+# Plotting Functions
 ############################################
 
 
 def _plot_feature_importance(
-    distance_of_features_ranked: pd.Series,
-    distance_of_features_per_cluster: pd.DataFrame,
-    thr_distance: float,
+    feature_importance_global: pd.Series,
+    feature_importance_local: pd.DataFrame,
     top_n: int,
     num_cols: int,
     save: str,
 ):
-    """
-    Generate and display a plot showing the importance of features based on distances.
-    The plot includes both global feature importance and local feature importance for each cluster.
-    Global importance is based on all clusters combined, while local importance is specific to each cluster.
-
-    :param distance_of_features_ranked: Series containing distances of features, ranked by distance.
-    :type distance_of_features_ranked: pandas.Series
-    :param distance_of_features_per_cluster: DataFrame containing distances of features for each cluster.
-    :type distance_of_features_per_cluster: pandas.DataFrame
-    :param thr_distance: Distance threshold for display. Only features with distances above this threshold
-                    are considered. Defaults to 0 (no filtering).
-    :type thr_distance: float, optional
-    :param top_n: Number of top features to display in the plot. If None, all features are included.
-                Defaults to None.
-    :type top_n: int, optional
-    :param num_cols: Number of plots per row in the output figure. Defaults to 4.
-    :type num_cols: int, optional
-    :param save: Filename to save the plot. If None, the plot will not be saved. Defaults to None.
-    :type save: str, optional
-    """
 
     # Determine figure size dynamically based on the number of features
-    num_features = len(distance_of_features_ranked.index)
+    num_features = len(feature_importance_global.index)
     figsize_width = 6.5
     figsize_height = max(figsize_width, int(np.ceil(5 * num_features / 25)))
 
-    num_subplots = 1 + distance_of_features_per_cluster.shape[1]
+    num_subplots = 1 + feature_importance_local.shape[1]
     num_cols = min(num_cols, num_subplots)
     num_rows = int(np.ceil(num_subplots / num_cols))
 
@@ -68,58 +46,43 @@ def _plot_feature_importance(
     # Plot global feature importance
     importance_global = pd.DataFrame(
         {
-            "Feature": distance_of_features_ranked.index,
-            "Importance": distance_of_features_ranked.to_list(),
+            "Feature": feature_importance_global.index,
+            "Importance": feature_importance_global.to_list(),
         }
     ).sort_values(by="Importance", ascending=False)
 
     ax = plt.subplot(num_rows, num_cols, 1)
     sns.barplot(data=importance_global, x="Importance", y="Feature", color="#3470a3")
-    ax.axvline(
-        x=thr_distance, color="red", linestyle="--", label=f"thr distance = {thr_distance}"
-    )
     ax.set_title(f"Cluster all")
-    ax.legend(bbox_to_anchor=(1, 1), loc=2)
 
     # Plot local feature importance
-    for n, cluster in enumerate(distance_of_features_per_cluster.columns):
+    for n, cluster in enumerate(feature_importance_local.columns):
         importance_local = pd.DataFrame(
             {
-                "Feature": distance_of_features_per_cluster.index,
-                "Importance": distance_of_features_per_cluster[cluster].to_list(),
+                "Feature": feature_importance_local.index,
+                "Importance": feature_importance_local[cluster].to_list(),
             }
         ).sort_values(by="Importance", ascending=False)
         ax = plt.subplot(num_rows, num_cols, n + 2)
         sns.barplot(data=importance_local, x="Importance", y="Feature", color="#3470a3")
-        ax.axvline(x=thr_distance, color="red", linestyle="--")
         ax.set_title(f"Cluster {cluster}")
-        # ax.legend(bbox_to_anchor=(1, 1), loc=2)
 
     plt.tight_layout(rect=[0, 0, 1, 0.95])
 
     if save:
         plt.savefig(f"{save}_feature_importance.png", bbox_inches="tight", dpi=300)
-    plt.show()
+    else:
+        plt.show()
 
 
 def _plot_distributions(
-    data_clustering_ranked: pd.DataFrame, thr_distance: float, top_n: int, num_cols: int, cmap_target_dict: dict, save: str
+    data_clustering_ranked: pd.DataFrame,
+    top_n: int,
+    num_cols: int,
+    cmap_target_dict: dict,
+    save: str,
 ):
-    """
-    Plot feature boxplots (for continuous features) or barplots (for categorical features) divided by clusters,
-    where features are filtered and ranked by distribution distances.
 
-    :param data_clustering_ranked: Filtered and ranked data frame incl features, target and cluster numbers.
-    :type data_clustering_ranked: pandas.DataFrame
-    :param thr_distance: Distance threshold used for feature filtering
-    :type thr_distance: float, optional
-    :param num_cols: Number of plots in one row.
-    :type num_cols: int
-    :param cmap_target_dict: Dict of colours to map categorical targets
-    :type cmap_target_dict: dict
-    :param save: Filename to save plot.
-    :type save: str
-    """
     features_to_plot = data_clustering_ranked.drop("cluster", axis=1, inplace=False).columns.to_list()
 
     num_rows = int(np.ceil(len(features_to_plot) / num_cols))
@@ -127,7 +90,7 @@ def _plot_distributions(
     plt.figure(figsize=(num_cols * 4.5, num_rows * 4.5))
     plt.subplots_adjust(top=0.95, hspace=0.8, wspace=0.8)
     plt.suptitle(
-        f"Distribution of feature values across subgroups - Showing {'top ' + str(top_n) if top_n else 'all'} features with distance > {thr_distance}",
+        f"Distribution of feature values across subgroups - Showing {'top ' + str(top_n) if top_n else 'all'} features",
         fontsize=14,
     )
 
@@ -159,6 +122,7 @@ def _plot_distributions(
                 data=data_clustering_ranked,
                 ax=ax,
                 color="#3470a3",
+                orientation="vertical",
             )
             ax.set_title(f"Feature: {feature}")
 
@@ -166,35 +130,18 @@ def _plot_distributions(
 
     if save:
         plt.savefig(f"{save}_boxplots.png", bbox_inches="tight", dpi=300)
-    plt.show()
+    else:
+        plt.show()
 
 
 def _plot_heatmap_classification(
     data_clustering_ranked: pd.DataFrame,
-    thr_distance: float,
     top_n: int,
     heatmap_type: str,
     cmap_target_dict: dict,
     save: str,
 ):
-    """
-    Generates a classification heatmap visualization for clustered data, supporting both static and interactive plots.
-    Displays target and feature heatmaps with cluster boundaries.
 
-    :param data_clustering_ranked: A DataFrame containing the data for clustering, including target and cluster labels.
-    :type data_clustering_ranked: pd.DataFrame
-    :param thr_distance: Threshold for feature distance in the heatmap.
-    :type thr_distance: float
-    :param top_n: Number of top features to display in the heatmap, or None to display all features.
-    :type top_n: int
-    :param heatmap_type: Type of heatmap to generate: "static" for Matplotlib or "interactive" for Plotly.
-    :type heatmap_type: str
-    :param cmap_target_dict: Dict of colours to map categorical targets
-    :type cmap_target_dict: dict
-    :param save: File path for saving the heatmap. Only supported for static heatmaps.
-    :type save: str
-    :return: None
-    """
     cluster_labels = data_clustering_ranked["cluster"]
 
     # Encode categorical target for plotting and transpose for plotting
@@ -212,9 +159,8 @@ def _plot_heatmap_classification(
     boundaries = np.where(np.diff(cluster_labels) != 0)[0] + 1
 
     target_color, features_color, boundaries_color, boundaries_width, title = _get_heatmap_plotting_settings(
-        target, top_n, thr_distance
+        target, top_n
     )
-
 
     if heatmap_type == "static":
         # Get plotting settings
@@ -258,7 +204,8 @@ def _plot_heatmap_classification(
         plt.tight_layout()
         if save:
             plt.savefig(f"{save}_heatmap.png", bbox_inches="tight", dpi=300)
-        plt.show()
+        else:
+            plt.show()
 
     elif heatmap_type == "interactive":
         if cmap_target_dict is not None:
@@ -310,28 +257,11 @@ def _plot_heatmap_classification(
 
 def _plot_heatmap_regression(
     data_clustering_ranked: pd.DataFrame,
-    thr_distance: float,
     top_n: int,
     heatmap_type: str,
     save: str,
 ):
-    """
-    Generates a regression heatmap visualization for clustered data, with options for static or interactive plots.
-    Displays target and feature heatmaps with cluster boundaries.
 
-    :param data_clustering_ranked: A DataFrame containing the data for clustering, including target and cluster labels.
-    :type data_clustering_ranked: pd.DataFrame
-    :param thr_distance: Threshold for feature distance in the heatmap.
-    :type thr_distance: float
-    :param top_n: Number of top features to display in the heatmap, or None to display all features.
-    :type top_n: int
-    :param heatmap_type: Type of heatmap to generate: "static" for Matplotlib or "interactive" for Plotly.
-    :type heatmap_type: str
-    :param save: File path for saving the heatmap. Only supported for static heatmaps.
-    :type save: str
-    :raises RuntimeError: If `heatmap_type` is "interactive" and `save` is specified, as saving interactive plots is not implemented.
-    :return: None
-    """
     cluster_labels = data_clustering_ranked["cluster"]
 
     # Get traget and transpose for plotting
@@ -345,7 +275,7 @@ def _plot_heatmap_regression(
     # Determine cluster boundaries for separator lines
     boundaries = np.where(np.diff(cluster_labels) != 0)[0] + 1
     target_color, features_color, boundaries_color, boundaries_width, title = _get_heatmap_plotting_settings(
-        target, top_n, thr_distance
+        target, top_n
     )
 
     if heatmap_type == "static":
@@ -399,15 +329,7 @@ def _plot_heatmap_regression(
 
 
 def _process_features_for_heatmap(features):
-    """
-    Processes a DataFrame of features to prepare them for heatmap visualization.
-    Categorical features are encoded as numeric, and all features are normalized to a 0-1 range.
 
-    :param features: A DataFrame containing the features to process.
-    :type features: pd.DataFrame
-    :return: A DataFrame with categorical features encoded as numeric and all features normalized.
-    :rtype: pd.DataFrame
-    """
     # Encode categorical features as numeric
     for col in features.columns:
         if pd.api.types.is_string_dtype(features[col]):
@@ -422,27 +344,15 @@ def _process_features_for_heatmap(features):
     return features
 
 
-def _get_heatmap_plotting_settings(target, top_n, thr_distance):
-    """
-    Configures plotting settings for heatmap visualizations, including color schemes,
-    boundary thickness, and plot title.
+def _get_heatmap_plotting_settings(target, top_n):
 
-    :param target: Target data, i.e. a DataFrame containing the target values.
-    :type target: pd.DataFrame
-    :param top_n: Number of top features to display, or None to display all features.
-    :type top_n: int or None
-    :param thr_distance: Threshold for distance in feature selection.
-    :type thr_distance: float
-    :return: Tuple containing color settings for target and features, boundary color, boundary length, and plot title.
-    :rtype: tuple(str, str, str, int, str)
-    """
     color_target = "Greens"
     color_features = "coolwarm"
     boundaries_color = "white"
 
     boundaries_width = int(np.ceil(np.log(target.shape[1])))
 
-    title = f"Subgroups of instances that follow similar decision paths in the RF model \n Showing {'top ' + str(top_n) if top_n else 'all'} features with distance > {thr_distance}"
+    title = f"Subgroups of instances that follow similar decision paths in the RF model \n Showing {'top ' + str(top_n) if top_n else 'all'} features"
 
     return color_target, color_features, boundaries_color, boundaries_width, title
 
@@ -450,30 +360,7 @@ def _get_heatmap_plotting_settings(target, top_n, thr_distance):
 def _plot_heatmaps_static(
     target, cmap_target, features, features_color, boundaries, boundaries_color, boundaries_width, title
 ):
-    """
-    Creates static heatmaps for target and features with cluster boundaries.
 
-    :param target: DataFrame representing the target values to plot.
-    :type target: pd.DataFrame
-    :param cmap_target: Colormap for the target heatmap.
-    :type cmap_target: str or matplotlib.colors.Colormap
-    :param features: DataFrame representing the feature values to plot.
-    :type features: pd.DataFrame
-    :param features_color: Colormap for the feature heatmap.
-    :type features_color: str or matplotlib.colors.Colormap
-    :param boundaries: List of boundary positions for separating clusters in the heatmaps.
-    :type boundaries: list of int
-    :param boundaries_color: Color of the boundary lines.
-    :type boundaries_color: str
-    :param boundaries_width: Width of the boundary lines.
-    :type boundaries_width: float
-    :param title: Title for the heatmap plot.
-    :type title: str
-    :return: Tuple containing the figure, target axis, target color bar axis, features axis, features color bar axis,
-             target heatmap plot, and features heatmap plot.
-    :rtype: tuple(matplotlib.figure.Figure, matplotlib.axes.Axes, matplotlib.axes.Axes, matplotlib.axes.Axes,
-                  matplotlib.axes.Axes, sns.heatmap, sns.heatmap)
-    """
     # Set up the figure and subplots
     figure_size = max(6.5, int(np.ceil(5 * len(features) / 25)))
     fig, axes = plt.subplots(
@@ -543,21 +430,7 @@ def _plot_heatmaps_interactive(
     boundaries_width,
     title,
 ):
-    """
-    Create an interactive Plotly heatmap visualization for target and features.
 
-    :param target: Target data as a DataFrame.
-    :param target_colorscale: Colorscale for the target heatmap.
-    :param target_colorbar: Configuration for the target heatmap colorbar.
-    :param target_showscale: Whether to display the color scale for the target heatmap.
-    :param features: Features data as a DataFrame.
-    :param features_color: Colorscale for the features heatmap.
-    :param boundaries: List of boundary positions for separators.
-    :param boundaries_color: Color of the boundary lines.
-    :param boundaries_width: Width of the boundary lines.
-    :param title: Title of the heatmap plot.
-    :return: A Plotly figure object.
-    """
     fig = make_subplots(rows=2, cols=1, row_heights=[0.1, 0.9], shared_xaxes=True, vertical_spacing=0.02)
 
     # Target heatmap (top row) with categorical colors
@@ -581,7 +454,7 @@ def _plot_heatmaps_interactive(
         go.Heatmap(
             z=features.values,
             y=features.index,
-            colorscale=utils.matplotlib_to_plotly(features_color),
+            colorscale=matplotlib_to_plotly(features_color),
             colorbar=dict(title="Features", x=1.1),  # Adjust position of color bar
             showscale=True,
         ),
