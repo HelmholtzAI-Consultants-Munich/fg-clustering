@@ -13,10 +13,6 @@
 [![cite](https://zenodo.org/badge/397931780.svg)](https://zenodo.org/badge/latestdoi/397931780)
 [![test](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/test.yml/badge.svg)](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/test.yml)
 	
-[Docs] | [Tutorials]
-
-[Docs]: https://forest-guided-clustering.readthedocs.io/en/latest/
-[Tutorials]: https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/tree/main/tutorials
 
 <!-- LINK INTRODUCTION START -->
 
