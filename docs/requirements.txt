@@ -9,4 +9,3 @@ pandoc
 jinja2
 ipykernel
 myst-parser
-jinja2
