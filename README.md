@@ -5,34 +5,32 @@
 
 # *Forest-Guided Clustering* - Shedding light into the Random Forest Black Box 
 
-[![test](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/test.yml/badge.svg)](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/test.yml)
+[![Docs](https://img.shields.io/badge/docs-latest-blue?style=flat&logo=readthedocs)](https://forest-guided-clustering.readthedocs.io/en/latest/)
 [![PyPI](https://img.shields.io/pypi/v/fgclustering.svg)](https://pypi.org/project/fgclustering)
 [![PyPI Downloads](https://static.pepy.tech/badge/fgclustering)](https://pepy.tech/projects/fgclustering)
 [![stars](https://img.shields.io/github/stars/HelmholtzAI-Consultants-Munich/forest_guided_clustering?logo=GitHub&color=yellow)](https://github.com/HelmholtzAI-Consultants-Munich/forest_guided_clustering/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![cite](https://zenodo.org/badge/397931780.svg)](https://zenodo.org/badge/latestdoi/397931780)
+[![test](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/test.yml/badge.svg)](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/test.yml)
 	
 [Docs] | [Tutorials]
 
 [Docs]: https://forest-guided-clustering.readthedocs.io/en/latest/
 [Tutorials]: https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/tree/main/tutorials
 
+<!-- LINK INTRODUCTION START -->
+
 </div>
 
-Forest-Guided Clustering (FGC) is an explainability method for Random Forest models. Standard explainability methods (e.g. feature importance) assume independence of model features and hence, are not suited in the presence of correlated features. The Forest-Guided Clustering algorithm does not assume independence of model features, because it computes the feature importance based on subgroups of instances that follow similar decision rules within the Random Forest model. Hence, this method is well suited for cases with high correlation among model features. 
+Forest-Guided Clustering (FGC) is an explainability method for Random Forest models that addresses one of the key limitations of many standard XAI techniques: the inability to effectively handle correlated features and complex decision patterns. Traditional methods like permutation importance, SHAP, and LIME often assume feature independence and focus on individual feature contributions, which can lead to misleading or incomplete explanations—especially in real-world, high-dimensional datasets. As machine learning models are increasingly deployed in sensitive domains like healthcare, finance, and HR, understanding why a model makes a decision is as important as the decision itself. This is not only a matter of trust and fairness, but also a legal requirement in many jurisdictions, such as the European Union's GDPR which mandates a “right to explanation” for automated decisions.
 
-For a detailed comparison of FGC and Permutation Feature Importance, please have a look at the Notebook [Introduction to FGC: Comparison of Forest-Guided Clustering and Feature Importance](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/introduction_to_FGC_comparing_FGC_to_FI.ipynb).
+FGC offers a different approach: instead of approximating the model with simpler surrogates, it uses the internal structure of the Random Forest itself. By analyzing the tree traversal patterns of individual samples, FGC clusters data points that follow similar decision paths. This reveals how the forest segments the input space, enabling a human-interpretable view of the model's internal logic. FGC is particularly useful when features are highly correlated, as it does not rely on assumptions of feature independence. It bridges the gap between model accuracy and model transparency, offering a powerful tool for global, model-specific interpretation of Random Forests.
 
-## Documentation
+🔍 **Curious how FGC compares to standard methods?**
+See our notebook: [Introduction to FGC: Comparison of Forest-Guided Clustering and Feature Importance](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/introduction_to_FGC_comparing_FGC_to_FI.ipynb).
 
-Please see [here](https://forest-guided-clustering.readthedocs.io/) for full documentation on:
-
-- Getting Started (installation, basic usage)
-- Theoretical Background (introduction, general algorith, feature importance)
-- Tutorials (simple use cases, special cases)
-- API documentation
-
-For a short introduction to Forest-Guided Clustering, click below:
+🎥 **Prefer a visual walkthrough?**
+Watch our short introduction video by clicking below:
 
 <div align="center">
 
@@ -40,45 +38,51 @@ For a short introduction to Forest-Guided Clustering, click below:
 
 </div>
 
+<!-- LINK INTRODUCTION END -->
+
+📚 Want to dive deeper?
+Visit our [full documentation](https://forest-guided-clustering.readthedocs.io/) for:
+
+- Getting Started – Installation and quick start
+- Tutorials – Use cases for classification, regression, and large datasets
+- API Reference – Detailed descriptions of functions and classes
+
 ## Installation
+
+<!-- LINK INSTALLATION START -->
 
 ### Requirements
 
-This packages was tested for ```Python 3.7 - 3.12``` on ubuntu, macos and windows. It depends on the ```kmedoids``` python package. If you are using windows or macos, you may need to first install Rust/Cargo with:
+This package was tested for `Python 3.7 - 3.12` on ubuntu, macos and windows. It depends on the `kmedoids` python package. If you are using windows or macos, you may need to first install Rust/Cargo with:
 
-```
-conda install -c conda-forge rust
-```
+    conda install -c conda-forge rust
+
 
 If this does not work, please try to install Cargo from source:
 
-```
-git clone https://github.com/rust-lang/cargo
-cd cargo
-cargo build --release
-```
+    git clone https://github.com/rust-lang/cargo
+    cd cargo
+    cargo build --release
+
 
 For further information on the kmedoids package, please visit [this page](https://pypi.org/project/kmedoids/).
 
-All other required packages are automatically installed if installation is done via ```pip```.
+All other required packages are automatically installed if installation is done via `pip`.
 
 
 ### Install Options
 
-The installation of the package is done via pip. Note: if you are using conda, first install pip with: ```conda install pip```.
+The installation of the package is done via pip. Note: if you are using conda, first install pip with: `conda install pip`.
 
 PyPI install:
 
-```
-pip install fgclustering
-```
+    pip install fgclustering
 
 
 Installation from source:
 
-```
-git clone https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering.git
-```
+    git clone https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering.git
+
 
 - Installation as python package (run inside directory):
 
@@ -87,63 +91,100 @@ git clone https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering.git
 
 - Development Installation as python package (run inside directory):
 
-		pip install -e . [dev]
+		pip install -e .
 
+<!-- LINK INSTALLATION END -->
 
 ## Basic Usage
 
-To get explainability of your Random Forest model via Forest-Guided Clustering, you simply need to run the following commands:
+<!-- LINK BASIC USAGE START -->
+
+To apply Forest-Guided Clustering (FGC) for explaining a Random Forest model, you can follow the simple workflow consisting of three main steps: computing the forest-guided clusters, evaluating feature importance, and visualizing the results.
 
 ```python
-from fgclustering import FgClustering
-   
-# initialize and run fgclustering object
-fgc = FgClustering(model=rf, data=data, target_column='target')
-fgc.run()
-   
-# visualize results
-fgc.plot_feature_importance()
-fgc.plot_decision_paths()
-   
-# obtain optimal number of clusters and vector that contains the cluster label of each data point
-optimal_number_of_clusters = fgc.k
-cluster_labels = fgc.cluster_labels
+# compute the forest-guided clusters
+fgc = forest_guided_clustering(
+    estimator=model, 
+    X=X, 
+    y=y, 
+    clustering_distance_metric=DistanceRandomForestProximity(), 
+    clustering_strategy=ClusteringKMedoids(),
+)
+
+# evaluate feature importance
+feature_importance = forest_guided_feature_importance(
+    X=X, 
+    y=y, 
+    cluster_labels=fgc.cluster_labels,
+    model_type=fgc.model_type,
+)
+
+# visualize the results
+plot_forest_guided_feature_importance(
+    feature_importance_local=feature_importance.feature_importance_local,
+    feature_importance_global=feature_importance.feature_importance_global
+)
+
+plot_forest_guided_decision_paths(
+    data_clustering=feature_importance.data_clustering,
+    model_type=fgc.model_type,
+)
 ```
 
-where 
+where
+- `estimator` is the trained Random Forest model
+- `X` is the feature matrix
+- `y` is the target variable
+- `clustering_distance_metric` defines how similarity between samples is measured based on the Random Forest structure
+- `clustering_strategy` determines how the proximity-based clustering is performed 
 
-- ```model=rf``` is a Random Forest Classifier or Regressor object,
-- ```data=data``` is a dataset containing the same features as required by the Random Forest model, and
-- ```target_column='target'``` is the name of the target column (i.e. *target*) in the provided dataset. 
+For a detailed walkthrough, refer to the [Introduction to FGC: Simple Use Cases](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/introduction_to_FGC_use_cases.ipynb) notebook.
 
-For detailed instructions, please have a look at the Notebook [Introduction to FGC: Simple Use Cases](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/introduction_to_FGC_use_cases.ipynb).
 
-**Usage on big datasets**
+**Using FGC on Large Datasets**
 
-If you are working with the dataset containing large number of samples, you can use one of the following strategies:
+When working with datasets containing a large number of samples, Forest-Guided Clustering (FGC) provides several strategies to ensure efficient performance and scalability:
 
-- Use the cores you have at your disposal to parallelize the optimization of the cluster number. You can do so by setting the parameter ```n_jobs``` to a value > 1 in the ```run()``` function.
-- Use the faster implementation of the pam method that K-Medoids algorithm uses to find the clusters by setting the parameter  ```method_clustering``` to *fasterpam* in the ```run()``` function.
-- Use subsampling technique
+* *Parallelize Cluster Optimization*: Leverage multiple CPU cores by setting the `n_jobs` parameter to a value greater than 1 in the `forest_guided_clustering()` function. This will parallelize the bootstrapping process for evaluating cluster stability.
 
-For detailed instructions, please have a look at the Notebook [Special Case: FGC for Big Datasets](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/special_case_big_data_with_FGC.ipynb).
+* *Use a Faster Clustering Algorithm*: Improve the efficiency of the K-Medoids clustering step by using the optimized `"fasterpam"` algorithm. Set the `method` parameter of your clustering strategy (e.g., `ClusteringKMedoids(method="fasterpam")`) to activate this faster implementation.
+
+* *Enable Subsampling with CLARA*: For extremely large datasets, consider using the CLARA (Clustering Large Applications) variant by choosing `ClusteringClara()` as your clustering strategy. CLARA performs clustering on smaller random subsamples, making it suitable for high-volume data.
+
+For a detailed example, please refer to the notebook [Special Case: FGC for Big Datasets](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/special_case_big_data_with_FGC.ipynb).
+
+<!-- LINK BASIC USAGE END -->
 
 ## Contributing
- 
-Contributions are more than welcome! Everything from code to notebooks to examples and documentation are all equally valuable so please don't feel you can't contribute. To contribute please fork the project make your changes and submit a pull request. We will do our best to work through any issues with you and get your code merged into the main branch.
 
-For any further inquiries please send an email to [Lisa Barros de Andrade e Sousa](mailto:lisa.barros@helmholtz-munich.de).
+<!-- LINK CONTRIBUTION START -->
+ 
+We welcome contributions of all kinds—whether it’s improvements to the code, documentation, tutorials, or examples. Your input helps make Forest-Guided Clustering more robust and useful for the community.
+
+To contribute:
+
+1. Fork the repository.
+2. Make your changes in a feature branch.
+3. Submit a pull request to the main branch.
+
+We’ll review your submission and work with you to get it merged.
+
+If you have any questions or ideas you'd like to discuss before contributing, feel free to reach out to [Lisa Barros de Andrade e Sousa](mailto:lisa.barros@helmholtz-munich.de).
+
+<!-- LINK CONTRIBUTION END -->
 
 ## How to cite
 
-If Forest-Guided Clustering is useful for your research, consider citing the package:
+<!-- LINK CITE START -->
+
+If you find Forest-Guided Clustering useful in your research or applications, please consider citing it:
 
 ```
 @software{lisa_sousa_2022_7823042,
     author       = {Lisa Barros de Andrade e Sousa,
-                     Helena Pelin,
-                     Dominik Thalmeier,
-                     Marie Piraud},
+                    Dominik Thalmeier,
+                    Helena Pelin, 
+                    Marie Piraud},
     title        = {{Forest-Guided Clustering - Explainability for Random Forest Models}},
     month        = april,
     year         = 2022,
@@ -154,6 +195,12 @@ If Forest-Guided Clustering is useful for your research, consider citing the pac
 }
 ```
 
+<!-- LINK CITE END -->
+
 ## License
 
-```fgclustering``` is released under the MIT license. See [LICENSE](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/LICENSE) for additional details about it.
+<!-- LINK LICENSE START -->
+
+The `fgclustering` package is released under the MIT License. You are free to use, modify, and distribute it under the terms outlined in the [LICENSE](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/LICENSE) file.
+
+<!-- LINK LICENSE END -->

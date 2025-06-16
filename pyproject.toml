@@ -15,13 +15,12 @@ name = "fgclustering"
 dynamic = ["version"]
 authors = [
   { name = "Lisa Barros de Andrade e Sousa", email = "lisa.barros.andrade.sousa@gmail.com" },
-  { name = "Helena Pelin", email = "helena.pelin@helmholtz-muenchen.de" },
   { name = "Dominik Thalmeier" },
+  { name = "Helena Pelin" },
   { name = "Marie Piraud", email = "marie.piraud@helmholtz-muenchen.de" },
 ]
 maintainers = [
   { name = "Lisa Barros de Andrade e Sousa", email = "lisa.barros.andrade.sousa@gmail.com" },
-  { name = "Helena Pelin", email = "helena.pelin@helmholtz-muenchen.de" },
 ]
 description = "Forest-Guided Clustering - Explainability method for Random Forest models."
 keywords = ["random forest", "xai", "explainable ai"]
