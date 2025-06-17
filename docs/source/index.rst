@@ -14,7 +14,7 @@
 
 .. toctree::
    :maxdepth: 1
-   :caption: GETTING STARTED
+   :caption: 🚀 GETTING STARTED
 
    _getting_started/installation.rst
    _getting_started/basic_usage.rst
@@ -22,7 +22,7 @@
 
 .. toctree::
    :maxdepth: 1
-   :caption: TUTORIALS
+   :caption: 📚 TUTORIALS
 
    _tutorials/introduction_to_FGC_use_cases
    _tutorials/introduction_to_FGC_comparing_FGC_to_FI
@@ -33,29 +33,29 @@
 
 .. toctree::
    :maxdepth: 2
-   :caption: API DOCUMENTATION:
+   :caption: 🧩 API DOCUMENTATION:
 
    fgclustering.rst
 
 
-Contributing
--------------
+🤝 Contributing
+------------------
 
 .. include:: ../../README.md
    :parser: myst_parser.sphinx_
    :start-after: <!-- LINK CONTRIBUTION START -->
    :end-before: <!-- LINK CONTRIBUTION END -->
 
-How to cite
-------------
+📝 How to cite
+----------------
 
 .. include:: ../../README.md
    :parser: myst_parser.sphinx_
    :start-after: <!-- LINK CITE START -->
    :end-before: <!-- LINK CITE END -->
 
-License
---------
+🛡️ License
+-------------
 
 .. include:: ../../README.md
    :parser: myst_parser.sphinx_

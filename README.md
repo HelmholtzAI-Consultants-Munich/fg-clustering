@@ -13,19 +13,19 @@
 [![cite](https://zenodo.org/badge/397931780.svg)](https://zenodo.org/badge/latestdoi/397931780)
 [![test](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/test.yml/badge.svg)](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/test.yml)
 	
+</div>
+
+## ✨ About this Package
 
 <!-- LINK INTRODUCTION START -->
 
-</div>
+**Why Use Forest-Guided Clustering?**
 
 Forest-Guided Clustering (FGC) is an explainability method for Random Forest models that addresses one of the key limitations of many standard XAI techniques: the inability to effectively handle correlated features and complex decision patterns. Traditional methods like permutation importance, SHAP, and LIME often assume feature independence and focus on individual feature contributions, which can lead to misleading or incomplete explanations. As machine learning models are increasingly deployed in sensitive domains like healthcare, finance, and HR, understanding why a model makes a decision is as important as the decision itself. This is not only a matter of trust and fairness, but also a legal requirement in many jurisdictions, such as the European Union's GDPR which mandates a “right to explanation” for automated decisions.
 
 FGC offers a different approach: instead of approximating the model with simpler surrogates, it uses the internal structure of the Random Forest itself. By analyzing the tree traversal patterns of individual samples, FGC clusters data points that follow similar decision paths. This reveals how the forest segments the input space, enabling a human-interpretable view of the model's internal logic. FGC is particularly useful when features are highly correlated, as it does not rely on assumptions of feature independence. It bridges the gap between model accuracy and model transparency, offering a powerful tool for global, model-specific interpretation of Random Forests.
 
-🔍 **Curious how FGC compares to standard methods?**
-See our notebook: [Introduction to FGC: Comparison of Forest-Guided Clustering and Feature Importance](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/introduction_to_FGC_comparing_FGC_to_FI.ipynb).
-
-🎥 **Prefer a visual walkthrough?**
+**Prefer a visual walkthrough?**
 Watch our short introduction video by clicking below:
 
 <div align="center">
@@ -34,20 +34,23 @@ Watch our short introduction video by clicking below:
 
 </div>
 
+**Curious how Forest-Guided Clustering compares to standard methods?**
+See our notebook: [Introduction to FGC: Comparison of Forest-Guided Clustering and Feature Importance](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/introduction_to_FGC_comparing_FGC_to_FI.ipynb).
+
 <!-- LINK INTRODUCTION END -->
 
-📚 Want to dive deeper?
+**Want to dive deeper?**
 Visit our [full documentation](https://forest-guided-clustering.readthedocs.io/) for:
 
 - Getting Started – Installation and quick start
 - Tutorials – Use cases for classification, regression, and large datasets
 - API Reference – Detailed descriptions of functions and classes
 
-## Installation
+## 🛠️ Installation
 
 <!-- LINK INSTALLATION START -->
 
-### Requirements
+**Requirements**
 
 This package was tested for `Python 3.7 - 3.12` on ubuntu, macos and windows. It depends on the `kmedoids` python package. If you are using windows or macos, you may need to first install Rust/Cargo with:
 
@@ -66,7 +69,7 @@ For further information on the kmedoids package, please visit [this page](https:
 All other required packages are automatically installed if installation is done via `pip`.
 
 
-### Install Options
+**Install Options**
 
 The installation of the package is done via pip. Note: if you are using conda, first install pip with: `conda install pip`.
 
@@ -91,9 +94,11 @@ Installation from source:
 
 <!-- LINK INSTALLATION END -->
 
-## Basic Usage
+## 💻 How to Use Forest-Guided Clustering
 
 <!-- LINK BASIC USAGE START -->
+
+**Basic Usage**
 
 To apply Forest-Guided Clustering (FGC) for explaining a Random Forest model, you can follow the simple workflow consisting of three main steps: computing the forest-guided clusters, evaluating feature importance, and visualizing the results.
 
@@ -151,7 +156,7 @@ For a detailed example, please refer to the notebook [Special Case: FGC for Big 
 
 <!-- LINK BASIC USAGE END -->
 
-## Contributing
+## 🤝 Contributing
 
 <!-- LINK CONTRIBUTION START -->
  
@@ -169,7 +174,7 @@ If you have any questions or ideas you'd like to discuss before contributing, fe
 
 <!-- LINK CONTRIBUTION END -->
 
-## How to cite
+## 📝 How to cite
 
 <!-- LINK CITE START -->
 
@@ -193,7 +198,7 @@ If you find Forest-Guided Clustering useful in your research or applications, pl
 
 <!-- LINK CITE END -->
 
-## License
+## 🛡️ License
 
 <!-- LINK LICENSE START -->
 

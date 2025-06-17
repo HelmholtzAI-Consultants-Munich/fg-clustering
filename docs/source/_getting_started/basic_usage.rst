@@ -1,4 +1,4 @@
-Basic Usage
+How to Use Forest-Guided Clustering
 ================================================
 
 .. include:: ../../../README.md

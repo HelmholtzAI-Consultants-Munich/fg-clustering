@@ -4,6 +4,22 @@ fgclustering package
 Submodules
 ----------
 
+fgclustering.clustering module
+------------------------------
+
+.. automodule:: fgclustering.clustering
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+fgclustering.distance module
+----------------------------
+
+.. automodule:: fgclustering.distance
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 fgclustering.forest\_guided\_clustering module
 ----------------------------------------------
 

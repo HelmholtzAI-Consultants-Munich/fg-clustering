@@ -13,7 +13,7 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath("../../fgclustering"))
+sys.path.insert(0, os.path.abspath("../.."))
 
 # -- Project information -----------------------------------------------------
 
@@ -69,7 +69,6 @@ html_logo = "_figures/FGC_Logo.png"
 
 html_title = "Forest-Guided Clustering"
 html_theme_options = {
-    "logo_only": True,
     "repository_url": "https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering",
     "use_repository_button": True,
     "use_fullscreen_button": True,
