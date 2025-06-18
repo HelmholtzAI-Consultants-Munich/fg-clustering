@@ -125,7 +125,7 @@ class DistanceWasserstein:
         """Constructor for the DistanceWasserstein class."""
         self.scale_features = scale_features
 
-    def scale_features(X: pd.DataFrame) -> pd.DataFrame:
+    def run_scale_features(X: pd.DataFrame) -> pd.DataFrame:
         """
         Scales all numeric features in the dataset using standard scaling (without centering the mean).
 
@@ -185,7 +185,7 @@ class DistanceJensenShannon:
         """Constructor for the DistanceJensenShannon class."""
         self.scale_features = scale_features
 
-    def scale_features(X: pd.DataFrame) -> pd.DataFrame:
+    def run_scale_features(X: pd.DataFrame) -> pd.DataFrame:
         """
         Scales all numeric features in the dataset using standard scaling (without centering the mean).
 
