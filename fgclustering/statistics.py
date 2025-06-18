@@ -8,9 +8,7 @@ import pandas as pd
 from typing import Union
 
 from tqdm import tqdm
-from pandas.api.types import is_numeric_dtype, is_categorical_dtype
-
-from sklearn.preprocessing import StandardScaler
+from pandas.api.types import is_numeric_dtype
 
 from .distance import DistanceJensenShannon, DistanceWasserstein
 
@@ -53,9 +51,7 @@ class FeatureImportance:
 
         # Optional scaling of numeric values
         if self.distance_metric.scale_features:
-            scaler = StandardScaler(with_mean=False)
-            numeric_cols = X.select_dtypes(include="number").columns
-            X[numeric_cols] = scaler.fit_transform(X[numeric_cols])
+            X = self.distance_metric.run_scale_features(X)
 
         # Loop through columns
         for feature in tqdm(X.columns, disable=(self.verbose == 0)):
@@ -73,14 +69,13 @@ class FeatureImportance:
             if (
                 isinstance(values_background.dtype, pd.CategoricalDtype)
                 or values_background.dtype == "object"
+                or values_background.dtype == "bool"
             ):
                 is_categorical = True
             elif is_numeric_dtype(values_background):
                 is_categorical = False
             else:
-                if self.verbose:
-                    print(f"The type {values_background.dtype} is not supported. Skipping feature!")
-                distances.loc[feature, :] = np.nan
+                raise TypeError(f"The type {values_background.dtype} of feature {feature} is not supported.")
 
             # Loop through cluster, extract cluster values
             for cluster in clusters_unique:

@@ -48,6 +48,10 @@ class Optimizer:
         n_jobs: int,
     ):
 
+        self.n_samples_original = len(y)
+        self.JI_bootstrap_sample_size = JI_bootstrap_sample_size
+        self.JI_bootstrap_iter = JI_bootstrap_iter
+
         k = 1
         cluster_score = np.inf
         cluster_stability = None
@@ -62,15 +66,14 @@ class Optimizer:
         ):
             # compute clusters
             cluster_labels_k = self.clustering.run_clustering(
-                k=k_optimizer, distance_metric=self.distance_metric, sample_indices=np.arange(len(y))
+                k=k_optimizer,
+                distance_metric=self.distance_metric,
+                sample_indices=np.arange(self.n_samples_original),
             )
             # compute jaccard indices
             JI_per_cluster_k = self._compute_JI(
                 k=k_optimizer,
-                n=len(y),
                 cluster_labels_original=cluster_labels_k,
-                JI_bootstrap_iter=JI_bootstrap_iter,
-                JI_bootstrap_sample_size=JI_bootstrap_sample_size,
                 n_jobs=n_jobs,
             )
             JI_k = round(np.mean([JI_per_cluster_k[cluster] for cluster in JI_per_cluster_k.keys()]), 3)
@@ -111,13 +114,13 @@ class Optimizer:
                 }
             )
         if self.verbose:
-
             if k == 1:
                 warnings.warn(f"No stable clusters were found for JI cutoff {JI_discart_value}!")
             if k > 1 and not (k_range[1] - k_range[0]) == 0:
                 print(f"\nOptimal number of clusters k = {k}")
-            print("\nClustering Evaluation Summary:")
+
             results_df = pd.DataFrame(results)
+            print("\nClustering Evaluation Summary:")
             print(results_df[["k", "Score", "Stable", "Mean_JI", "Cluster_JI"]].to_string(index=False))
 
         return k, cluster_score, cluster_stability, cluster_labels
@@ -125,23 +128,21 @@ class Optimizer:
     def _compute_JI(
         self,
         k: int,
-        n: int,
         cluster_labels_original: list,
-        JI_bootstrap_iter: int,
-        JI_bootstrap_sample_size: int,
         n_jobs: int,
     ):
+        # generate distinct seeds for each iteration
+        seeds = self.random_state_.randint(0, 2**32 - 1, size=self.JI_bootstrap_iter)
 
         mapping_cluster_labels_to_samples_original = map_clusters_to_samples(cluster_labels_original)
 
         JI_per_cluster_bootstraps = Parallel(n_jobs=n_jobs)(
             delayed(self._compute_JI_single_bootstrap)(
                 k=k,
-                n=n,
-                JI_bootstrap_sample_size=JI_bootstrap_sample_size,
                 mapping_cluster_labels_to_samples_original=mapping_cluster_labels_to_samples_original,
+                random_seed=seed,
             )
-            for i in range(JI_bootstrap_iter)
+            for seed in seeds
         )
 
         JI_per_cluster_sum = defaultdict(float)
@@ -149,7 +150,7 @@ class Optimizer:
             for cluster, score in JI_per_cluster.items():
                 JI_per_cluster_sum[cluster] += score
         JI_per_cluster_avg = {
-            int(cluster): round(float(score / JI_bootstrap_iter), 3)
+            int(cluster): round(float(score / self.JI_bootstrap_iter), 3)
             for cluster, score in JI_per_cluster_sum.items()
         }
 
@@ -158,17 +159,17 @@ class Optimizer:
     def _compute_JI_single_bootstrap(
         self,
         k: int,
-        n: int,
-        JI_bootstrap_sample_size: int,
         mapping_cluster_labels_to_samples_original: dict,
+        random_seed: int,
     ) -> dict:
 
-        # samples = np.random.choice(n, size=JI_bootstrap_sample_size, replace=False)
-        samples = self.random_state_.choice(n, size=JI_bootstrap_sample_size, replace=False)
+        # individual RNG per iteration
+        rng = np.random.RandomState(random_seed)
+        samples = rng.choice(self.n_samples_original, size=self.JI_bootstrap_sample_size, replace=False)
         samples = np.sort(samples)
 
         cluster_labels_bootstrap = self.clustering.run_clustering(
-            distance_metric=self.distance_metric, sample_indices=samples, k=k
+            k=k, distance_metric=self.distance_metric, sample_indices=samples, seed=random_seed
         )
 
         mapping_cluster_labels_to_samples_bootstrap = map_clusters_to_samples(
