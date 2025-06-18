@@ -6,6 +6,7 @@ import shutil
 import numpy as np
 import pandas as pd
 
+from typing import Union, Tuple, Any, Optional, Dict, Set, List
 from collections import defaultdict
 
 import matplotlib
@@ -18,7 +19,20 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 ############################################
 
 
-def check_input_data(X, y):
+def check_input_data(
+    X: Union[pd.DataFrame, np.ndarray], y: Union[str, pd.Series, np.ndarray]
+) -> Tuple[pd.DataFrame, pd.Series]:
+    """
+    Splits the input into features and target. If `y` is a string, it's interpreted as the name of the target column in `X`.
+
+    :param X: Input features as a DataFrame or array-like object.
+    :type X: pandas.DataFrame or numpy.ndarray
+    :param y: Target values or name of the target column.
+    :type y: str or array-like
+
+    :return: Tuple of feature DataFrame and target Series.
+    :rtype: tuple
+    """
     if isinstance(y, str):
         y_data = pd.Series(X[y]).reset_index(drop=True)
         X_data = pd.DataFrame(X.drop(columns=[y])).reset_index(drop=True)
@@ -29,7 +43,16 @@ def check_input_data(X, y):
     return X_data, y_data
 
 
-def check_input_estimator(estimator):
+def check_input_estimator(estimator: Any) -> Tuple[bool, Optional[str]]:
+    """
+    Checks whether the given estimator is a supported RandomForest model and determines its type.
+
+    :param estimator: Trained model to validate.
+    :type estimator: Any
+
+    :return: Tuple indicating whether the estimator is valid and its model type ('cla' or 'reg').
+    :rtype: tuple
+    """
     valid_estimator = False
     model_type = None
     if isinstance(estimator, RandomForestClassifier):
@@ -42,8 +65,18 @@ def check_input_estimator(estimator):
     return valid_estimator, model_type
 
 
-def matplotlib_to_plotly(cmap_name: str, pl_entries: int = 255):
+def matplotlib_to_plotly(cmap_name: str, pl_entries: int = 255) -> List:
+    """
+    Converts a matplotlib colormap to a Plotly-compatible colorscale.
 
+    :param cmap_name: Name of the matplotlib colormap to convert.
+    :type cmap_name: str
+    :param pl_entries: Number of color entries to generate.
+    :type pl_entries: int
+
+    :return: List of Plotly-compatible color mappings.
+    :rtype: list
+    """
     cmap = matplotlib.colormaps.get_cmap(cmap_name)
     h = np.linspace(0, 1, pl_entries)
     colors = cmap(h)[:, :3]
@@ -53,11 +86,33 @@ def matplotlib_to_plotly(cmap_name: str, pl_entries: int = 255):
 
 
 def check_disk_space(path: str, required_bytes: int) -> bool:
+    """
+    Checks whether the specified directory has sufficient free disk space.
+
+    :param path: Directory to check for available space.
+    :type path: str
+    :param required_bytes: Number of bytes required.
+    :type required_bytes: int
+
+    :return: True if sufficient space is available, False otherwise.
+    :rtype: bool
+    """
     total, used, free = shutil.disk_usage(path)
     return free > required_bytes
 
 
-def map_clusters_to_samples(labels, samples_mapping=None):
+def map_clusters_to_samples(labels: List, samples_mapping: Optional[List] = None) -> Dict[int, Set[int]]:
+    """
+    Maps sample indices to their corresponding cluster labels.
+
+    :param labels: Cluster label for each sample.
+    :type labels: list
+    :param samples_mapping: Optional mapping of internal to external indices.
+    :type samples_mapping: list or None
+
+    :return: Dictionary mapping cluster labels to sets of sample indices.
+    :rtype: dict
+    """
     index_vector = np.arange(len(labels))
     indices_clusters = defaultdict(set)
 
@@ -68,7 +123,16 @@ def map_clusters_to_samples(labels, samples_mapping=None):
     return dict(indices_clusters)
 
 
-def check_k_range(k):
+def check_k_range(k: Union[int, Tuple[int, int], List[int], None]) -> Tuple[int, int]:
+    """
+    Validates and returns a standardized k range for clustering.
+
+    :param k: Number of clusters or range of cluster values.
+    :type k: int, tuple, list, or None
+
+    :return: Tuple representing the range of k values.
+    :rtype: tuple
+    """
     if k is None:
         k_range = (2, 6)
     elif isinstance(k, int):
@@ -83,7 +147,20 @@ def check_k_range(k):
     return k_range
 
 
-def check_sub_sample_size(sub_sample_size, n_samples, verbose=0):
+def check_sub_sample_size(sub_sample_size: Union[int, float, None], n_samples: int, verbose: int = 0) -> int:
+    """
+    Validates and computes the number of samples to use in a subsample.
+
+    :param sub_sample_size: Fraction (float), fixed count (int), or None for auto.
+    :type sub_sample_size: float, int, or None
+    :param n_samples: Total number of samples available.
+    :type n_samples: int
+    :param verbose: Verbosity flag for logging.
+    :type verbose: int
+
+    :return: Validated and resolved integer subsample size.
+    :rtype: int
+    """
     if sub_sample_size is None:
         sub_sample_size = min(0.8, max(0.1, 1000 / n_samples))
         if verbose:
