@@ -170,12 +170,13 @@ class TestOptimizer(unittest.TestCase):
         cluster_labels = self.clustering_strategy.run_clustering(
             k=k, distance_metric=self.distance_metric, sample_indices=None
         )
+
+        self.optimizer.n_samples_original = n_clusters * samples_per_cluster
+        self.optimizer.JI_bootstrap_sample_size = 25
+        self.optimizer.JI_bootstrap_iter = 100
         result = self.optimizer._compute_JI(
             k=k,
-            n=n_clusters * samples_per_cluster,
             cluster_labels_original=cluster_labels,
-            JI_bootstrap_iter=100,
-            JI_bootstrap_sample_size=25,
             n_jobs=self.n_jobs,
         )
 
@@ -195,12 +196,13 @@ class TestOptimizer(unittest.TestCase):
         cluster_labels = self.clustering_strategy.run_clustering(
             k=k, distance_metric=self.distance_metric, sample_indices=None
         )
+
+        self.optimizer.n_samples_original = n_clusters * samples_per_cluster
+        self.optimizer.JI_bootstrap_sample_size = 25
+        self.optimizer.JI_bootstrap_iter = 100
         result = self.optimizer._compute_JI(
             k=k,
-            n=n_clusters * samples_per_cluster,
             cluster_labels_original=cluster_labels,
-            JI_bootstrap_iter=100,
-            JI_bootstrap_sample_size=25,
             n_jobs=self.n_jobs,
         )
 
@@ -224,12 +226,11 @@ class TestOptimizer(unittest.TestCase):
             verbose=self.verbose,
             random_state=self.random_state,
         )
+        optimizer.n_samples_original = sample_size
+        optimizer.JI_bootstrap_sample_size = sample_size
 
         result = optimizer._compute_JI_single_bootstrap(
-            k=2,
-            n=sample_size,
-            JI_bootstrap_sample_size=sample_size,  # sample full set
-            mapping_cluster_labels_to_samples_original=mapping_original,
+            k=2, mapping_cluster_labels_to_samples_original=mapping_original, random_seed=123456789
         )
 
         for val in result.values():
@@ -254,11 +255,11 @@ class TestOptimizer(unittest.TestCase):
             random_state=self.random_state,
         )
 
+        optimizer.n_samples_original = sample_size
+        optimizer.JI_bootstrap_sample_size = sample_size
+
         result = optimizer._compute_JI_single_bootstrap(
-            k=2,
-            n=sample_size,
-            JI_bootstrap_sample_size=sample_size,  # sample full set
-            mapping_cluster_labels_to_samples_original=mapping_original,
+            k=2, mapping_cluster_labels_to_samples_original=mapping_original, random_seed=123456789
         )
 
         self.assertTrue(all(0 <= v <= 1 for v in result.values()), "Jaccard indices must be in [0, 1]")
