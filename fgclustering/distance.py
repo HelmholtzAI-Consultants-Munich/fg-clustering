@@ -37,9 +37,7 @@ class DistanceRandomForestProximity:
     """
 
     def __init__(
-        self,
-        memory_efficient: Optional[bool] = False,
-        dir_distance_matrix: Optional[str] = None,
+        self, memory_efficient: Optional[bool] = False, dir_distance_matrix: Optional[str] = None
     ) -> None:
         """Constructor for the DistanceRandomForestProximity class."""
         if memory_efficient:
