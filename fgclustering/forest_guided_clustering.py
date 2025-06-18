@@ -13,10 +13,10 @@ from .distance import DistanceWasserstein, DistanceJensenShannon, DistanceRandom
 from .optimizer import Optimizer
 from .statistics import FeatureImportance
 from .plotting import (
-    _plot_feature_importance,
-    _plot_distributions,
-    _plot_heatmap_regression,
-    _plot_heatmap_classification,
+    plot_feature_importance,
+    plot_distributions,
+    plot_heatmap_regression,
+    plot_heatmap_classification,
 )
 
 
@@ -135,7 +135,7 @@ def plot_forest_guided_feature_importance(
     if top_n:
         selected_features = selected_features[:top_n]
 
-    _plot_feature_importance(
+    plot_feature_importance(
         feature_importance_global=feature_importance_global[selected_features],
         feature_importance_local=feature_importance_local.loc[selected_features, :],
         top_n=top_n,
@@ -162,12 +162,12 @@ def plot_forest_guided_decision_paths(
         data_clustering_selected_featues = data_clustering
 
     if distributions:
-        _plot_distributions(data_clustering_selected_featues, top_n, num_cols, cmap_target_dict, save)
+        plot_distributions(data_clustering_selected_featues, top_n, num_cols, cmap_target_dict, save)
 
     if heatmap:
         if model_type == "reg":
-            _plot_heatmap_regression(data_clustering_selected_featues, top_n, heatmap_type, save)
+            plot_heatmap_regression(data_clustering_selected_featues, top_n, heatmap_type, save)
         elif model_type == "cla":
-            _plot_heatmap_classification(
+            plot_heatmap_classification(
                 data_clustering_selected_featues, top_n, heatmap_type, cmap_target_dict, save
             )

@@ -18,7 +18,7 @@ from .utils import matplotlib_to_plotly
 ############################################
 
 
-def _plot_feature_importance(
+def plot_feature_importance(
     feature_importance_global: pd.Series,
     feature_importance_local: pd.DataFrame,
     top_n: int,
@@ -75,7 +75,7 @@ def _plot_feature_importance(
         plt.show()
 
 
-def _plot_distributions(
+def plot_distributions(
     data_clustering_ranked: pd.DataFrame,
     top_n: int,
     num_cols: int,
@@ -134,7 +134,7 @@ def _plot_distributions(
         plt.show()
 
 
-def _plot_heatmap_classification(
+def plot_heatmap_classification(
     data_clustering_ranked: pd.DataFrame,
     top_n: int,
     heatmap_type: str,
@@ -255,7 +255,7 @@ def _plot_heatmap_classification(
             fig.show()
 
 
-def _plot_heatmap_regression(
+def plot_heatmap_regression(
     data_clustering_ranked: pd.DataFrame,
     top_n: int,
     heatmap_type: str,
