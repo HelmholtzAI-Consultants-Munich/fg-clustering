@@ -241,7 +241,7 @@ class ClusteringClara:
             distance_metric.terminals, sample_indices, sample_indices[best_medoids_idxs]
         )
 
-        return cluster_labels
+        return cluster_labels + 1
 
 
 ############################################
