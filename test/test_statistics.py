@@ -45,8 +45,10 @@ class TestFeatureImportance(unittest.TestCase):
 
     def test_calculate_feature_importance_classification_wasserstein(self):
         X, y = self._generate_classification_data()
-        fi = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=True), verbose=self.verbose)
-        local, global_, df = fi.calculate_feature_importance(X, y, self.clusters, model_type="cla")
+        fi = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=True))
+        local, global_, df = fi.calculate_feature_importance(
+            X, y, self.clusters, model_type="cla", verbose=self.verbose
+        )
 
         self.assertIsInstance(local, pd.DataFrame)
         self.assertIsInstance(global_, pd.Series)
@@ -56,10 +58,10 @@ class TestFeatureImportance(unittest.TestCase):
 
     def test_calculate_feature_importance_regression_jensenshannon(self):
         X, y = self._generate_regression_data()
-        fi = FeatureImportance(
-            distance_metric=DistanceJensenShannon(scale_features=False), verbose=self.verbose
+        fi = FeatureImportance(distance_metric=DistanceJensenShannon(scale_features=False))
+        local, global_, df = fi.calculate_feature_importance(
+            X, y, self.clusters, model_type="reg", verbose=self.verbose
         )
-        local, global_, df = fi.calculate_feature_importance(X, y, self.clusters, model_type="reg")
 
         self.assertIsInstance(local, pd.DataFrame)
         self.assertIsInstance(global_, pd.Series)
@@ -70,8 +72,10 @@ class TestFeatureImportance(unittest.TestCase):
     def test_calculate_feature_importance_constant_column(self):
         X, y = self._generate_classification_data()
         X["constant"] = 1  # Add zero-variance feature
-        fi = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=True), verbose=self.verbose)
-        local, global_, _ = fi.calculate_feature_importance(X, y, self.clusters, model_type="cla")
+        fi = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=True))
+        local, global_, _ = fi.calculate_feature_importance(
+            X, y, self.clusters, model_type="cla", verbose=self.verbose
+        )
 
         self.assertTrue(local.loc["constant"].isna().all())
         self.assertTrue(np.isnan(global_["constant"]))
@@ -79,10 +83,10 @@ class TestFeatureImportance(unittest.TestCase):
     def test_calculate_feature_importance_categorical_feature(self):
         X, y = self._generate_classification_data()
         X["cat_feat"] = np.random.choice(["A", "B", "C"], size=len(X))
-        fi = FeatureImportance(
-            distance_metric=DistanceJensenShannon(scale_features=False), verbose=self.verbose
+        fi = FeatureImportance(distance_metric=DistanceJensenShannon(scale_features=False))
+        local, global_, _ = fi.calculate_feature_importance(
+            X, y, self.clusters, model_type="cla", verbose=self.verbose
         )
-        local, global_, _ = fi.calculate_feature_importance(X, y, self.clusters, model_type="cla")
 
         self.assertIn("cat_feat", local.index)
 
@@ -102,8 +106,10 @@ class TestFeatureImportance(unittest.TestCase):
         cluster_labels = np.array([0, 0, 0, 1, 1, 1])
 
         # Instantiate and compute feature importance
-        fi = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=False), verbose=0)
-        fi_local, fi_global, X_ranked = fi.calculate_feature_importance(X, y, cluster_labels, model_type)
+        fi = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=False))
+        fi_local, fi_global, X_ranked = fi.calculate_feature_importance(
+            X, y, cluster_labels, model_type, verbose=self.verbose
+        )
 
         # Check ordering of features by importance (top = most important)
         ranked_cols = [col for col in X_ranked.columns if col not in ["cluster", "target"]]
@@ -133,8 +139,10 @@ class TestFeatureImportance(unittest.TestCase):
         cluster_labels = np.array([0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2])
 
         # Run feature importance calculation
-        fi = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=False), verbose=0)
-        fi_local, fi_global, _ = fi.calculate_feature_importance(X, y, cluster_labels, model_type)
+        fi = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=False))
+        fi_local, fi_global, _ = fi.calculate_feature_importance(
+            X, y, cluster_labels, model_type, verbose=self.verbose
+        )
 
         # Remove globally unimportant features
         selected_cols = fi_global[fi_global > thr_distance].index
@@ -163,12 +171,16 @@ class TestFeatureImportance(unittest.TestCase):
         model_type = "cla"
 
         # Run for Wasserstein
-        fi_w = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=True), verbose=0)
-        fi_local_w, fi_global_w, _ = fi_w.calculate_feature_importance(X, y, cluster_labels, model_type)
+        fi_w = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=True))
+        fi_local_w, fi_global_w, _ = fi_w.calculate_feature_importance(
+            X, y, cluster_labels, model_type, verbose=self.verbose
+        )
 
         # Run for Jensen-Shannon
-        fi_js = FeatureImportance(distance_metric=DistanceJensenShannon(scale_features=False), verbose=0)
-        fi_local_js, fi_global_js, _ = fi_js.calculate_feature_importance(X, y, cluster_labels, model_type)
+        fi_js = FeatureImportance(distance_metric=DistanceJensenShannon(scale_features=False))
+        fi_local_js, fi_global_js, _ = fi_js.calculate_feature_importance(
+            X, y, cluster_labels, model_type, verbose=self.verbose
+        )
 
         # Check that the global importance differs
         self.assertFalse(
@@ -197,7 +209,7 @@ class TestFeatureImportance(unittest.TestCase):
             }
         )
 
-        fi = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=False), verbose=0)
+        fi = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=False))
         sorted_df = fi._sort_clusters_by_target(df.copy(), model_type="cla")
 
         # Cluster with class A should come before B
@@ -213,7 +225,7 @@ class TestFeatureImportance(unittest.TestCase):
             }
         )
 
-        fi = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=False), verbose=0)
+        fi = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=False))
         sorted_df = fi._sort_clusters_by_target(df.copy(), model_type="reg")
 
         self.assertEqual(sorted_df["cluster"].cat.categories.tolist(), [1, 2])

@@ -69,7 +69,7 @@ class TestUtils(unittest.TestCase):
     def test_check_input_estimator_invalid(self):
         valid, mtype = check_input_estimator("not_a_model")
         self.assertFalse(valid)
-        self.assertIsNone(mtype)
+        self.assertEqual(mtype, "invalid")
 
     def test_matplotlib_to_plotly_output_format(self):
         colorscale = matplotlib_to_plotly("viridis", pl_entries=10)
@@ -113,17 +113,17 @@ class TestUtils(unittest.TestCase):
             check_k_range([2, 3, 4])
 
     def test_check_sub_sample_size(self):
-        self.assertEqual(check_sub_sample_size(None, 5000), 1000)
-        self.assertEqual(check_sub_sample_size(0.5, 100), 50)
-        self.assertEqual(check_sub_sample_size(1.0, 100), 100)
-        self.assertEqual(check_sub_sample_size(20, 100), 20)
-        self.assertEqual(check_sub_sample_size(150, 100), 100)
-        self.assertEqual(check_sub_sample_size(1, 100), 1)
+        self.assertEqual(check_sub_sample_size(None, 5000, 0), 1000)
+        self.assertEqual(check_sub_sample_size(0.5, 100, 0), 50)
+        self.assertEqual(check_sub_sample_size(1.0, 100, 0), 100)
+        self.assertEqual(check_sub_sample_size(20, 100, 0), 20)
+        self.assertEqual(check_sub_sample_size(150, 100, 0), 100)
+        self.assertEqual(check_sub_sample_size(1, 100, 0), 1)
 
     def test_check_sub_sample_size_errors(self):
         with self.assertRaises(ValueError):
-            check_sub_sample_size(1.1, 100)
+            check_sub_sample_size(1.1, 100, 0)
         with self.assertRaises(ValueError):
-            check_sub_sample_size(0, 100)
+            check_sub_sample_size(0, 100, 0)
         with self.assertRaises(TypeError):
-            check_sub_sample_size("ten", 100)
+            check_sub_sample_size("ten", 100, 0)

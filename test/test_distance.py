@@ -71,7 +71,7 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
     def test_calculate_distance_matrix_non_memory_efficient(self):
         dist = DistanceRandomForestProximity(memory_efficient=False)
         dist.calculate_terminals(self.model, self.X)
-        matrix = dist.calculate_distance_matrix()
+        matrix = dist.calculate_distance_matrix(sample_indices=None)
         self.assertEqual(matrix.shape[0], matrix.shape[1])
         self.assertEqual(matrix.shape[0], len(self.X))
         self.assertTrue(np.allclose(matrix, matrix.T))
@@ -80,7 +80,7 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
     def test_calculate_distance_matrix_memory_efficient(self):
         dist = DistanceRandomForestProximity(memory_efficient=True, dir_distance_matrix=self.tmp_path)
         dist.calculate_terminals(self.model, self.X)
-        matrix = dist.calculate_distance_matrix()
+        matrix = dist.calculate_distance_matrix(sample_indices=None)
         self.assertTrue(isinstance(matrix, np.memmap))
         self.assertEqual(matrix.shape[0], matrix.shape[1])
         self.assertTrue(np.allclose(matrix, matrix.T))
@@ -90,7 +90,7 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
     def test_calculate_distance_matrix_error_without_terminals(self):
         dist = DistanceRandomForestProximity()
         with self.assertRaises(ValueError):
-            _ = dist.calculate_distance_matrix()
+            _ = dist.calculate_distance_matrix(sample_indices=None)
 
     def test_calculate_distance_matrix_error_missing_dir_in_memory_efficient_mode(self):
         with self.assertRaises(ValueError):

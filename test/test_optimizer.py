@@ -38,8 +38,7 @@ class TestOptimizer(unittest.TestCase):
 
         self.optimizer = Optimizer(
             distance_metric=self.distance_metric,
-            clustering=self.clustering_strategy,
-            verbose=self.verbose,
+            clustering_strategy=self.clustering_strategy,
             random_state=self.random_state,
         )
 
@@ -114,6 +113,7 @@ class TestOptimizer(unittest.TestCase):
             JI_discart_value=0.6,
             model_type=model_type,
             n_jobs=self.n_jobs,
+            verbose=self.verbose,
         )
 
         self.assertEqual(k, 6, f"Expected k=6 for classification, got {k}")
@@ -132,6 +132,7 @@ class TestOptimizer(unittest.TestCase):
             JI_discart_value=0.8,
             model_type=model_type,
             n_jobs=self.n_jobs,
+            verbose=self.verbose,
         )
 
         self.assertIn(k, [2, 3, 4], f"Expected k in [2, 3, 4] for regression, got {k}")
@@ -150,6 +151,7 @@ class TestOptimizer(unittest.TestCase):
             JI_discart_value=0.5,
             model_type=model_type,
             n_jobs=self.n_jobs,
+            verbose=self.verbose,
         )
 
         self.assertEqual(len(output), 4)
@@ -168,16 +170,22 @@ class TestOptimizer(unittest.TestCase):
         )
 
         cluster_labels = self.clustering_strategy.run_clustering(
-            k=k, distance_metric=self.distance_metric, sample_indices=None
+            k=k,
+            distance_metric=self.distance_metric,
+            sample_indices=None,
+            random_state_subsampling=None,
+            verbose=self.verbose,
         )
 
         self.optimizer.n_samples_original = n_clusters * samples_per_cluster
         self.optimizer.JI_bootstrap_sample_size = 25
         self.optimizer.JI_bootstrap_iter = 100
+        self.optimizer.n_jobs = self.n_jobs
+        self.optimizer.verbose = self.verbose
+
         result = self.optimizer._compute_JI(
             k=k,
             cluster_labels_original=cluster_labels,
-            n_jobs=self.n_jobs,
         )
 
         for v in result.values():
@@ -194,16 +202,22 @@ class TestOptimizer(unittest.TestCase):
         )
 
         cluster_labels = self.clustering_strategy.run_clustering(
-            k=k, distance_metric=self.distance_metric, sample_indices=None
+            k=k,
+            distance_metric=self.distance_metric,
+            sample_indices=None,
+            random_state_subsampling=None,
+            verbose=self.verbose,
         )
 
         self.optimizer.n_samples_original = n_clusters * samples_per_cluster
         self.optimizer.JI_bootstrap_sample_size = 25
         self.optimizer.JI_bootstrap_iter = 100
+        self.optimizer.n_jobs = self.n_jobs
+        self.optimizer.verbose = self.verbose
+
         result = self.optimizer._compute_JI(
             k=k,
             cluster_labels_original=cluster_labels,
-            n_jobs=self.n_jobs,
         )
 
         self.assertTrue(min(result.values()) < 1.0, "Expected some instability for k=2")
@@ -222,15 +236,17 @@ class TestOptimizer(unittest.TestCase):
 
         optimizer = Optimizer(
             distance_metric=self.distance_metric,
-            clustering=mock_clustering,
-            verbose=self.verbose,
+            clustering_strategy=mock_clustering,
             random_state=self.random_state,
         )
         optimizer.n_samples_original = sample_size
         optimizer.JI_bootstrap_sample_size = sample_size
+        optimizer.verbose = self.verbose
 
         result = optimizer._compute_JI_single_bootstrap(
-            k=2, mapping_cluster_labels_to_samples_original=mapping_original, random_seed=123456789
+            k=2,
+            mapping_cluster_labels_to_samples_original=mapping_original,
+            random_state_subsampling=123456789,
         )
 
         for val in result.values():
@@ -250,16 +266,18 @@ class TestOptimizer(unittest.TestCase):
 
         optimizer = Optimizer(
             distance_metric=self.distance_metric,
-            clustering=mock_clustering,
-            verbose=self.verbose,
+            clustering_strategy=mock_clustering,
             random_state=self.random_state,
         )
 
         optimizer.n_samples_original = sample_size
         optimizer.JI_bootstrap_sample_size = sample_size
+        optimizer.verbose = self.verbose
 
         result = optimizer._compute_JI_single_bootstrap(
-            k=2, mapping_cluster_labels_to_samples_original=mapping_original, random_seed=123456789
+            k=2,
+            mapping_cluster_labels_to_samples_original=mapping_original,
+            random_state_subsampling=123456789,
         )
 
         self.assertTrue(all(0 <= v <= 1 for v in result.values()), "Jaccard indices must be in [0, 1]")
@@ -270,9 +288,7 @@ class TestOptimizer(unittest.TestCase):
         categorical_values = np.array([0, 0, 1, 1])
         cluster_labels = np.array([0, 0, 1, 1])
 
-        optimizer = Optimizer(
-            distance_metric=None, clustering=None, verbose=0, random_state=self.random_state
-        )
+        optimizer = Optimizer(distance_metric=None, clustering_strategy=None, random_state=self.random_state)
 
         score = optimizer._compute_balanced_average_impurity(categorical_values, cluster_labels)
 
@@ -284,9 +300,7 @@ class TestOptimizer(unittest.TestCase):
         continuous_values = np.array([1.0, 1.1, 0.9, 10.0, 10.1, 9.9])
         cluster_labels = np.array([0, 0, 0, 1, 1, 1])
 
-        optimizer = Optimizer(
-            distance_metric=None, clustering=None, verbose=0, random_state=self.random_state
-        )
+        optimizer = Optimizer(distance_metric=None, clustering_strategy=None, random_state=self.random_state)
 
         score = optimizer._compute_total_within_cluster_variation(continuous_values, cluster_labels)
 

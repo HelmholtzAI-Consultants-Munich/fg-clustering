@@ -67,7 +67,13 @@ class TestClusteringKMedoids(unittest.TestCase):
         distance.calculate_terminals(self.model, self.X)
 
         clustering = ClusteringKMedoids()
-        labels = clustering.run_clustering(k=3, distance_metric=distance, sample_indices=self.sample_indices)
+        labels = clustering.run_clustering(
+            k=3,
+            distance_metric=distance,
+            sample_indices=self.sample_indices,
+            random_state_subsampling=None,
+            verbose=1,
+        )
 
         self.assertEqual(len(labels), len(self.sample_indices))
         self.assertTrue(np.all(np.isin(labels, [1, 2, 3])))
@@ -77,7 +83,13 @@ class TestClusteringKMedoids(unittest.TestCase):
         distance.calculate_terminals(self.model, self.X)
 
         clustering = ClusteringKMedoids()
-        labels = clustering.run_clustering(k=4, distance_metric=distance, sample_indices=self.sample_indices)
+        labels = clustering.run_clustering(
+            k=4,
+            distance_metric=distance,
+            sample_indices=self.sample_indices,
+            random_state_subsampling=None,
+            verbose=1,
+        )
 
         self.assertEqual(len(labels), len(self.sample_indices))
         self.assertTrue(np.all(np.isin(labels, [1, 2, 3, 4])))
@@ -88,7 +100,13 @@ class TestClusteringKMedoids(unittest.TestCase):
 
         clustering = ClusteringKMedoids()
         with self.assertRaises(IndexError):
-            clustering.run_clustering(k=3, distance_metric=distance, sample_indices=np.array([999, 1000]))
+            clustering.run_clustering(
+                k=3,
+                distance_metric=distance,
+                sample_indices=np.array([999, 1000]),
+                random_state_subsampling=None,
+                verbose=1,
+            )
 
     def test_run_clustering_different_k_values(self):
         distance = DistanceRandomForestProximity(memory_efficient=False)
@@ -97,7 +115,11 @@ class TestClusteringKMedoids(unittest.TestCase):
         clustering = ClusteringKMedoids()
         for k in [2, 5, 7]:
             labels = clustering.run_clustering(
-                k=k, distance_metric=distance, sample_indices=self.sample_indices
+                k=k,
+                distance_metric=distance,
+                sample_indices=self.sample_indices,
+                random_state_subsampling=None,
+                verbose=1,
             )
             self.assertEqual(len(labels), len(self.sample_indices))
             self.assertEqual(len(np.unique(labels)), k)
@@ -149,7 +171,13 @@ class TestClusteringClara(unittest.TestCase):
         distance.calculate_terminals(self.model, self.X)
 
         clara = ClusteringClara(sub_sample_size=50, sampling_iter=5)
-        labels = clara.run_clustering(k=3, distance_metric=distance, sample_indices=self.sample_indices)
+        labels = clara.run_clustering(
+            k=3,
+            distance_metric=distance,
+            sample_indices=self.sample_indices,
+            random_state_subsampling=None,
+            verbose=1,
+        )
 
         self.assertEqual(len(labels), len(self.sample_indices))
         self.assertEqual(len(np.unique(labels)), 3)
@@ -159,7 +187,13 @@ class TestClusteringClara(unittest.TestCase):
         distance.calculate_terminals(self.model, self.X)
 
         clara = ClusteringClara(sub_sample_size=50, sampling_iter=5)
-        labels = clara.run_clustering(k=4, distance_metric=distance, sample_indices=self.sample_indices)
+        labels = clara.run_clustering(
+            k=4,
+            distance_metric=distance,
+            sample_indices=self.sample_indices,
+            random_state_subsampling=None,
+            verbose=1,
+        )
 
         self.assertEqual(len(labels), len(self.sample_indices))
         self.assertEqual(len(np.unique(labels)), 4)
@@ -171,8 +205,20 @@ class TestClusteringClara(unittest.TestCase):
         clara1 = ClusteringClara(sub_sample_size=50, sampling_iter=5, random_state=0)
         clara2 = ClusteringClara(sub_sample_size=50, sampling_iter=5, random_state=0)
 
-        labels1 = clara1.run_clustering(k=3, distance_metric=distance, sample_indices=self.sample_indices)
-        labels2 = clara2.run_clustering(k=3, distance_metric=distance, sample_indices=self.sample_indices)
+        labels1 = clara1.run_clustering(
+            k=3,
+            distance_metric=distance,
+            sample_indices=self.sample_indices,
+            random_state_subsampling=None,
+            verbose=1,
+        )
+        labels2 = clara2.run_clustering(
+            k=3,
+            distance_metric=distance,
+            sample_indices=self.sample_indices,
+            random_state_subsampling=None,
+            verbose=1,
+        )
 
         np.testing.assert_array_equal(labels1, labels2)
 
@@ -181,7 +227,13 @@ class TestClusteringClara(unittest.TestCase):
         distance.calculate_terminals(self.model, self.X)
 
         clara = ClusteringClara(sub_sample_size=50, sampling_iter=None)
-        labels = clara.run_clustering(k=3, distance_metric=distance, sample_indices=self.sample_indices)
+        labels = clara.run_clustering(
+            k=3,
+            distance_metric=distance,
+            sample_indices=self.sample_indices,
+            random_state_subsampling=None,
+            verbose=1,
+        )
 
         self.assertEqual(len(labels), len(self.sample_indices))
 
@@ -190,7 +242,13 @@ class TestClusteringClara(unittest.TestCase):
         distance.calculate_terminals(self.model, self.X)
 
         clara = ClusteringClara(sub_sample_size=0.5, sampling_iter=3)
-        labels = clara.run_clustering(k=2, distance_metric=distance, sample_indices=self.sample_indices)
+        labels = clara.run_clustering(
+            k=2,
+            distance_metric=distance,
+            sample_indices=self.sample_indices,
+            random_state_subsampling=None,
+            verbose=1,
+        )
 
         self.assertEqual(len(labels), len(self.sample_indices))
 
@@ -208,14 +266,26 @@ class TestClusteringClara(unittest.TestCase):
 
         # Clara with few iterations
         clara_few = ClusteringClara(sub_sample_size=0.5, sampling_iter=1, random_state=42)
-        labels_few = clara_few.run_clustering(k=3, distance_metric=distance, sample_indices=sample_indices)
+        labels_few = clara_few.run_clustering(
+            k=3,
+            distance_metric=distance,
+            sample_indices=sample_indices,
+            random_state_subsampling=None,
+            verbose=1,
+        )
         inertia_few = _calculate_inertia(
             distance.terminals, sample_indices, sample_indices[np.unique(labels_few, return_index=True)[1]]
         )
 
         # Clara with more iterations
         clara_many = ClusteringClara(sub_sample_size=0.5, sampling_iter=10, random_state=42)
-        labels_many = clara_many.run_clustering(k=3, distance_metric=distance, sample_indices=sample_indices)
+        labels_many = clara_many.run_clustering(
+            k=3,
+            distance_metric=distance,
+            sample_indices=sample_indices,
+            random_state_subsampling=None,
+            verbose=1,
+        )
         inertia_many = _calculate_inertia(
             distance.terminals, sample_indices, sample_indices[np.unique(labels_many, return_index=True)[1]]
         )
