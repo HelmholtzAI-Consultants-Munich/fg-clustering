@@ -1,9 +1,6 @@
 fgclustering package
 ====================
 
-Submodules
-----------
-
 fgclustering.clustering module
 ------------------------------
 
