@@ -271,21 +271,21 @@ def _calculate_inertia(
     """
     n_estimators = terminals.shape[1]
     n_samples = len(sample_idx)
-    inertia = 0
+    n_medoids = len(medoids_idx)
+    inertia = np.zeros(n_samples)
 
     for i in prange(n_samples):
         sample = sample_idx[i]
-        distance_sample_min = np.inf
+        distances = np.empty(n_medoids, dtype=np.float32)
 
-        for medoid in medoids_idx:
+        for j in range(n_medoids):
+            medoid = medoids_idx[j]
             proximity = np.sum(terminals[sample, :] == terminals[medoid, :])
-            distance_sample = 1.0 - (proximity / n_estimators)
-            if distance_sample < distance_sample_min:
-                distance_sample_min = distance_sample
+            distances[j] = 1.0 - (proximity / n_estimators)
 
-        inertia += distance_sample_min
+        inertia[i] = np.min(distances)
 
-    return inertia
+    return np.sum(inertia)
 
 
 @njit(parallel=True, fastmath=True)
