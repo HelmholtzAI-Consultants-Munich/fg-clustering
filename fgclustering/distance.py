@@ -116,13 +116,20 @@ class DistanceRandomForestProximity:
             distance_matrix += distance_matrix.T
             return distance_matrix, file_distance_matrix
 
-    def remove_distance_matrix(self, distance_matrix, file_distance_matrix) -> None:
+    def remove_distance_matrix(
+        self,
+        distance_matrix: Union[np.ndarray, np.memmap],
+        file_distance_matrix: str,
+    ) -> None:
         """
         Removes the disk-backed distance matrix file if memory-efficient mode is enabled
-        and a distance matrix file was created. This is useful to free up disk space and
-        avoid file locking issues, especially on Windows.
+        and a distance matrix file was created. Ensures proper file handle release to avoid
+        file locking issues, especially on Windows.
 
-        :raises RuntimeError: If memory-efficient mode is not enabled or no distance matrix file is present.
+        :param distance_matrix: The distance matrix object to delete.
+        :type distance_matrix: Union[numpy.ndarray, numpy.memmap]
+        :param file_distance_matrix: Full path to the memmap file on disk.
+        :type file_distance_matrix: str
         """
         try:
             distance_matrix.flush()
