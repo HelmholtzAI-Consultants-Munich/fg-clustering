@@ -4,6 +4,7 @@
 
 import os
 import gc
+import time
 import uuid
 import numpy as np
 import pandas as pd
@@ -123,17 +124,22 @@ class DistanceRandomForestProximity:
 
         :raises RuntimeError: If memory-efficient mode is not enabled or no distance matrix file is present.
         """
+        try:
+            distance_matrix.flush()
+        except Exception:
+            pass  # Might not always be necessary, but safe to attempt
+
         del distance_matrix
         gc.collect()
+
         if file_distance_matrix is not None and os.path.exists(file_distance_matrix):
-            try:
-                os.remove(file_distance_matrix)
-            except PermissionError as e:
-                gc.collect()
+            for _ in range(3):
                 try:
                     os.remove(file_distance_matrix)
-                except Exception:
-                    raise RuntimeError(f"Failed to remove distance matrix file: {e}")
+                    break
+                except PermissionError:
+                    time.sleep(0.5)  # Give OS time to release the file
+                    gc.collect()
 
 
 class DistanceWasserstein:
