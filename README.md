@@ -52,7 +52,7 @@ Visit our [full documentation](https://forest-guided-clustering.readthedocs.io/)
 
 **Requirements**
 
-This package was tested for `Python 3.9 - 3.12` on ubuntu, macos and windows. It depends on the `kmedoids` python package. If you are using windows or macos, you may need to first install Rust/Cargo with:
+This package was tested for `Python 3.8 - 3.13` on ubuntu, macos and windows. It depends on the `kmedoids` python package. If you are using windows or macos, you may need to first install Rust/Cargo with:
 
     conda install -c conda-forge rust
 

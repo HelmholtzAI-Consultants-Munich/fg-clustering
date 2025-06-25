@@ -150,7 +150,7 @@ def plot_distributions(
                 data=data_clustering_ranked,
                 ax=ax,
                 color="#3470a3",
-                orientation="vertical",
+                orient="v",
             )
             ax.set_title(f"Feature: {feature}")
 
