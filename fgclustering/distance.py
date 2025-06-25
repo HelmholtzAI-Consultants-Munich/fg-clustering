@@ -3,6 +3,7 @@
 ############################################
 
 import os
+import gc
 import uuid
 import numpy as np
 import pandas as pd
@@ -100,20 +101,39 @@ class DistanceRandomForestProximity:
                     raise MemoryError(
                         f"Not enough free space to allocate a {required_bytes / 1e9:.2f} GB memmap distance matrix (with 20% buffer)."
                     )
-                self.file_distance_matrix = os.path.join(
+                file_distance_matrix = os.path.join(
                     self.dir_distance_matrix, f"distance_matrix_{uuid.uuid4().hex[:8]}.dat"
                 )
-                distance_matrix = np.memmap(
-                    self.file_distance_matrix, dtype=np.float32, mode="w+", shape=(n, n)
-                )
+                distance_matrix = np.memmap(file_distance_matrix, dtype=np.float32, mode="w+", shape=(n, n))
             else:
+                file_distance_matrix = None
                 distance_matrix = np.zeros((n, n))
 
             distance_matrix = _calculate_distances(terminals, n, n_estimators, distance_matrix)
 
             # Ensure symmetry
             distance_matrix += distance_matrix.T
-            return distance_matrix
+            return distance_matrix, file_distance_matrix
+
+    def remove_distance_matrix(self, distance_matrix, file_distance_matrix) -> None:
+        """
+        Removes the disk-backed distance matrix file if memory-efficient mode is enabled
+        and a distance matrix file was created. This is useful to free up disk space and
+        avoid file locking issues, especially on Windows.
+
+        :raises RuntimeError: If memory-efficient mode is not enabled or no distance matrix file is present.
+        """
+        del distance_matrix
+        gc.collect()
+        if file_distance_matrix is not None and os.path.exists(file_distance_matrix):
+            try:
+                os.remove(file_distance_matrix)
+            except PermissionError as e:
+                gc.collect()
+                try:
+                    os.remove(file_distance_matrix)
+                except Exception:
+                    raise RuntimeError(f"Failed to remove distance matrix file: {e}")
 
 
 class DistanceWasserstein:

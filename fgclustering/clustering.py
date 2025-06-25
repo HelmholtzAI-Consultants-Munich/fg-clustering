@@ -3,6 +3,7 @@
 ############################################
 
 import os
+import gc
 import kmedoids
 import numpy as np
 
@@ -79,7 +80,7 @@ class ClusteringKMedoids:
         """
         if distance_metric.terminals is None:
             raise ValueError("Terminals need to be precomputed!")
-        distance_matrix = distance_metric.calculate_distance_matrix(sample_indices=sample_indices)
+        distance_matrix, file = distance_metric.calculate_distance_matrix(sample_indices=sample_indices)
 
         cluster_labels = (
             kmedoids.KMedoids(
@@ -94,8 +95,7 @@ class ClusteringKMedoids:
             .labels_
         )
 
-        if distance_metric.memory_efficient:
-            os.remove(distance_metric.file_distance_matrix)
+        distance_metric.remove_distance_matrix(distance_matrix, file)
 
         return cluster_labels + 1
 
@@ -206,7 +206,7 @@ class ClusteringClara:
             sub_sample_indices = np.sort(sub_sample_indices)
 
             # distance matrix for subsample but input original indices
-            sub_sample_distance_matrix = distance_metric.calculate_distance_matrix(
+            sub_sample_distance_matrix, file = distance_metric.calculate_distance_matrix(
                 sample_indices=sample_indices[sub_sample_indices]
             )
 
@@ -222,8 +222,7 @@ class ClusteringClara:
             kmedoids_subsample.fit(sub_sample_distance_matrix)
 
             # remove distance matrix if finished
-            if distance_metric.memory_efficient:
-                os.remove(distance_metric.file_distance_matrix)
+            distance_metric.remove_distance_matrix(sub_sample_distance_matrix, file)
 
             # retrieve the calculated medoids and use to calculate inertia score
             sub_sample_medoids_idxs = sub_sample_indices[kmedoids_subsample.medoid_indices_]
