@@ -197,7 +197,7 @@ class ClusteringClara:
             rng = np.random.RandomState(self.random_state)
         else:
             rng = np.random.RandomState(random_state_subsampling)
-        seeds = rng.randint(0, 2**32 - 1, size=self.sampling_iter)
+        seeds = rng.randint(0, 2**31 - 1, size=self.sampling_iter)
 
         # iterate n times over the input dataset
         for seed in seeds:

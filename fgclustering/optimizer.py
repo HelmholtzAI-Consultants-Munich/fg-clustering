@@ -188,7 +188,7 @@ class Optimizer:
         """
         # generate distinct seeds for each iteration
         rng = np.random.RandomState(self.random_state)
-        seeds = rng.randint(0, 2**32 - 1, size=self.JI_bootstrap_iter)
+        seeds = rng.randint(0, 2**31 - 1, size=self.JI_bootstrap_iter)
 
         mapping_cluster_labels_to_samples_original = map_clusters_to_samples(cluster_labels_original)
 
