@@ -283,7 +283,7 @@ def plot_heatmap_classification(
                     x=[None],
                     y=[None],
                     mode="markers",
-                    marker=dict(size=10, color=color_map[i]),
+                    marker=dict(size=10, color=target_color_map[i]),
                     legendgroup=category,
                     showlegend=True,
                     name=category,

@@ -300,16 +300,8 @@ class DistanceJensenShannon:
             hist_cluster, _ = np.histogram(values_cluster, bins=edges)
 
             # Normalize histogram values
-            p_ref = (
-                hist_ref / np.sum(hist_ref)
-                if np.sum(hist_ref) > 0
-                else np.ones_like(hist_ref) / len(hist_ref)
-            )
-            p_cluster = (
-                hist_cluster / np.sum(hist_cluster)
-                if np.sum(hist_cluster) > 0
-                else np.ones_like(hist_cluster) / len(hist_cluster)
-            )
+            p_ref = hist_ref / np.sum(hist_ref)
+            p_cluster = hist_cluster / np.sum(hist_cluster)
 
             return jensenshannon(p_ref, p_cluster)
 
