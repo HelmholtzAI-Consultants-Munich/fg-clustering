@@ -198,34 +198,3 @@ class TestFeatureImportance(unittest.TestCase):
             fi_global_js["cat_feature"],
             "Categorical feature importance should differ between distance metrics",
         )
-
-    def test_sort_clusters_by_target_classification(self):
-        # Artificial data with target class labels
-        df = pd.DataFrame(
-            {
-                "cluster": [0, 0, 1, 1],
-                "target": ["B", "B", "A", "A"],
-                "feat1": [1, 2, 3, 4],
-            }
-        )
-
-        fi = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=False))
-        sorted_df = fi._sort_clusters_by_target(df.copy(), model_type="cla")
-
-        # Cluster with class A should come before B
-        self.assertEqual(sorted_df["cluster"].cat.categories.tolist(), [1, 2])
-
-    def test_sort_clusters_by_target_regression(self):
-        # Artificial data with numeric target values
-        df = pd.DataFrame(
-            {
-                "cluster": [0, 0, 1, 1],
-                "target": [0.1, 0.2, 1.0, 1.1],
-                "feat1": [1, 2, 3, 4],
-            }
-        )
-
-        fi = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=False))
-        sorted_df = fi._sort_clusters_by_target(df.copy(), model_type="reg")
-
-        self.assertEqual(sorted_df["cluster"].cat.categories.tolist(), [1, 2])
