@@ -113,17 +113,17 @@ class TestUtils(unittest.TestCase):
             check_k_range([2, 3, 4])
 
     def test_check_sub_sample_size(self):
-        self.assertEqual(check_sub_sample_size(None, 5000, 0), 1000)
-        self.assertEqual(check_sub_sample_size(0.5, 100, 0), 50)
-        self.assertEqual(check_sub_sample_size(1.0, 100, 0), 100)
-        self.assertEqual(check_sub_sample_size(20, 100, 0), 20)
-        self.assertEqual(check_sub_sample_size(150, 100, 0), 100)
-        self.assertEqual(check_sub_sample_size(1, 100, 0), 1)
+        self.assertEqual(check_sub_sample_size(None, 5000, "", 0), 1000)
+        self.assertEqual(check_sub_sample_size(0.5, 100, "", 0), 50)
+        self.assertEqual(check_sub_sample_size(1.0, 100, "", 0), 100)
+        self.assertEqual(check_sub_sample_size(20, 100, "", 0), 20)
+        self.assertEqual(check_sub_sample_size(150, 100, "", 0), 100)
+        self.assertEqual(check_sub_sample_size(1, 100, "", 0), 1)
 
     def test_check_sub_sample_size_errors(self):
         with self.assertRaises(ValueError):
-            check_sub_sample_size(1.1, 100, 0)
+            check_sub_sample_size(1.1, 100, "", 0)
         with self.assertRaises(ValueError):
-            check_sub_sample_size(0, 100, 0)
+            check_sub_sample_size(0, 100, "", 0)
         with self.assertRaises(TypeError):
-            check_sub_sample_size("ten", 100, 0)
+            check_sub_sample_size("ten", 100, "", 0)
