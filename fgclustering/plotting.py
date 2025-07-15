@@ -99,8 +99,8 @@ def plot_distributions(
     """
     Plot the decision patterns that emerge from forest-guided clustering using feature distribution plots.
 
-    :param data_clustering: DataFrame of clustering data ordered by the global feature importance.
-    :type data_clustering: pd.DataFrame
+    :param data_clustering_ranked: DataFrame of clustering data ordered by the global feature importance.
+    :type data_clustering_ranked: pd.DataFrame
     :param top_n: If specified, number of top-ranked features to plot.
     :type top_n: int
     :param num_cols: Number of columns in the subplot layout.
@@ -172,8 +172,8 @@ def plot_heatmap_classification(
     """
     Plot the decision patterns that emerge from forest-guided clustering using feature heatmaps for classification tasks.
 
-    :param data_clustering: DataFrame of clustering data ordered by the global feature importance.
-    :type data_clustering: pd.DataFrame
+    :param data_clustering_ranked: DataFrame of clustering data ordered by the global feature importance.
+    :type data_clustering_ranked: pd.DataFrame
     :param top_n: If specified, number of top-ranked features to plot.
     :type top_n: int
     :param heatmap_type: Heatmap shown in "static" or "interactive" style.
@@ -305,8 +305,8 @@ def plot_heatmap_regression(
     """
     Plot the decision patterns that emerge from forest-guided clustering using feature heatmaps for regression tasks.
 
-    :param data_clustering: DataFrame of clustering data ordered by the global feature importance.
-    :type data_clustering: pd.DataFrame
+    :param data_clustering_ranked: DataFrame of clustering data ordered by the global feature importance.
+    :type data_clustering_ranked: pd.DataFrame
     :param top_n: If specified, number of top-ranked features to plot.
     :type top_n: int
     :param heatmap_type: Heatmap shown in "static" or "interactive" style.

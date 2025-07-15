@@ -308,3 +308,38 @@ class TestOptimizer(unittest.TestCase):
         self.assertAlmostEqual(
             score, 0.0, places=3, msg="Mismatch in total within-cluster variation computation"
         )
+
+    def test_sort_clusters_classification_simple(self):
+        y = pd.Series(["B", "B", "A", "A"])
+        cluster_labels = np.array([0, 0, 1, 1])
+
+        optimizer = Optimizer(distance_metric=None, clustering_strategy=None, random_state=self.random_state)
+    
+        new_labels = optimizer._sort_clusters_by_target(y, cluster_labels, model_type="cla")
+        
+        expected = np.array([2, 2, 1, 1])
+        np.testing.assert_array_equal(new_labels, expected)
+    
+    
+    def test_sort_clusters_regression_reshuffle(self):
+        y = pd.Series(           [50, 50, 10, 20, 25, 35])
+        cluster_labels = np.array([0,  0,  1,  1,  2,  2])
+
+        optimizer = Optimizer(distance_metric=None, clustering_strategy=None, random_state=self.random_state)
+        
+        new_labels = optimizer._sort_clusters_by_target(y, cluster_labels, model_type="reg")
+        
+        expected = np.array([3, 3, 1, 1, 2, 2])
+        np.testing.assert_array_equal(new_labels, expected)
+    
+    
+    def test_sort_clusters_regression_with_ties(self):
+        y = pd.Series(           [20, 40, 25, 35, 10, 20])
+        cluster_labels = np.array([0,  0,  1,  1,  2,  2])
+
+        optimizer = Optimizer(distance_metric=None, clustering_strategy=None, random_state=self.random_state)
+        
+        new_labels = optimizer._sort_clusters_by_target(y, cluster_labels, model_type="reg")
+        
+        expected = np.array([2, 2, 3, 3, 1, 1])
+        np.testing.assert_array_equal(new_labels, expected)

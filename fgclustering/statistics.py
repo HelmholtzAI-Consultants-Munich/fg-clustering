@@ -77,7 +77,7 @@ class FeatureImportance:
         ).index.tolist()
 
         # Sort and rank clustering dataframe
-        data_clustering_ranked = self._sort_clusters_by_target(data_clustering[features_ranked], model_type)
+        data_clustering_ranked = data_clustering[features_ranked]
         data_clustering_ranked = data_clustering_ranked.sort_values(by=["cluster", "target"])
 
         return feature_importance_local, feature_importance_global, data_clustering_ranked
@@ -147,39 +147,3 @@ class FeatureImportance:
 
         return distances
 
-    def _sort_clusters_by_target(
-        self,
-        data_clustering_ranked: pd.DataFrame,
-        model_type: str,
-    ) -> pd.DataFrame:
-        """
-        Sorts clusters by the mean target value and reorders cluster labels accordingly.
-
-        :param data_clustering_ranked: Combined DataFrame of features, cluster labels, and target values.
-        :type data_clustering_ranked: pandas.DataFrame
-        :param model_type: Type of model, either "cla" for classification or "reg" for regression.
-        :type model_type: str
-
-        :return: Clustering data sorted by target.
-        :rtype: pandas.DataFrame
-        """
-        # When using a classifier, the target value is label encoded, such that we can sort the clusters by target values
-        original_target = data_clustering_ranked["target"].copy()
-
-        if model_type == "cla":
-            data_clustering_ranked["target"] = data_clustering_ranked["target"].astype("category").cat.codes
-
-        # Compute mean target values for each cluster and sort by mean values
-        cluster_means = data_clustering_ranked.groupby(["cluster"])[["cluster", "target"]].mean()
-        cluster_means = cluster_means.sort_values(by="target").index
-
-        # Map the sorted clusters to a new order, replace clusters with the new mapping and ensure the 'cluster' column is a categorical type with ordered levels
-        mapping = {cluster: i + 1 for i, cluster in enumerate(cluster_means)}
-        data_clustering_ranked["cluster"] = pd.Categorical(
-            data_clustering_ranked["cluster"].map(mapping), ordered=True
-        )
-
-        # Restore the original target values
-        data_clustering_ranked["target"] = original_target
-
-        return data_clustering_ranked

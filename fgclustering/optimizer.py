@@ -168,7 +168,14 @@ class Optimizer:
             print("\nClustering Evaluation Summary:")
             print(results_df[["k", "Score", "Stable", "Mean_JI", "Cluster_JI"]].to_string(index=False))
 
-        return k, cluster_score, cluster_stability, cluster_labels
+        # reorder cluster labels by target mean
+        reordered_cluster_labels = self._sort_clusters_by_target(
+            y=y, 
+            cluster_labels=cluster_labels,
+            model_type=model_type
+            )
+        
+        return k, cluster_score, cluster_stability, reordered_cluster_labels
 
     def _compute_JI(
         self,
@@ -361,3 +368,50 @@ class Optimizer:
             within_variance += np.var(continuous_values_cluster) * len(continuous_values_cluster)
 
         return round(float(within_variance / total_variance), 6)
+
+    def _sort_clusters_by_target(
+        self,
+        y: pd.Series,
+        cluster_labels: np.ndarray,
+        model_type: str,
+    ) -> np.ndarray:
+        """
+        Sorts clusters by the mean target value and reorders cluster labels accordingly.
+        
+        :param y: Target values.
+        :type y: pandas.Series
+        :param cluster_labels: Labels from forest-guided clustering.
+        :type cluster_labels: numpy.ndarray
+        :param model_type: Type of model, either "cla" for classification or "reg" for regression.
+        :type model_type: str
+    
+        :return: New cluster labels, sorted by the target mean
+        :rtype: numpy.ndarray
+        """
+
+        # ensure y is a series
+        if not isinstance(y, pd.Series):
+            y = pd.Series(y)
+
+        # use category codes for classification
+        target = y.astype("category").cat.codes if model_type == "cla" else y
+    
+        df = pd.DataFrame({
+            "cluster": cluster_labels,
+            "target": target
+        })
+        
+        # get the mean target for each cluster
+        mean_per_cluster = df.groupby("cluster")["target"].mean()
+    
+        # get the original cluster labels, sorted by their mean target
+        sorted_clusters = mean_per_cluster.sort_values().index
+    
+        # create mapping from the old cluster labels to the new, ranked labels
+        cluster_mapping = {old_label: new_label for new_label, old_label in enumerate(sorted_clusters, start=1)}
+    
+        # apply the re-labeling
+        new_labels = pd.Series(cluster_labels).map(cluster_mapping)
+    
+        return new_labels.to_numpy()
+
