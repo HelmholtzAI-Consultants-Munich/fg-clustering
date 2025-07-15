@@ -10,8 +10,10 @@ import numpy as np
 from typing import Optional, Union
 from numba import njit, prange
 
+from imblearn.under_sampling import RandomUnderSampler
+
 from .distance import DistanceRandomForestProximity
-from .utils import check_sub_sample_size
+from .utils import check_sub_sample_size, custom_round
 
 ############################################
 # Clustering Classes
@@ -115,6 +117,8 @@ class ClusteringClara:
     :type sub_sample_size: Optional[Union[int, float]]
     :param sampling_iter: Number of CLARA iterations to perform. If None, sets the number of sampling iterations log2(sample size), with a minimum of 5 iterations to ensure sufficient sampling. Default: None.
     :type sampling_iter: Optional[int]
+    :param sampling_target: List of target class labels for stratified subsampling. If provided, ensures that the subsample maintains the class distribution of the original dataset. Default: None.
+    :type sampling_target: Optional[list]
     :param method: Computation method for the K-Medoids algorithm. Default: "fasterpam".
     :type method: Optional[str]
     :param init: Initialization strategy for the K-Medoids algorithm. Default: "random".
@@ -129,6 +133,7 @@ class ClusteringClara:
         self,
         sub_sample_size: Optional[Union[int, float]] = None,
         sampling_iter: Optional[int] = None,
+        sampling_target: Optional[list] = None,
         method: Optional[str] = "fasterpam",
         init: Optional[str] = "random",
         max_iter: Optional[int] = 100,
@@ -137,6 +142,9 @@ class ClusteringClara:
         """Constructor for the ClusteringClara class."""
         self.sub_sample_size = sub_sample_size
         self.sampling_iter = sampling_iter
+        self.sampling_target = sampling_target
+        if self.sampling_target is not None:
+            self.sampling_target = np.array(self.sampling_target)
         self.method = method
         self.init = init
         self.metric = "precomputed"
@@ -187,7 +195,10 @@ class ClusteringClara:
 
         # check if the input sub sample size is valid
         sub_sample_size = check_sub_sample_size(
-            sub_sample_size=self.sub_sample_size, n_samples=n_samples, verbose=verbose
+            sub_sample_size=self.sub_sample_size,
+            n_samples=n_samples,
+            application="CLARA algorithm",
+            verbose=verbose,
         )
         if self.sampling_iter is None:
             self.sampling_iter = max(5, int(np.log2(n_samples)))
@@ -200,10 +211,29 @@ class ClusteringClara:
         seeds = rng.randint(0, 2**31 - 1, size=self.sampling_iter)
 
         # iterate n times over the input dataset
-        for seed in seeds:
-            rng = np.random.RandomState(seed)  # individual RNG per iteration
-            sub_sample_indices = rng.choice(sample_indices_mapping, size=sub_sample_size, replace=False)
-            sub_sample_indices = np.sort(sub_sample_indices)
+        for i, seed in enumerate(seeds):
+            if self.sampling_target is not None:
+                sampling_target = self.sampling_target[sample_indices]
+                sub_sample_fraction = sub_sample_size / n_samples
+
+                unique_values, unique_values_counts = np.unique(sampling_target, return_counts=True)
+                sampling_strategy = {
+                    int(value): custom_round(value_count * sub_sample_fraction)
+                    for value, value_count in zip(unique_values, unique_values_counts)
+                }
+                rus = RandomUnderSampler(
+                    sampling_strategy=sampling_strategy,
+                    random_state=seed,
+                    replacement=False,
+                )
+                sub_sample_indices, _ = rus.fit_resample(
+                    sample_indices_mapping.reshape(-1, 1), sampling_target
+                )
+                sub_sample_indices = sub_sample_indices.reshape(-1)
+            else:
+                rng = np.random.RandomState(seed)  # individual RNG per iteration
+                sub_sample_indices = rng.choice(sample_indices_mapping, size=sub_sample_size, replace=False)
+                sub_sample_indices = np.sort(sub_sample_indices)
 
             # distance matrix for subsample but input original indices
             sub_sample_distance_matrix, file = distance_metric.calculate_distance_matrix(

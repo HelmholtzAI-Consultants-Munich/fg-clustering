@@ -164,6 +164,7 @@ def check_k_range(
 def check_sub_sample_size(
     sub_sample_size: Union[int, float, None],
     n_samples: int,
+    application: str,
     verbose: int,
 ) -> int:
     """
@@ -173,6 +174,8 @@ def check_sub_sample_size(
     :type sub_sample_size: float, int, or None
     :param n_samples: Total number of samples available.
     :type n_samples: int
+    :param application: Name of the application for logging purposes.
+    :type application: str
     :param verbose: Verbosity level (0 = silent, 1 = progress messages).
     :type verbose: int
 
@@ -182,7 +185,7 @@ def check_sub_sample_size(
     if sub_sample_size is None:
         sub_sample_size = min(0.8, max(0.1, 1000 / n_samples))
         if verbose:
-            print(f"Using a sample size of {sub_sample_size*100} % of the input data.")
+            print(f"Using a sample size of {sub_sample_size*100} % of the input data for {application}.")
 
     if isinstance(sub_sample_size, float):
         if not (0 < sub_sample_size <= 1):
@@ -198,3 +201,11 @@ def check_sub_sample_size(
         raise TypeError("Sample size must be None, float in (0, 1], or int")
 
     return sub_sample_size
+
+
+def custom_round(x: float) -> int:
+    decimal = x - int(x)
+    if decimal > 0.5:
+        return int(np.ceil(x))
+    else:
+        return int(np.floor(x))

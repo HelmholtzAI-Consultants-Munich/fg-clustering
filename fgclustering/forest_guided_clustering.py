@@ -93,7 +93,10 @@ def forest_guided_clustering(
 
     # check bootstrap sample size
     JI_bootstrap_sample_size = check_sub_sample_size(
-        sub_sample_size=JI_bootstrap_sample_size, n_samples=len(y), verbose=verbose
+        sub_sample_size=JI_bootstrap_sample_size,
+        n_samples=len(y),
+        application="Jaccard Index computation",
+        verbose=verbose,
     )
 
     # optimize k
