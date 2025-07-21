@@ -43,6 +43,7 @@ dependencies = [
   "statsmodels>=0.13.5",
   "numexpr>=2.8.4",
   "numba",
+  "imblearn",
   "plotly",
   "nbformat",
 ]
