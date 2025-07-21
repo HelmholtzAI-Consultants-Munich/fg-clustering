@@ -20,8 +20,8 @@ from .utils import matplotlib_to_plotly
 
 
 def plot_feature_importance(
-    feature_importance_global: pd.Series,
     feature_importance_local: pd.DataFrame,
+    feature_importance_global: pd.Series,
     top_n: int,
     num_cols: int,
     save: str,
@@ -41,7 +41,8 @@ def plot_feature_importance(
     :type save: int
     """
     # Determine figure size dynamically based on the number of features
-    num_features = len(feature_importance_global.index)
+    num_features_GFI = len(feature_importance_global.index)
+    num_features = min(num_features_GFI, top_n) if top_n is not None else num_features_GFI
     figsize_width = 6.5
     figsize_height = max(figsize_width, int(np.ceil(5 * num_features / 25)))
 
@@ -64,6 +65,8 @@ def plot_feature_importance(
             "Importance": feature_importance_global.to_list(),
         }
     ).sort_values(by="Importance", ascending=False)
+    if top_n:
+        importance_global = importance_global.iloc[:top_n,]
 
     ax = plt.subplot(num_rows, num_cols, 1)
     sns.barplot(data=importance_global, x="Importance", y="Feature", color="#3470a3")
@@ -77,6 +80,8 @@ def plot_feature_importance(
                 "Importance": feature_importance_local[cluster].to_list(),
             }
         ).sort_values(by="Importance", ascending=False)
+        if top_n:
+            importance_local = importance_local.iloc[:top_n,]
         ax = plt.subplot(num_rows, num_cols, n + 2)
         sns.barplot(data=importance_local, x="Importance", y="Feature", color="#3470a3")
         ax.set_title(f"Cluster {cluster}")
@@ -115,6 +120,8 @@ def plot_distributions(
 
     num_rows = int(np.ceil(len(features_to_plot) / num_cols))
 
+    top_n_categories = 10
+
     plt.figure(figsize=(num_cols * 4.5, num_rows * 4.5))
     plt.subplots_adjust(top=0.95, hspace=0.8, wspace=0.8)
     plt.suptitle(
@@ -129,21 +136,68 @@ def plot_distributions(
         cmap_target = "Blues_r"
 
     for n, feature in enumerate(features_to_plot):
-        # add a new subplot iteratively
         ax = plt.subplot(num_rows, num_cols, n + 1)
+
         if data_clustering_ranked[feature].nunique() < 5 or isinstance(
             data_clustering_ranked[feature].dtype, pd.CategoricalDtype
         ):
-            sns.countplot(
-                x="cluster",
-                hue=feature,
-                data=data_clustering_ranked,
-                ax=ax,
-                palette=cmap_target,
-            )
-            ax.set_title(f"Feature: {feature}")
-            ax.legend(bbox_to_anchor=(1, 1), loc=2)
+            if feature == "target":
+                # Plot target as countplot
+                sns.countplot(
+                    x="cluster",
+                    hue=feature,
+                    data=data_clustering_ranked,
+                    ax=ax,
+                    palette=cmap_target,
+                )
+                ax.set_title(f"Feature: {feature}")
+                ax.legend(bbox_to_anchor=(1, 1), loc=2, fontsize="x-small")
+            else:
+                # Plot categorical features as stacked barplots
+                count_df = data_clustering_ranked.groupby(["cluster", feature]).size().unstack(fill_value=0)
+
+                # Get top 5 most frequent categories
+                top_categories = count_df.sum().nlargest(10).index
+
+                # Reorder count_df to have top categories first
+                count_df = count_df[
+                    top_categories.tolist() + [col for col in count_df.columns if col not in top_categories]
+                ]
+
+                # Normalize to percentage
+                percent_df = count_df.div(count_df.sum(axis=1), axis=0) * 100
+
+                # Plot as stacked bar
+                bar_container = percent_df.plot(
+                    kind="bar",
+                    stacked=True,
+                    ax=ax,
+                    width=0.8,
+                    colormap=cmap_target,
+                    legend=False,
+                )
+
+                # Set labels and title
+                ax.set_title(f"Feature: {feature}")
+                ax.set_ylabel("percentage")
+                ax.set_xlabel("cluster")
+
+                # Add legend only for top 5 categories
+                handles, labels = ax.get_legend_handles_labels()
+                top_indices = [i for i, label in enumerate(labels) if label in top_categories]
+                top_handles = [handles[i] for i in top_indices]
+                top_labels = [labels[i] for i in top_indices]
+                ax.legend(
+                    top_handles,
+                    top_labels,
+                    bbox_to_anchor=(1, 1),
+                    loc=2,
+                    fontsize="x-small",
+                    title="Category",
+                )
+
         else:
+            # Plot all other numerical features as boxplots
             sns.boxplot(
                 x="cluster",
                 y=feature,

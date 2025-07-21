@@ -208,20 +208,14 @@ def plot_forest_guided_feature_importance(
     :param save: If specified, path prefix to save plots. Default: None.
     :type save: Optional[str]
     """
-
-    # select top n features for plotting
     assert isinstance(feature_importance_global, pd.Series), (
         f"Expected `feature_importance_global` to be a Series, but got {type(feature_importance_global)} "
         f"with shape {getattr(feature_importance_global, 'shape', 'N/A')}."
     )
 
-    selected_features = feature_importance_global.sort_values(ascending=False).index.tolist()
-    if top_n:
-        selected_features = selected_features[:top_n]
-
     plot_feature_importance(
-        feature_importance_global=feature_importance_global[selected_features],
-        feature_importance_local=feature_importance_local.loc[selected_features, :],
+        feature_importance_local=feature_importance_local,
+        feature_importance_global=feature_importance_global,
         top_n=top_n,
         num_cols=num_cols,
         save=save,
