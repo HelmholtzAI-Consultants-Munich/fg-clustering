@@ -318,6 +318,8 @@ def kmedoids_clustering_heatmap(dataset, k=2, name=""):
     )
     plt.show()
 
+    return dataset
+
 
 def plot_stacked_bar_chart(feature_importance, columns_to_plot=["Tissue", "GSE", "Disease"], name=""):
 
