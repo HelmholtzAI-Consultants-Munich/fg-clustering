@@ -27,8 +27,7 @@ FGC offers a different approach: instead of approximating the model with simpler
 
 **📢 New! Forest-Guided Clustering is now on arXiv**
 
-We’ve published a detailed description of the method, its theoretical foundations, and practical applications in our [preprint on arXiv](https://doi.org/10.48550/arXiv.2507.19455).
-Check it out to learn more about how FGC reveals structure in your Random Forest models!
+Please see our paper [Forest-Guided Clustering - Shedding Light into the Random Forest Black Box](https://doi.org/10.48550/arXiv.2507.19455) for a detailed description of the method, its theoretical foundations, and practical applications. Check it out to learn more about how FGC reveals structure in your Random Forest models!
 
 **Prefer a visual walkthrough?**
 Watch our short introduction video by clicking below:
