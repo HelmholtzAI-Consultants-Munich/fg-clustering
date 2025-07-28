@@ -185,19 +185,20 @@ If you have any questions or ideas you'd like to discuss before contributing, fe
 If you find Forest-Guided Clustering useful in your research or applications, please consider citing it:
 
 ```
-@software{lisa_sousa_2022_7823042,
-    author       = {Lisa Barros de Andrade e Sousa,
-                    Dominik Thalmeier,
-                    Helena Pelin, 
-                    Marie Piraud},
-    title        = {{Forest-Guided Clustering - Explainability for Random Forest Models}},
-    month        = april,
-    year         = 2022,
-    publisher    = {Zenodo},
-    version      = {v1.0.3},
-    doi          = {10.5281/zenodo.7823042},
-    url          = {https://doi.org/10.5281/zenodo.7823042}
+
+@article{barros2025forest,
+    title	= {Forest-Guided Clustering -- Shedding Light into the Random Forest Black Box},
+    author	= {Lisa Barros de Andrade e Sousa,
+		   Gregor Miller,
+		   Ronan Le Gleut,
+		   Dominik Thalmeier,
+		   Helena Pelin,
+		   Marie Piraud},
+    journal	= {ArXiv},
+    year	= {2025},
+    url         = {https://doi.org/10.48550/arXiv.2507.19455}
 }
+
 ```
 
 <!-- LINK CITE END -->
