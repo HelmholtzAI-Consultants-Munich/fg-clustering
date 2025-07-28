@@ -185,7 +185,6 @@ If you have any questions or ideas you'd like to discuss before contributing, fe
 If you find Forest-Guided Clustering useful in your research or applications, please consider citing it:
 
 ```
-
 @article{barros2025forest,
     title	= {Forest-Guided Clustering -- Shedding Light into the Random Forest Black Box},
     author	= {Lisa Barros de Andrade e Sousa,
