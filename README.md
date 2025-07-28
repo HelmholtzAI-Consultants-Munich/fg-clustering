@@ -25,7 +25,7 @@ Forest-Guided Clustering (FGC) is an explainability method for Random Forest mod
 
 FGC offers a different approach: instead of approximating the model with simpler surrogates, it uses the internal structure of the Random Forest itself. By analyzing the tree traversal patterns of individual samples, FGC clusters data points that follow similar decision paths. This reveals how the forest segments the input space, enabling a human-interpretable view of the model's internal logic. FGC is particularly useful when features are highly correlated, as it does not rely on assumptions of feature independence. It bridges the gap between model accuracy and model transparency, offering a powerful tool for global, model-specific interpretation of Random Forests.
 
-📢 New! Forest-Guided Clustering is now on arXiv
+**📢 New! Forest-Guided Clustering is now on arXiv**
 
 We’ve published a detailed description of the method, its theoretical foundations, and practical applications in our [preprint on arXiv](https://doi.org/10.48550/arXiv.2507.19455).
 Check it out to learn more about how FGC reveals structure in your Random Forest models!
