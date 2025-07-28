@@ -10,7 +10,7 @@
 [![PyPI Downloads](https://static.pepy.tech/badge/fgclustering)](https://pepy.tech/projects/fgclustering)
 [![stars](https://img.shields.io/github/stars/HelmholtzAI-Consultants-Munich/forest_guided_clustering?logo=GitHub&color=yellow)](https://github.com/HelmholtzAI-Consultants-Munich/forest_guided_clustering/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![cite](https://zenodo.org/badge/397931780.svg)](https://zenodo.org/badge/latestdoi/397931780)
+[![arXiv](https://img.shields.io/badge/arXiv-2507.19455-b31b1b.svg)](https://doi.org/10.48550/arXiv.2507.19455)
 [![test](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/test.yml/badge.svg)](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/actions/workflows/test.yml)
 	
 </div>
