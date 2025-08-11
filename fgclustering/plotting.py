@@ -69,7 +69,7 @@ def plot_feature_importance(
         importance_global = importance_global.iloc[:top_n,]
 
     ax = plt.subplot(num_rows, num_cols, 1)
-    sns.barplot(data=importance_global, x="Importance", y="Feature", color="#3470a3")
+    sns.barplot(data=importance_global, x="Importance", y="Feature", color="#3470a3", orient="h")
     ax.set_xlim(0, 1)
     ax.set_title(f"Cluster all")
 
@@ -84,7 +84,7 @@ def plot_feature_importance(
         if top_n:
             importance_local = importance_local.iloc[:top_n,]
         ax = plt.subplot(num_rows, num_cols, n + 2)
-        sns.barplot(data=importance_local, x="Importance", y="Feature", color="#3470a3")
+        sns.barplot(data=importance_local, x="Importance", y="Feature", color="#3470a3", orient="h")
         ax.set_xlim(0, 1)
         ax.set_title(f"Cluster {cluster}")
 
