@@ -12,7 +12,7 @@ from plotly.subplots import make_subplots
 from typing import Tuple, Any
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 
-from .utils import matplotlib_to_plotly
+from .utils import matplotlib_to_plotly, save_figure
 
 ############################################
 # Plotting Functions
@@ -91,7 +91,7 @@ def plot_feature_importance(
     plt.tight_layout(rect=[0, 0, 1, 0.95])
 
     if save:
-        plt.savefig(f"{save}_feature_importance.png", bbox_inches="tight", dpi=300)
+        save_figure(save, '_feature_importance')
     else:
         plt.show()
 
@@ -213,7 +213,7 @@ def plot_distributions(
     plt.tight_layout(rect=[0, 0, 1, 0.95])
 
     if save:
-        plt.savefig(f"{save}_boxplots.png", bbox_inches="tight", dpi=300)
+        save_figure(save, '_boxplots')
     else:
         plt.show()
 
@@ -300,7 +300,7 @@ def plot_heatmap_classification(
 
         plt.tight_layout()
         if save:
-            plt.savefig(f"{save}_heatmap.png", bbox_inches="tight", dpi=300)
+            save_figure(save, '_heatmap')
         else:
             plt.show()
 
@@ -410,7 +410,7 @@ def plot_heatmap_regression(
 
         plt.tight_layout()
         if save:
-            plt.savefig(f"{save}_heatmap.png", bbox_inches="tight", dpi=300)
+            save_figure(save, '_heatmap')
         plt.show()
 
     elif heatmap_type == "interactive":
