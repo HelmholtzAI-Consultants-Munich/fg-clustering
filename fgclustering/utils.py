@@ -8,7 +8,9 @@ import pandas as pd
 
 import matplotlib
 import matplotlib.colors
+import matplotlib.pyplot as plt
 
+from pathlib import Path
 from collections import defaultdict
 from typing import Union, Tuple, Any, Optional
 
@@ -89,6 +91,33 @@ def matplotlib_to_plotly(
     colors = [matplotlib.colors.rgb2hex(color) for color in colors]
     colorscale = [[i / (pl_entries - 1), color] for i, color in enumerate(colors)]
     return colorscale
+
+
+def save_figure(
+    filename_base: str,
+    filename_extra: str,
+) -> None:
+    """
+    Saves the current Matplotlib figure to a file with a modified filename.
+
+    The function ensures that the output directory exists before saving,
+    and appends an extra string to the filename stem before the file extension.
+
+    :param filename_base: Base file path as str, including desired extension.
+    :type filename_base: str
+    :param filename_extra: String to append to the filename stem before the extension.
+    :type filename_extra: str
+
+    :return: None
+    :rtype: None
+    """
+    p = Path(filename_base)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(
+        p.parent / f"{p.stem}{filename_extra}{p.suffix}", 
+        bbox_inches="tight", 
+        dpi=300,
+    )
 
 
 def check_disk_space(

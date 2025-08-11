@@ -12,7 +12,7 @@ from plotly.subplots import make_subplots
 from typing import Tuple, Any
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 
-from .utils import matplotlib_to_plotly
+from .utils import matplotlib_to_plotly, save_figure
 
 ############################################
 # Plotting Functions
@@ -69,7 +69,7 @@ def plot_feature_importance(
         importance_global = importance_global.iloc[:top_n,]
 
     ax = plt.subplot(num_rows, num_cols, 1)
-    sns.barplot(data=importance_global, x="Importance", y="Feature", color="#3470a3")
+    sns.barplot(data=importance_global, x="Importance", y="Feature", color="#3470a3", orient="h")
     ax.set_xlim(0, 1)
     ax.set_title(f"Cluster all")
 
@@ -84,14 +84,14 @@ def plot_feature_importance(
         if top_n:
             importance_local = importance_local.iloc[:top_n,]
         ax = plt.subplot(num_rows, num_cols, n + 2)
-        sns.barplot(data=importance_local, x="Importance", y="Feature", color="#3470a3")
+        sns.barplot(data=importance_local, x="Importance", y="Feature", color="#3470a3", orient="h")
         ax.set_xlim(0, 1)
         ax.set_title(f"Cluster {cluster}")
 
     plt.tight_layout(rect=[0, 0, 1, 0.95])
 
     if save:
-        plt.savefig(f"{save}_feature_importance.png", bbox_inches="tight", dpi=300)
+        save_figure(save, '_feature_importance')
     else:
         plt.show()
 
@@ -213,7 +213,7 @@ def plot_distributions(
     plt.tight_layout(rect=[0, 0, 1, 0.95])
 
     if save:
-        plt.savefig(f"{save}_boxplots.png", bbox_inches="tight", dpi=300)
+        save_figure(save, '_boxplots')
     else:
         plt.show()
 
@@ -300,7 +300,7 @@ def plot_heatmap_classification(
 
         plt.tight_layout()
         if save:
-            plt.savefig(f"{save}_heatmap.png", bbox_inches="tight", dpi=300)
+            save_figure(save, '_heatmap')
         else:
             plt.show()
 
@@ -410,7 +410,7 @@ def plot_heatmap_regression(
 
         plt.tight_layout()
         if save:
-            plt.savefig(f"{save}_heatmap.png", bbox_inches="tight", dpi=300)
+            save_figure(save, '_heatmap')
         plt.show()
 
     elif heatmap_type == "interactive":
