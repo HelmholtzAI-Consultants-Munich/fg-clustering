@@ -410,7 +410,6 @@ def plot_heatmap_regression(
         plt.tight_layout()
         if save:
             save_figure(save, '_heatmap')
-        plt.show()
 
     elif heatmap_type == "interactive":
         target_colorbar = dict(title="Target Scale", x=1.2)
