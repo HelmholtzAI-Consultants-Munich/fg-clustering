@@ -10,6 +10,7 @@ import plotly.graph_objects as go
 
 from plotly.subplots import make_subplots
 from typing import Tuple, Any
+from pathlib import Path
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 
 from .utils import matplotlib_to_plotly, save_figure
@@ -429,9 +430,9 @@ def plot_heatmap_regression(
         fig.show()
 
         if save:
-            raise RuntimeError(
-                "Saving interactive plots is not implemented. Please set heatmap_type='static' to save the plot."
-            )
+            p = Path(save)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            fig.write_html(p.parent / f"{p.stem}_interactive_heatmap.html")
 
 
 def _process_features_for_heatmap(
