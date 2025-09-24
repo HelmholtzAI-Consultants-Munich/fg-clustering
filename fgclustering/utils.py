@@ -214,7 +214,7 @@ def check_sub_sample_size(
     if sub_sample_size is None:
         sub_sample_size = min(0.8, max(0.1, 1000 / n_samples))
         if verbose:
-            print(f"Using a sample size of {sub_sample_size*100} % of the input data for {application}.")
+            print(f"Using a sample size of {sub_sample_size*100:.2f}% of the input data for {application}.")
 
     if isinstance(sub_sample_size, float):
         if not (0 < sub_sample_size <= 1):
