@@ -27,7 +27,8 @@ def plot_feature_importance(
     top_n: int,
     num_cols: int,
     save: str,
-) -> None:
+    reorder: bool = False,
+    recolor: bool = False,
 ) -> Figure:
     """
     Visualize global and local feature importance values as bar charts.
@@ -42,6 +43,10 @@ def plot_feature_importance(
     :type num_cols: int
     :param save: If specified, path prefix to save plots.
     :type save: int
+    :param reorder: If True, reorder the local importance values to match the global importance order.
+    :type reorder: bool
+    :param recolor: If True, recolor the bars based on the global importance order.
+    :type recolor: bool
     """
     # Determine figure size dynamically based on the number of features
     num_features_GFI = len(feature_importance_global.index)
@@ -67,27 +72,42 @@ def plot_feature_importance(
                 "Importance": feature_importance_global.to_list(),
             }
         ).sort_values(by="Importance", ascending=False)
+        kwargs = dict(color="#3470a3") if not recolor else dict(
+            hue="Feature",
+            palette=dict(zip(importance_global["Feature"].to_list(),
+                             sns.color_palette("tab20", n_colors=len(importance_global)))),
+        )
         if top_n:
             importance_global = importance_global.iloc[:top_n,]
 
         ax = plt.subplot(num_rows, num_cols, 1)
-        sns.barplot(data=importance_global, x="Importance", y="Feature", color="#3470a3", orient="h")
+        sns.barplot(data=importance_global, x="Importance", y="Feature", orient="h", **kwargs)
         ax.set_xlim(0, 1)
         ax.set_title(f"Cluster all")
 
         # Plot local feature importance
         for n, cluster in enumerate(feature_importance_local.columns):
-            importance_local = pd.DataFrame(
-                {
-                    "Feature": feature_importance_local.index,
-                    "Importance": feature_importance_local[cluster].to_list(),
-                }
-            ).sort_values(by="Importance", ascending=False)
+            if reorder:
+                # do not sort - use the global importance order instead
+                importance_local = (
+                    feature_importance_local[[cluster]]
+                    .iloc[importance_global.index]
+                    .reset_index()
+                )
+                importance_local.columns = ["Feature", "Importance"]
+            else:
+                # sort by local importance
+                importance_local = pd.DataFrame(
+                    {
+                        "Feature": feature_importance_local.index,
+                        "Importance": feature_importance_local[cluster].to_list(),
+                    }
+                ).sort_values(by="Importance", ascending=False)
             if top_n:
                 importance_local = importance_local.iloc[:top_n,]
             ax = plt.subplot(num_rows, num_cols, n + 2)
-            sns.barplot(data=importance_local, x="Importance", y="Feature", color="#3470a3", orient="h")
-            ax.set_xlim(0, 1)
+            sns.barplot(data=importance_local, x="Importance", y="Feature", orient="h", **kwargs)
+            # ax.set_xlim(0, 1)
             ax.set_title(f"Cluster {cluster}")
 
         plt.tight_layout(rect=[0, 0, 1, 0.95])

@@ -191,7 +191,8 @@ def plot_forest_guided_feature_importance(
     top_n: Optional[int] = None,
     num_cols: Optional[int] = 4,
     save: Optional[str] = None,
-) -> None:
+    reorder: Optional[bool] = False,
+    recolor: Optional[bool] = False,
 ) -> Figure:
     """
     Visualize global and local feature importance values as bar charts.
@@ -210,6 +211,10 @@ def plot_forest_guided_feature_importance(
     :type num_cols: Optional[int]
     :param save: If specified, path prefix to save plots. Default: None.
     :type save: Optional[str]
+    :param reorder: If True, reorder the local importance values to match the global importance order.
+    :type reorder: Optional[bool]
+    :param recolor: If True, recolor the bars based on the global importance order.
+    :type recolor: Optional[bool]
     """
     assert isinstance(feature_importance_global, pd.Series), (
         f"Expected `feature_importance_global` to be a Series, but got {type(feature_importance_global)} "
@@ -222,6 +227,8 @@ def plot_forest_guided_feature_importance(
         top_n=top_n,
         num_cols=num_cols,
         save=save,
+        reorder=reorder,
+        recolor=recolor,
     )
 
 
