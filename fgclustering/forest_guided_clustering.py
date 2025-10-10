@@ -5,6 +5,8 @@
 import numpy as np
 import pandas as pd
 from typing import Union, Optional, Tuple
+
+from matplotlib.figure import Figure
 from sklearn.utils import Bunch
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
@@ -190,6 +192,7 @@ def plot_forest_guided_feature_importance(
     num_cols: Optional[int] = 4,
     save: Optional[str] = None,
 ) -> None:
+) -> Figure:
     """
     Visualize global and local feature importance values as bar charts.
 
@@ -213,7 +216,7 @@ def plot_forest_guided_feature_importance(
         f"with shape {getattr(feature_importance_global, 'shape', 'N/A')}."
     )
 
-    plot_feature_importance(
+    return plot_feature_importance(
         feature_importance_local=feature_importance_local,
         feature_importance_global=feature_importance_global,
         top_n=top_n,

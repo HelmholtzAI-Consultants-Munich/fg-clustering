@@ -8,6 +8,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 
+from matplotlib.figure import Figure
 from plotly.subplots import make_subplots
 from typing import Tuple, Any
 from pathlib import Path
@@ -27,6 +28,7 @@ def plot_feature_importance(
     num_cols: int,
     save: str,
 ) -> None:
+) -> Figure:
     """
     Visualize global and local feature importance values as bar charts.
 
@@ -94,6 +96,7 @@ def plot_feature_importance(
             save_figure(save, '_feature_importance')
         else:
             plt.show()
+        return plt.gcf()
 
 
 def plot_distributions(
