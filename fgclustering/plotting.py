@@ -275,12 +275,13 @@ def plot_heatmap_classification(
     features = _process_features_for_heatmap(data_clustering_ranked.drop(columns=["target", "cluster"]))
     features = features.T
 
-    # Determine cluster boundaries for separator lines
+    # Determine cluster boundaries for separator space
     boundaries = np.where(np.diff(cluster_labels) != 0)[0] + 1
 
     target_color, features_color, boundaries_color, boundaries_width, title = _get_heatmap_plotting_settings(
         target, top_n
     )
+    features, target = [_insert_boundaries(df, boundaries, boundaries_width) for df in (features, target)]
 
     if heatmap_type == "static":
         # Get plotting settings
@@ -300,9 +301,6 @@ def plot_heatmap_classification(
                 target_cmap,
                 features,
                 features_color,
-                boundaries,
-                boundaries_color,
-                boundaries_width,
                 title,
             )
         )
@@ -351,9 +349,6 @@ def plot_heatmap_classification(
             False,
             features,
             features_color,
-            boundaries,
-            boundaries_color,
-            boundaries_width,
             title,
         )
         for i, category in enumerate(categories):
@@ -403,11 +398,13 @@ def plot_heatmap_regression(
     features = _process_features_for_heatmap(data_clustering_ranked.drop(columns=["target", "cluster"]))
     features = features.T
 
-    # Determine cluster boundaries for separator lines
+    # Determine cluster boundaries for separator space
     boundaries = np.where(np.diff(cluster_labels) != 0)[0] + 1
+
     target_color, features_color, boundaries_color, boundaries_width, title = _get_heatmap_plotting_settings(
         target, top_n
     )
+    features, target = [_insert_boundaries(df, boundaries, boundaries_width) for df in (features, target)]
 
     if heatmap_type == "static":
         # Get plotting settings
@@ -420,9 +417,6 @@ def plot_heatmap_regression(
                 cmap_target,
                 features,
                 features_color,
-                boundaries,
-                boundaries_color,
-                boundaries_width,
                 title,
             )
         )
@@ -445,9 +439,6 @@ def plot_heatmap_regression(
             True,
             features,
             features_color,
-            boundaries,
-            boundaries_color,
-            boundaries_width,
             title,
         )
         fig.show()
@@ -486,14 +477,14 @@ def _process_features_for_heatmap(
 
 
 def _get_heatmap_plotting_settings(
-    target: pd.Series,
+    target: pd.DataFrame,
     top_n: int,
 ) -> Tuple[str, str, str, int, str]:
     """
     Define color schemes, boundary widths, and titles for heatmap plotting.
 
     :param target: Target variable.
-    :type target: pandas.Series
+    :type target: pandas.DataFrame
     :param top_n: If specified, number of top-ranked features to display in the title.
     :type top_n: int
 
@@ -505,40 +496,49 @@ def _get_heatmap_plotting_settings(
     color_features = "coolwarm"
     boundaries_color = "white"
 
-    boundaries_width = int(np.ceil(np.log(target.shape[1])))
+    boundaries_width = 5 * int(np.ceil(np.log(target.shape[1])))
 
     title = f"Subgroups of instances that follow similar decision paths in the RF model \n Showing {'top ' + str(top_n) if top_n else 'all'} features"
 
     return color_target, color_features, boundaries_color, boundaries_width, title
 
 
+def _insert_boundaries(
+        df: pd.DataFrame,
+        boundaries: np.ndarray,
+        boundaries_width: int,
+) -> pd.DataFrame:
+    add = 0
+    for boundary in boundaries:
+        df = pd.concat([
+            df.iloc[:, :boundary + add],  # until the boundary
+            pd.DataFrame(  # the NA block
+                np.full((df.shape[0], boundaries_width), pd.NA),
+                index=df.index, ),
+            df.iloc[:, boundary + add:]  # from the boundary
+        ], axis=1)
+        add += boundaries_width
+    return df
+
+
 def _plot_heatmaps_static(
-    target: pd.Series,
+    target: pd.DataFrame,
     target_cmap: dict,
     features: pd.DataFrame,
     features_color: str,
-    boundaries: np.ndarray,
-    boundaries_color: str,
-    boundaries_width: int,
     title: str,
 ) -> Tuple[Any, Any, Any, Any, Any, Any, Any]:
     """
     Create a static (matplotlib) heatmap of target and feature values with visual cluster boundaries.
 
     :param target: Target variable.
-    :type target: pandas.Series
+    :type target: pandas.DataFrame
     :param target_cmap: Colormap used for the target heatmap.
     :type target_cmap: dict
     :param features: Normalized feature matrix.
     :type features: pandas.DataFrame
     :param features_color: Colormap used for the feature heatmap.
     :type features_color: str
-    :param boundaries: Positions for vertical cluster boundary lines.
-    :type boundaries: np.ndarray
-    :param boundaries_color: Color used for boundary lines.
-    :type boundaries_color: str
-    :param boundaries_width: Line width used for boundary lines.
-    :type boundaries_width: int
     :param title: Title of the heatmap figure.
     :type title: str
 
@@ -548,14 +548,16 @@ def _plot_heatmaps_static(
 
     # Set up the figure and subplots
     figure_size = max(6.5, int(np.ceil(5 * len(features) / 25)))
-    fig, axes = plt.subplots(
-        nrows=2,
-        ncols=2,
-        sharex=True,
-        height_ratios=[1, 9],
-        width_ratios=[20, 1],
-        figsize=(2.5 * figure_size, figure_size),
-    )
+    with sns.axes_style("white"):
+        fig, axes = plt.subplots(
+            nrows=2,
+            ncols=2,
+            sharex=True,
+            height_ratios=[1, 9],
+            width_ratios=[20, 1],
+            figsize=(2.5 * figure_size, figure_size),
+            facecolor="none",
+        )
 
     # Add extra axis for legends and disable plot in this axis
     ax_target, ax_target_cb = axes[0]
@@ -573,7 +575,9 @@ def _plot_heatmaps_static(
 
     # Plot the target heatmap
     target_plot = sns.heatmap(
-        target,
+        target.fillna(target.min(numeric_only=True)
+                      ).infer_objects(copy=False),
+        mask=target.isna(),
         ax=ax_target,
         cmap=target_cmap,
         cbar=False,
@@ -584,7 +588,10 @@ def _plot_heatmaps_static(
 
     # Plot the feature heatmap
     feature_plot = sns.heatmap(
-        features,
+        # features.fillna(0.).astype(float),
+        features.fillna(features.min(numeric_only=True)
+                        ).infer_objects(copy=False).astype(float),
+        mask=features.isna(),
         ax=ax_features,
         cmap=features_color,
         cbar=False,
@@ -595,31 +602,23 @@ def _plot_heatmaps_static(
     cbar = fig.colorbar(feature_plot.collections[0], ax=ax_features_cb, orientation="vertical", pad=0.1)
     cbar.set_label("Features")
 
-    # Add cluster separators
-    for ax in [ax_target, ax_features]:
-        for boundary in boundaries:
-            ax.axvline(boundary, color=boundaries_color, lw=boundaries_width)
-
     return fig, ax_target, ax_target_cb, ax_features, ax_features_cb, target_plot, feature_plot
 
 
 def _plot_heatmaps_interactive(
-    target: pd.Series,
+    target: pd.DataFrame,
     target_colorscale: list,
-    target_colorbar: dict,
+    target_colorbar: dict | None,
     target_showscale: bool,
     features: pd.DataFrame,
     features_color: str,
-    boundaries: np.ndarray,
-    boundaries_color: str,
-    boundaries_width: int,
     title: str,
 ) -> go.Figure:
     """
     Create an interactive (Plotly) heatmap of target and feature values with visual cluster boundaries.
 
     :param target: Target variable.
-    :type target: pandas.Series
+    :type target: pandas.DataFrame
     :param target_colorscale: Color scale used for the target heatmap.
     :type target_colorscale: list
     :param target_colorbar: Color bar used for the target heatmap.
@@ -630,12 +629,6 @@ def _plot_heatmaps_interactive(
     :type features: pandas.DataFrame
     :param features_color: Colormap used for the feature heatmap.
     :type features_color: str
-    :param boundaries: Positions for vertical cluster boundary lines.
-    :type boundaries: np.ndarray
-    :param boundaries_color: Color used for boundary lines.
-    :type boundaries_color: str
-    :param boundaries_width: Line width used for boundary lines.
-    :type boundaries_width: int
     :param title: Title of the heatmap figure.
     :type title: str
 
@@ -653,6 +646,11 @@ def _plot_heatmaps_interactive(
             colorscale=target_colorscale,
             colorbar=target_colorbar,
             showscale=target_showscale,  # Hide color bar for the target
+            hoverongaps=False,
+            customdata=np.tile(np.array(features.columns, dtype=str), target.shape),
+            hovertemplate="<b>Sample: %{customdata}</b><br>" +
+                          "x: %{x}<br>" +
+                          "target: %{z}<extra></extra>",
         ),
         row=1,
         col=1,
@@ -669,24 +667,16 @@ def _plot_heatmaps_interactive(
             colorscale=matplotlib_to_plotly(features_color),
             colorbar=dict(title="Features", x=1.1),  # Adjust position of color bar
             showscale=True,
+            hoverongaps=False,
+            customdata=np.tile(np.array(features.columns, dtype=str), (features.shape[0], 1)),
+            hovertemplate="<b>Sample: %{customdata}</b><br>" +
+                          "x: %{x}<br>" +
+                          "y: %{y}<br>" +
+                          "value: %{z}<extra></extra>",
         ),
         row=2,
         col=1,
     )
-
-    # Add separators for clusters
-    for xref, yref, y1 in [("x1", "y1", 0.5), ("x2", "y2", len(features.index) - 0.5)]:
-        for boundary in boundaries:
-            fig.add_shape(
-                type="line",
-                x0=boundary - 0.5,
-                x1=boundary - 0.5,
-                y0=-0.5,
-                y1=y1,
-                line=dict(color=boundaries_color, width=boundaries_width),
-                xref=xref,
-                yref=yref,
-            )
 
     # Add axis title and layout adjustments
     fig.add_annotation(
@@ -701,6 +691,7 @@ def _plot_heatmaps_interactive(
     fig.update_layout(
         title=dict(text=title, y=0.95, x=0.5, xanchor="center", yanchor="top"),
         legend=dict(yanchor="top", y=0.9, xanchor="right", x=1.3),
+        plot_bgcolor="rgba(0,0,0,0)",
     )
 
     return fig
