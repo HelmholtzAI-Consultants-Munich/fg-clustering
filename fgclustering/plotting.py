@@ -608,7 +608,7 @@ def _plot_heatmaps_static(
 def _plot_heatmaps_interactive(
     target: pd.DataFrame,
     target_colorscale: list,
-    target_colorbar: dict | None,
+    target_colorbar: dict,
     target_showscale: bool,
     features: pd.DataFrame,
     features_color: str,
