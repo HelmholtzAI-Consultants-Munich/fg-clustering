@@ -573,10 +573,14 @@ def _plot_heatmaps_static(
     ax_features.set_xlabel("Samples")
     ax_features.set_xticks([])
 
+    def nas_to_min_numeric(na_df: pd.DataFrame) -> pd.DataFrame:
+        t = na_df.apply(pd.to_numeric, errors='coerce')
+        t = t.fillna(t.min(skipna=True))
+        return t
+
     # Plot the target heatmap
     target_plot = sns.heatmap(
-        target.fillna(target.min(numeric_only=True)
-                      ).infer_objects(copy=False),
+        nas_to_min_numeric(target),
         mask=target.isna(),
         ax=ax_target,
         cmap=target_cmap,
@@ -588,9 +592,7 @@ def _plot_heatmaps_static(
 
     # Plot the feature heatmap
     feature_plot = sns.heatmap(
-        # features.fillna(0.).astype(float),
-        features.fillna(features.min(numeric_only=True)
-                        ).infer_objects(copy=False).astype(float),
+        nas_to_min_numeric(features),
         mask=features.isna(),
         ax=ax_features,
         cmap=features_color,
