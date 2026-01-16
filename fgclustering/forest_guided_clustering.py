@@ -4,9 +4,11 @@
 
 import numpy as np
 import pandas as pd
-from typing import Union, Optional, Tuple
+import plotly.graph_objects as go
+from typing import Union, Optional, Tuple, List, Any
 
 from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 from sklearn.utils import Bunch
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
@@ -193,7 +195,7 @@ def plot_forest_guided_feature_importance(
     save: Optional[str] = None,
     reorder: Optional[bool] = False,
     recolor: Optional[bool] = False,
-) -> Figure:
+) -> Tuple[Figure, List[Axes]]:
     """
     Visualize global and local feature importance values as bar charts.
 
@@ -216,8 +218,8 @@ def plot_forest_guided_feature_importance(
     :param recolor: If True, recolor the bars based on the global importance order.
     :type recolor: Optional[bool]
 
-    :return: Figure with bar charts of global and local feature importance values.
-    :rtype: Figure
+    :return: Matplotlib figure and axes with bar charts of global and local feature importance values.
+    :rtype: Tuple[Figure, List[Axes]]
     """
     assert isinstance(feature_importance_global, pd.Series), (
         f"Expected `feature_importance_global` to be a Series, but got {type(feature_importance_global)} "
@@ -245,7 +247,7 @@ def plot_forest_guided_decision_paths(
     num_cols: Optional[int] = 6,
     cmap_target_dict: Optional[dict] = None,
     save: Optional[str] = None,
-) -> None:
+) -> Tuple[Optional[Tuple[Figure, List[Axes]]], Optional[Union[Tuple[Figure, List[Axes]], go.Figure]]]:
     """
     Plot the decision patterns that emerge from forest-guided clustering using
     feature distribution plots and feature heatmaps.
@@ -273,6 +275,9 @@ def plot_forest_guided_decision_paths(
     :type cmap_target_dict: Optional[dict]
     :param save: If specified, path prefix to save plots. Default: None.
     :type save: Optional[str]
+
+    :return: Tuple of two optional plots. The first is always a matplotlib `fig, ax` pair, the second can be an interactive plotly Figure.
+    :rtype: Tuple[Optional[Tuple[Figure, List[Axes]]], Optional[Union[Tuple[Figure, List[Axes]], go.Figure]]]:
     """
     # select top n features and cluster, target for plotting
     if top_n:
@@ -281,12 +286,15 @@ def plot_forest_guided_decision_paths(
         data_clustering_selected_featues = data_clustering
 
     if distributions:
-        plot_distributions(data_clustering_selected_featues, top_n, num_cols, cmap_target_dict, save)
+        distributions = plot_distributions(data_clustering_selected_featues,
+                                           top_n, num_cols, cmap_target_dict, save)
 
     if heatmap:
         if model_type == "reg":
-            plot_heatmap_regression(data_clustering_selected_featues, top_n, heatmap_type, save)
+            heatmap = plot_heatmap_regression(data_clustering_selected_featues, top_n, heatmap_type, save)
         elif model_type == "cla":
-            plot_heatmap_classification(
+            heatmap = plot_heatmap_classification(
                 data_clustering_selected_featues, top_n, heatmap_type, cmap_target_dict, save
             )
+
+    return distributions, heatmap

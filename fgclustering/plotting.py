@@ -9,8 +9,9 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 
 from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 from plotly.subplots import make_subplots
-from typing import Tuple, Any
+from typing import Tuple, List, Union
 from pathlib import Path
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 
@@ -29,7 +30,7 @@ def plot_feature_importance(
     save: str,
     reorder: bool = False,
     recolor: bool = False,
-) -> Figure:
+) -> Tuple[Figure, List[Axes]]:
     """
     Visualize global and local feature importance values as bar charts.
 
@@ -48,8 +49,8 @@ def plot_feature_importance(
     :param recolor: If True, recolor the bars based on the global importance order.
     :type recolor: bool
 
-    :return: Figure with bar charts of global and local feature importance values.
-    :rtype: Figure
+    :return: Matplotlib figure and axes with bar charts of global and local feature importance values.
+    :rtype: Tuple[Figure, List[Axes]]
     """
     # Determine figure size dynamically based on the number of features
     num_features_GFI = len(feature_importance_global.index)
@@ -61,7 +62,7 @@ def plot_feature_importance(
     num_cols = min(num_cols, num_subplots)
     num_rows = int(np.ceil(num_subplots / num_cols))
 
-    plt.figure(figsize=(num_cols * figsize_width, num_rows * figsize_height))
+    fig = plt.figure(figsize=(num_cols * figsize_width, num_rows * figsize_height))
     plt.subplots_adjust(top=0.95, hspace=0.8, wspace=0.8)
     plt.suptitle(
         f"Feature Importance - Showing {'top ' + str(top_n) if top_n else 'all'} features",
@@ -117,9 +118,7 @@ def plot_feature_importance(
 
         if save:
             save_figure(save, '_feature_importance')
-        else:
-            plt.show()
-        return plt.gcf()
+        return fig, fig.axes
 
 
 def plot_distributions(
@@ -128,7 +127,7 @@ def plot_distributions(
     num_cols: int,
     cmap_target_dict: dict,
     save: str,
-) -> None:
+) -> Tuple[Figure, List[Axes]]:
     """
     Plot the decision patterns that emerge from forest-guided clustering using feature distribution plots.
 
@@ -142,6 +141,9 @@ def plot_distributions(
     :type cmap_target_dict: dict
     :param save: If specified, path prefix to save plots.
     :type save: str
+
+    :return: Feature distribution plots as matplotlib figure and axes.
+    :rtype: Tuple[Figure, List[Axes]]
     """
 
     features_to_plot = data_clustering_ranked.drop("cluster", axis=1, inplace=False).columns.to_list()
@@ -150,7 +152,7 @@ def plot_distributions(
 
     top_n_categories = 10
 
-    plt.figure(figsize=(num_cols * 4.5, num_rows * 4.5))
+    fig = plt.figure(figsize=(num_cols * 4.5, num_rows * 4.5))
     plt.subplots_adjust(top=0.95, hspace=0.8, wspace=0.8)
     plt.suptitle(
         f"Distribution of feature values across subgroups - Showing {'top ' + str(top_n) if top_n else 'all'} features",
@@ -240,8 +242,7 @@ def plot_distributions(
 
     if save:
         save_figure(save, '_boxplots')
-    else:
-        plt.show()
+    return fig, fig.axes
 
 
 def plot_heatmap_classification(
@@ -250,7 +251,7 @@ def plot_heatmap_classification(
     heatmap_type: str,
     cmap_target_dict: dict,
     save: str,
-) -> None:
+) -> Union[Tuple[Figure, List[Axes]], go.Figure]:
     """
     Plot the decision patterns that emerge from forest-guided clustering using feature heatmaps for classification tasks.
 
@@ -264,6 +265,9 @@ def plot_heatmap_classification(
     :type cmap_target_dict: dict
     :param save: If specified, path prefix to save plots.
     :type save: str
+
+    :return: Either static matplotlib figure and axes or interactive plotly figure.
+    :rtype: Union[Tuple[Figure, List[Axes]], go.Figure]
     """
     cluster_labels = data_clustering_ranked["cluster"]
 
@@ -325,8 +329,7 @@ def plot_heatmap_classification(
         plt.tight_layout()
         if save:
             save_figure(save, '_heatmap')
-        else:
-            plt.show()
+        return fig, [ax_target, ax_target_cb, ax_features, ax_features_cb, target_plot, feature_plot]
 
     elif heatmap_type == "interactive":
         if cmap_target_dict is not None:
@@ -369,16 +372,15 @@ def plot_heatmap_classification(
 
         if save:
             fig.write_html(f"{save}_heatmap.html")
-        else:
-            fig.show()
 
+        return fig
 
 def plot_heatmap_regression(
     data_clustering_ranked: pd.DataFrame,
     top_n: int,
     heatmap_type: str,
     save: str,
-) -> None:
+) -> Union[Tuple[Figure, List[Axes]], go.Figure]:
     """
     Plot the decision patterns that emerge from forest-guided clustering using feature heatmaps for regression tasks.
 
@@ -390,6 +392,9 @@ def plot_heatmap_regression(
     :type heatmap_type: str
     :param save: If specified, path prefix to save plots.
     :type save: str
+
+    :return: Either static matplotlib figure and axes or interactive plotly figure.
+    :rtype: Union[Tuple[Figure, List[Axes]], go.Figure]
     """
     cluster_labels = data_clustering_ranked["cluster"]
 
@@ -431,6 +436,7 @@ def plot_heatmap_regression(
         plt.tight_layout()
         if save:
             save_figure(save, '_heatmap')
+        return fig, [ax_target, ax_target_cb, ax_features, ax_features_cb, target_plot, feature_plot]
 
     elif heatmap_type == "interactive":
         target_colorbar = dict(title="Target Scale", x=1.2)
@@ -444,13 +450,11 @@ def plot_heatmap_regression(
             features_color,
             title,
         )
-        fig.show()
-
         if save:
             p = Path(save)
             p.parent.mkdir(parents=True, exist_ok=True)
             fig.write_html(p.parent / f"{p.stem}_interactive_heatmap.html")
-
+        return fig
 
 def _process_features_for_heatmap(
     features: pd.DataFrame,
@@ -530,7 +534,7 @@ def _plot_heatmaps_static(
     features: pd.DataFrame,
     features_color: str,
     title: str,
-) -> Tuple[Any, Any, Any, Any, Any, Any, Any]:
+) -> Tuple[Figure, Axes, Axes, Axes, Axes, Axes, Axes]:
     """
     Create a static (matplotlib) heatmap of target and feature values with visual cluster boundaries.
 
@@ -546,7 +550,7 @@ def _plot_heatmaps_static(
     :type title: str
 
     :return: Tuple of figure and axes objects for both heatmaps and colorbars.
-    :rtype: Tuple[Any, Any, Any, Any, Any, Any, Any]
+    :rtype: Tuple[Figure, Axes, Axes, Axes, Axes, Axes, Axes]
     """
 
     # Set up the figure and subplots
