@@ -114,10 +114,10 @@ def plot_feature_importance(
             ax.set_xlim(0, 1)
             ax.set_title(f"Cluster {cluster}")
 
-        plt.tight_layout(rect=[0, 0, 1, 0.95])
+        plt.tight_layout(rect=(0, 0, 1, 0.95))
 
         if save:
-            save_figure(save, '_feature_importance')
+            save_figure(save, "_feature_importance")
         return fig, fig.axes
 
 
@@ -238,10 +238,10 @@ def plot_distributions(
             )
             ax.set_title(f"Feature: {feature}")
 
-    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.tight_layout(rect=(0, 0, 1, 0.95))
 
     if save:
-        save_figure(save, '_boxplots')
+        save_figure(save, "_boxplots")
     return fig, fig.axes
 
 
@@ -371,9 +371,13 @@ def plot_heatmap_classification(
             )
 
         if save:
-            fig.write_html(f"{save}_heatmap.html")
-
+            p = Path(save)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            fig.write_html(p.parent / f"{p.stem}_interactive_heatmap.html")
         return fig
+
+    else:
+        raise ValueError(f'`heatmap_type` must be either "static" or "interactive"')
 
 def plot_heatmap_regression(
     data_clustering_ranked: pd.DataFrame,
@@ -455,6 +459,8 @@ def plot_heatmap_regression(
             p.parent.mkdir(parents=True, exist_ok=True)
             fig.write_html(p.parent / f"{p.stem}_interactive_heatmap.html")
         return fig
+    else:
+        raise ValueError(f'`heatmap_type` must be either "static" or "interactive"')
 
 def _process_features_for_heatmap(
     features: pd.DataFrame,
