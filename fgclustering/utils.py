@@ -95,7 +95,7 @@ def matplotlib_to_plotly(
 
 def save_figure(
     filename_base: str,
-    filename_extra: str,
+    filename_extra: str = "",
 ) -> None:
     """
     Saves the current Matplotlib figure to a file with a modified filename.
@@ -105,7 +105,7 @@ def save_figure(
 
     :param filename_base: Base file path as str, including desired extension.
     :type filename_base: str
-    :param filename_extra: String to append to the filename stem before the extension.
+    :param filename_extra: String to append to the filename stem before the extension, empty by default.
     :type filename_extra: str
 
     :return: None
