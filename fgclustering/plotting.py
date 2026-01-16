@@ -47,6 +47,9 @@ def plot_feature_importance(
     :type reorder: bool
     :param recolor: If True, recolor the bars based on the global importance order.
     :type recolor: bool
+
+    :return: Figure with bar charts of global and local feature importance values.
+    :rtype: Figure
     """
     # Determine figure size dynamically based on the number of features
     num_features_GFI = len(feature_importance_global.index)

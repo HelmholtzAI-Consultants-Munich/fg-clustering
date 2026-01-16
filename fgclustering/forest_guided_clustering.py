@@ -215,6 +215,9 @@ def plot_forest_guided_feature_importance(
     :type reorder: Optional[bool]
     :param recolor: If True, recolor the bars based on the global importance order.
     :type recolor: Optional[bool]
+
+    :return: Figure with bar charts of global and local feature importance values.
+    :rtype: Figure
     """
     assert isinstance(feature_importance_global, pd.Series), (
         f"Expected `feature_importance_global` to be a Series, but got {type(feature_importance_global)} "
