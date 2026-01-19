@@ -184,7 +184,8 @@ def plot_distributions(
                 ax.legend(bbox_to_anchor=(1, 1), loc=2, fontsize="x-small")
             else:
                 # Plot categorical features as stacked barplots
-                count_df = data_clustering_ranked.groupby(["cluster", feature]).size().unstack(fill_value=0)
+                count_df = data_clustering_ranked.groupby(
+                    ["cluster", feature], observed=False).size().unstack(fill_value=0)
 
                 # Get top 10 most frequent categories
                 top_categories = count_df.sum().nlargest(10).index
