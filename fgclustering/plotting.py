@@ -10,6 +10,7 @@ import plotly.graph_objects as go
 
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
+from matplotlib.colors import ListedColormap
 from plotly.subplots import make_subplots
 from typing import Tuple, List, Union
 from pathlib import Path
@@ -328,7 +329,7 @@ def plot_heatmap_classification(
 
         plt.tight_layout()
         if save:
-            save_figure(save, '_heatmap')
+            save_figure(save, "_heatmap")
         return fig, [ax_target, ax_target_cb, ax_features, ax_features_cb, target_plot, feature_plot]
 
     elif heatmap_type == "interactive":
@@ -509,7 +510,7 @@ def _get_heatmap_plotting_settings(
     color_features = "coolwarm"
     boundaries_color = "white"
 
-    boundaries_width = 5 * int(np.ceil(np.log(target.shape[1])))
+    boundaries_width = int(np.ceil(np.log(target.shape[1])))
 
     title = f"Subgroups of instances that follow similar decision paths in the RF model \n Showing {'top ' + str(top_n) if top_n else 'all'} features"
 
@@ -536,7 +537,7 @@ def _insert_boundaries(
 
 def _plot_heatmaps_static(
     target: pd.DataFrame,
-    target_cmap: dict,
+    target_cmap: ListedColormap,
     features: pd.DataFrame,
     features_color: str,
     title: str,
@@ -547,7 +548,7 @@ def _plot_heatmaps_static(
     :param target: Target variable.
     :type target: pandas.DataFrame
     :param target_cmap: Colormap used for the target heatmap.
-    :type target_cmap: dict
+    :type target_cmap: ListedColormap
     :param features: Normalized feature matrix.
     :type features: pandas.DataFrame
     :param features_color: Colormap used for the feature heatmap.
@@ -587,7 +588,7 @@ def _plot_heatmaps_static(
     ax_features.set_xticks([])
 
     def nas_to_min_numeric(na_df: pd.DataFrame) -> pd.DataFrame:
-        t = na_df.apply(pd.to_numeric, errors='coerce')
+        t = na_df.apply(pd.to_numeric, errors="coerce")
         t = t.fillna(t.min(skipna=True))
         return t
 
@@ -707,6 +708,12 @@ def _plot_heatmaps_interactive(
         title=dict(text=title, y=0.95, x=0.5, xanchor="center", yanchor="top"),
         legend=dict(yanchor="top", y=0.9, xanchor="right", x=1.3),
         plot_bgcolor="rgba(0,0,0,0)",
+        margin_pad=5,  # add some space between the row labels and the heatmap itself
     )
+    # make sure ALL row labels are shown
+    row_labels = ["target"] + list(features.index.astype(str))
+    fig.update_yaxes(type="category", tickmode="array",
+                     ticktext=row_labels, tickvals=row_labels,
+                     )
 
     return fig
