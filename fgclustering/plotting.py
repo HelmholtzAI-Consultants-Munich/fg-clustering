@@ -152,8 +152,6 @@ def plot_distributions(
 
     num_rows = int(np.ceil(len(features_to_plot) / num_cols))
 
-    top_n_categories = 10
-
     fig = plt.figure(figsize=(num_cols * 4.5, num_rows * 4.5))
     plt.subplots_adjust(top=0.95, hspace=0.8, wspace=0.8)
     plt.suptitle(
@@ -188,7 +186,7 @@ def plot_distributions(
                 # Plot categorical features as stacked barplots
                 count_df = data_clustering_ranked.groupby(["cluster", feature]).size().unstack(fill_value=0)
 
-                # Get top 5 most frequent categories
+                # Get top 10 most frequent categories
                 top_categories = count_df.sum().nlargest(10).index
 
                 # Reorder count_df to have top categories first
