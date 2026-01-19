@@ -10,7 +10,8 @@ import plotly.graph_objects as go
 
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
-from matplotlib.colors import ListedColormap
+from matplotlib import rc_context
+from matplotlib.colors import ListedColormap, to_rgba
 from plotly.subplots import make_subplots
 from typing import Tuple, List, Union
 from pathlib import Path
@@ -296,12 +297,12 @@ def plot_heatmap_classification(
 
         if cmap_target_dict is not None:
             color_palette = sns.color_palette(list(cmap_target_dict.values()))
-            target_cmap = sns.color_palette(color_palette, as_cmap=True)
         else:
             color_palette = sns.color_palette(target_color, n_colors=len(categories))
-            target_cmap = sns.color_palette(color_palette, as_cmap=True)
 
-        color_map = {i: color_palette[i] for i in range(len(categories))}
+        target_cmap = ListedColormap(color_palette)
+        target_cmap.set_bad(color=boundaries_color, alpha=to_rgba(boundaries_color)[3])
+        target_legend_color_map = {i: color_palette[i] for i in range(len(categories))}
 
         fig, ax_target, ax_target_cb, ax_features, ax_features_cb, target_plot, feature_plot = (
             _plot_heatmaps_static(
@@ -309,13 +310,14 @@ def plot_heatmap_classification(
                 target_cmap,
                 features,
                 features_color,
+                boundaries_color,
                 title,
             )
         )
 
         # Add a custom legend or color bar for targets plot
         handles = [
-            plt.Line2D([0], [0], marker="o", color="w", markerfacecolor=color_map[i], markersize=10)
+            plt.Line2D([0], [0], marker="o", color="w", markerfacecolor=target_legend_color_map[i], markersize=10)
             for i in range(len(categories))
         ]
         ax_features.legend(
@@ -346,8 +348,8 @@ def plot_heatmap_classification(
                 for r, g, b in sns.color_palette(target_color, n_colors=len(categories))
             ]
 
-        target_color_map = {i: target_color_palette_rgb[i] for i in range(len(categories))}
-        target_colorscale = [[i / (len(categories) - 1), target_color_map[i]] for i in range(len(categories))]
+        target_legend_color_map = {i: target_color_palette_rgb[i] for i in range(len(categories))}
+        target_colorscale = [[i / (len(categories) - 1), target_legend_color_map[i]] for i in range(len(categories))]
 
         fig = _plot_heatmaps_interactive(
             target,
@@ -364,7 +366,7 @@ def plot_heatmap_classification(
                     x=[None],
                     y=[None],
                     mode="markers",
-                    marker=dict(size=10, color=target_color_map[i]),
+                    marker=dict(size=10, color=target_legend_color_map[i]),
                     legendgroup=category,
                     showlegend=True,
                     name=category,
@@ -430,6 +432,7 @@ def plot_heatmap_regression(
                 cmap_target,
                 features,
                 features_color,
+                boundaries_color,
                 title,
             )
         )
@@ -508,7 +511,7 @@ def _get_heatmap_plotting_settings(
 
     color_target = "Greens"
     color_features = "coolwarm"
-    boundaries_color = "white"
+    boundaries_color = "none"  # the alpha component is respected
 
     boundaries_width = int(np.ceil(np.log(target.shape[1])))
 
@@ -540,6 +543,7 @@ def _plot_heatmaps_static(
     target_cmap: ListedColormap,
     features: pd.DataFrame,
     features_color: str,
+    boundaries_color: str,
     title: str,
 ) -> Tuple[Figure, Axes, Axes, Axes, Axes, Axes, Axes]:
     """
@@ -553,6 +557,8 @@ def _plot_heatmaps_static(
     :type features: pandas.DataFrame
     :param features_color: Colormap used for the feature heatmap.
     :type features_color: str
+    :param boundaries_color: Color used for the dividers in the feature heatmap.
+    :type boundaries_color: str
     :param title: Title of the heatmap figure.
     :type title: str
 
@@ -562,7 +568,7 @@ def _plot_heatmaps_static(
 
     # Set up the figure and subplots
     figure_size = max(6.5, int(np.ceil(5 * len(features) / 25)))
-    with sns.axes_style("white"):
+    with sns.axes_style("white"), rc_context({"axes.facecolor": "none"}):
         fig, axes = plt.subplots(
             nrows=2,
             ncols=2,
@@ -604,12 +610,15 @@ def _plot_heatmaps_static(
     )
     ax_target.set_yticklabels(ax_target.get_yticklabels(), rotation=0)
 
+    features_cmap = sns.color_palette(features_color, as_cmap=True)
+    features_cmap.set_bad(color=boundaries_color, alpha=to_rgba(boundaries_color)[3])
+
     # Plot the feature heatmap
     feature_plot = sns.heatmap(
         nas_to_min_numeric(features),
         mask=features.isna(),
         ax=ax_features,
-        cmap=features_color,
+        cmap=features_cmap,
         cbar=False,
         yticklabels=features.index,
         xticklabels=False,
