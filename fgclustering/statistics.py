@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from tqdm import tqdm
-from pandas.api.types import is_numeric_dtype
+from pandas.api.types import is_numeric_dtype, is_string_dtype
 
 from .distance import DistanceJensenShannon, DistanceWasserstein
 
@@ -119,6 +119,7 @@ class FeatureImportance:
             # Check feature type
             if (
                 isinstance(values_background.dtype, pd.CategoricalDtype)
+                or is_string_dtype(values_background)
                 or values_background.dtype == "object"
                 or values_background.dtype == "bool"
             ):
