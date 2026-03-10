@@ -276,9 +276,11 @@ class Optimizer:
                 indices_bootstrap = np.array(
                     list(mapping_cluster_labels_to_samples_bootstrap[label_bootstrap])
                 )
-                intersection = np.intersect1d(samples_original, indices_bootstrap, assume_unique=True)
-                union = np.union1d(samples_original, indices_bootstrap)
-                jaccard_matrix[i, j] = len(intersection) / len(union)
+                intersection_size = np.intersect1d(
+                    samples_original, indices_bootstrap, assume_unique=True
+                ).size
+                union_size = samples_original.size + indices_bootstrap.size - intersection_size
+                jaccard_matrix[i, j] = intersection_size / union_size
 
         # Map original cluster to best Jaccard index using greedy assignment
         JI_per_cluster = {label: 0.0 for label in clusters_original}
