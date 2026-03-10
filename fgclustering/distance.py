@@ -107,12 +107,10 @@ class DistanceRandomForestProximity:
                 distance_matrix = np.memmap(file_distance_matrix, dtype=np.float32, mode="w+", shape=(n, n))
             else:
                 file_distance_matrix = None
-                distance_matrix = np.zeros((n, n))
+                distance_matrix = np.zeros((n, n), dtype=np.float32)
 
             distance_matrix = _calculate_distances(terminals, n, n_estimators, distance_matrix)
 
-            # Ensure symmetry
-            distance_matrix += distance_matrix.T
             return distance_matrix, file_distance_matrix
 
     def remove_distance_matrix(
@@ -318,11 +316,11 @@ def _calculate_distances(
     distance_matrix: np.ndarray | np.memmap,
 ) -> np.ndarray | np.memmap:
     """
-    Computes the upper triangle of a pairwise distance matrix based on Random Forest terminal node similarity.
+    Computes a symmetric pairwise distance matrix based on Random Forest terminal node similarity.
 
     The distance between two samples is defined as one minus the fraction of trees in which both samples
-    fall into the same terminal node. Only the upper triangle of the matrix is computed to avoid redundant
-    calculations as the resulting matrix is symmetric.
+    fall into the same terminal node. Both (i, j) and (j, i) are filled in the loop so the matrix is
+    symmetric without a separate transpose step.
 
     :param terminals: 2D array of shape (n_samples, n_estimators), where each entry indicates the terminal node index for a sample in a tree.
     :type terminals: numpy.ndarray
@@ -333,7 +331,7 @@ def _calculate_distances(
     :param distance_matrix: Pre-allocated 2D array where the resulting distances will be stored.
     :type distance_matrix: numpy.ndarray | numpy.memmap
 
-    :return: The updated distance matrix with the upper triangle filled with computed distances.
+    :return: The updated symmetric distance matrix with pairwise distances.
     :rtype: numpy.ndarray | numpy.memmap
     """
     for i in prange(n):
@@ -342,5 +340,6 @@ def _calculate_distances(
             distance = 1.0 - (proximity / n_estimators)
             if distance > 0:
                 distance_matrix[i, j] = distance
+                distance_matrix[j, i] = distance
 
     return distance_matrix
