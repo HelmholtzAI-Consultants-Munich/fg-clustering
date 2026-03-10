@@ -5,7 +5,7 @@
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from typing import Union, Optional, Tuple, List, Any
+from typing import Any
 
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
@@ -32,18 +32,18 @@ from .plotting import (
 
 
 def forest_guided_clustering(
-    estimator: Union[RandomForestClassifier, RandomForestRegressor],
+    estimator: RandomForestClassifier | RandomForestRegressor,
     X: pd.DataFrame,
-    y: Union[str, pd.Series],
+    y: str | pd.Series,
     clustering_distance_metric: DistanceRandomForestProximity,
-    clustering_strategy: Union[ClusteringKMedoids, ClusteringClara],
-    k: Optional[Union[int, Tuple[int, int]]] = None,
-    JI_bootstrap_iter: Optional[int] = 100,
-    JI_bootstrap_sample_size: Optional[Union[int, float]] = None,
-    JI_discart_value: Optional[float] = 0.6,
-    n_jobs: Optional[int] = 1,
-    random_state: Optional[int] = 42,
-    verbose: Optional[int] = 1,
+    clustering_strategy: ClusteringKMedoids | ClusteringClara,
+    k: int | tuple[int, int] | None = None,
+    JI_bootstrap_iter: int = 100,
+    JI_bootstrap_sample_size: int | float | None = None,
+    JI_discart_value: float = 0.6,
+    n_jobs: int = 1,
+    random_state: int = 42,
+    verbose: int = 1,
 ) -> Bunch:
     """
     Perform forest-guided clustering using proximity information derived from a Random Forest model.
@@ -57,29 +57,29 @@ def forest_guided_clustering(
     stability and assigned cluster labels for each sample of the input data.
 
     :param estimator: A fitted RandomForestClassifier or RandomForestRegressor model.
-    :type estimator: Union[RandomForestClassifier, RandomForestRegressor]
+    :type estimator: RandomForestClassifier | RandomForestRegressor
     :param X: Input feature matrix.
     :type X: pandas.DataFrame
     :param y: Target variable, i.e. target values or name of the target column in X.
-    :type y: Union[str, pandas.Series]
+    :type y: str | pandas.Series
     :param clustering_distance_metric: An instance of DistanceRandomForestProximity.
     :type clustering_distance_metric: DistanceRandomForestProximity
     :param clustering_strategy: An instance of ClusteringKMedoids or ClusteringClara.
-    :type clustering_strategy: Union[ClusteringKMedoids, ClusteringClara]
+    :type clustering_strategy: ClusteringKMedoids | ClusteringClara
     :param k: If int, number of clusters is fixed. If tuple, number of clusters is optimized within the given range. If None number of clusters is optimized within the range of 2 to 6. Default: None
-    :type k: Optional[Union[int, Tuple[int, int]]]
+    :type k: int | tuple[int, int] | None
     :param JI_bootstrap_iter: Number of bootstrap iterations for Jaccard Index evaluation. Default: 100
-    :type JI_bootstrap_iter: Optional[int]
+    :type JI_bootstrap_iter: int
     :param JI_bootstrap_sample_size: Number or proportion of samples to draw for each JI bootstrap. If None, computes an adaptive subsample ratio based on dataset size, constrained between 10% and 80%, targeting approximately 1,000 samples. Default: None.
-    :type JI_bootstrap_sample_size: Optional[Union[int, float]]
+    :type JI_bootstrap_sample_size: int | float | None
     :param JI_discart_value: Jaccard Index threshold to discard unstable clusters. Default: 0.6
-    :type JI_discart_value: Optional[float]
+    :type JI_discart_value: float
     :param n_jobs: Number of parallel jobs. Default: 1.
-    :type n_jobs: Optional[int]
+    :type n_jobs: int
     :param random_state: Random seed for reproducibility. Default: 42.
-    :type random_state: Optional[int]
+    :type random_state: int
     :param verbose: Verbosity level (0 = silent, 1 = progress messages). Default: 1.
-    :type verbose: Optional[int]
+    :type verbose: int
 
     :return: A Bunch object containing k, cluster scores, cluster stability, labels, and model type.
     :rtype: Bunch
@@ -133,11 +133,11 @@ def forest_guided_clustering(
 
 def forest_guided_feature_importance(
     X: pd.DataFrame,
-    y: Union[str, pd.Series],
+    y: str | pd.Series,
     cluster_labels: np.ndarray,
     model_type: str,
-    feature_importance_distance_metric: Optional[str] = "wasserstein",
-    verbose: Optional[int] = 1,
+    feature_importance_distance_metric: str = "wasserstein",
+    verbose: int = 1,
 ) -> Bunch:
     """
     Compute forest-guided feature importance by quantifying how much each feature contributes to cluster separation.
@@ -150,15 +150,15 @@ def forest_guided_feature_importance(
     :param X: Input feature matrix.
     :type X: pandas.DataFrame
     :param y: Target variable, i.e. target values or name of the target column in X.
-    :type y: Union[str, pandas.Series]
+    :type y: str | pandas.Series
     :param cluster_labels: Labels from forest-guided clustering. Output of `forest_guided_clustering()`.
     :type cluster_labels: numpy.ndarray
     :param model_type: Type of model, either "cla" for classification or "reg" for regression. Output of `forest_guided_clustering()`.
     :type model_type: str
     :param feature_importance_distance_metric: Distance metric for computing feature importance ("wasserstein" or "jensenshannon"). Default: "wasserstein".
-    :type feature_importance_distance_metric: Optional[str]
+    :type feature_importance_distance_metric: str
     :param verbose: Verbosity level (0 = silent, 1 = progress messages). Default: 1.
-    :type verbose: Optional[int]
+    :type verbose: int
 
     :return: A Bunch object containing local feature importances, global feature importances and the clustering data ordered by the global feature importance.
     :rtype: Bunch
@@ -190,12 +190,12 @@ def forest_guided_feature_importance(
 def plot_forest_guided_feature_importance(
     feature_importance_local: pd.DataFrame,
     feature_importance_global: pd.Series,
-    top_n: Optional[int] = None,
-    num_cols: Optional[int] = 4,
-    save: Optional[str] = None,
-    reorder: Optional[bool] = False,
-    recolor: Optional[bool] = False,
-) -> Tuple[Figure, List[Axes]]:
+    top_n: int | None = None,
+    num_cols: int = 4,
+    save: str | None = None,
+    reorder: bool = False,
+    recolor: bool = False,
+) -> tuple[Figure, list[Axes]]:
     """
     Visualize global and local feature importance values as bar charts.
 
@@ -208,18 +208,18 @@ def plot_forest_guided_feature_importance(
     :param feature_importance_global: Global mean importance values across clusters. Output of `plot_forest_guided_feature_importance()`.
     :type feature_importance_global: pandas.Series
     :param top_n: If specified, number of top-ranked features to plot. Default: None.
-    :type top_n: Optional[int]
+    :type top_n: int | None
     :param num_cols: Number of columns in the subplot layout. Default: 4.
-    :type num_cols: Optional[int]
+    :type num_cols: int
     :param save: If specified, path prefix to save plots. Default: None.
-    :type save: Optional[str]
+    :type save: str | None
     :param reorder: If True, reorder the local importance values to match the global importance order.
-    :type reorder: Optional[bool]
+    :type reorder: bool
     :param recolor: If True, recolor the bars based on the global importance order.
-    :type recolor: Optional[bool]
+    :type recolor: bool
 
     :return: Matplotlib figure and axes with bar charts of global and local feature importance values.
-    :rtype: Tuple[Figure, List[Axes]]
+    :rtype: tuple[Figure, list[Axes]]
     """
     assert isinstance(feature_importance_global, pd.Series), (
         f"Expected `feature_importance_global` to be a Series, but got {type(feature_importance_global)} "
@@ -240,14 +240,14 @@ def plot_forest_guided_feature_importance(
 def plot_forest_guided_decision_paths(
     data_clustering: pd.DataFrame,
     model_type: str,
-    distributions: Optional[bool] = True,
-    heatmap: Optional[bool] = True,
-    heatmap_type: Optional[str] = "static",
-    top_n: Optional[int] = None,
-    num_cols: Optional[int] = 6,
-    cmap_target_dict: Optional[dict] = None,
-    save: Optional[str] = None,
-) -> Tuple[Optional[Tuple[Figure, List[Axes]]], Optional[Union[Tuple[Figure, List[Axes]], go.Figure]]]:
+    distributions: bool = True,
+    heatmap: bool = True,
+    heatmap_type: str = "static",
+    top_n: int | None = None,
+    num_cols: int = 6,
+    cmap_target_dict: dict | None = None,
+    save: str | None = None,
+) -> tuple[tuple[Figure, list[Axes]] | None, (tuple[Figure, list[Axes]] | go.Figure) | None]:
     """
     Plot the decision patterns that emerge from forest-guided clustering using
     feature distribution plots and feature heatmaps.
@@ -262,22 +262,22 @@ def plot_forest_guided_decision_paths(
     :param model_type: Type of model, either "cla" for classification or "reg" for regression. Output of `forest_guided_clustering()`.
     :type model_type: str
     :param distributions: Whether to show the feature distribution plots. Default: True.
-    :type distributions: Optional[bool]
+    :type distributions: bool
     :param heatmap: Whether to show the feature heatmap. Default: True.
-    :type heatmap: Optional[bool]
+    :type heatmap: bool
     :param heatmap_type: Heatmap shown in "static" or "interactive" style. Default: "static".
-    :type heatmap_type: Optional[str]
+    :type heatmap_type: str
     :param top_n: If specified, number of top-ranked features to plot. Default: None.
-    :type top_n: Optional[int]
-    :param num_cols: Number of columns in the subplot layout. Default: 4.
-    :type num_cols: Optional[int]
+    :type top_n: int | None
+    :param num_cols: Number of columns in the subplot layout. Default: 6.
+    :type num_cols: int
     :param cmap_target_dict: If specified, custom color map for categorical targets. Default: None.
-    :type cmap_target_dict: Optional[dict]
+    :type cmap_target_dict: dict | None
     :param save: If specified, path prefix to save plots. Default: None.
-    :type save: Optional[str]
+    :type save: str | None
 
     :return: Tuple of two optional plots. The first is always a matplotlib `fig, ax` pair, the second can be an interactive plotly Figure.
-    :rtype: Tuple[Optional[Tuple[Figure, List[Axes]]], Optional[Union[Tuple[Figure, List[Axes]], go.Figure]]]:
+    :rtype: tuple[tuple[Figure, list[Axes]] | None, (tuple[Figure, list[Axes]] | go.Figure) | None]
     """
     # select top n features and cluster, target for plotting
     if top_n:

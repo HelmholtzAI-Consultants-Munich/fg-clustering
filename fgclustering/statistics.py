@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 
 from tqdm import tqdm
-from typing import Union, Tuple
 from pandas.api.types import is_numeric_dtype
 
 from .distance import DistanceJensenShannon, DistanceWasserstein
@@ -25,12 +24,12 @@ class FeatureImportance:
     distribution of feature values within clusters against the background (entire dataset).
 
     :param distance_metric: An instance of DistanceJensenShannon or DistanceWasserstein.
-    :type distance_metric: Union[DistanceJensenShannon, DistanceWasserstein]
+    :type distance_metric: DistanceJensenShannon | DistanceWasserstein
     """
 
     def __init__(
         self,
-        distance_metric: Union[DistanceJensenShannon, DistanceWasserstein],
+        distance_metric: DistanceJensenShannon | DistanceWasserstein,
     ):
         """Constructor for the FeatureImportance class."""
         self.distance_metric = distance_metric
@@ -42,7 +41,7 @@ class FeatureImportance:
         cluster_labels: np.ndarray,
         model_type: str,
         verbose: int,
-    ) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
+    ) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
         """
         Computes feature importance scores for clustered data using a selected distance metric.
 
@@ -58,7 +57,7 @@ class FeatureImportance:
         :type verbose: int
 
         :return: Tuple containing local feature importance scores, global feature importance scores, and the clustering data ordered by the global feature importance.
-        :rtype: Tuple[pandas.DataFrame, pandas.Series, pandas.DataFrame]
+        :rtype: tuple[pandas.DataFrame, pandas.Series, pandas.DataFrame]
         """
         self.verbose = verbose
 

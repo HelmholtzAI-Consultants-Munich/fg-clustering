@@ -7,7 +7,6 @@ import gc
 import kmedoids
 import numpy as np
 
-from typing import Optional, Union
 from numba import njit, prange
 
 from imblearn.under_sampling import RandomUnderSampler
@@ -29,21 +28,21 @@ class ClusteringKMedoids:
     on the fly using Random Forest terminal nodes.
 
     :param method: Computation method for the K-Medoids algorithm. Default: "fasterpam".
-    :type method: Optional[str]
+    :type method: str
     :param init: Initialization strategy for the K-Medoids algorithm. Default: "random".
-    :type init: Optional[str]
+    :type init: str
     :param max_iter: Maximum number of iterations for the K-Medoids algorithm. Default: 100.
-    :type max_iter: Optional[int]
+    :type max_iter: int
     :param random_state: Random seed for reproducibility. Default: 42.
-    :type random_state: Optional[int]
+    :type random_state: int
     """
 
     def __init__(
         self,
-        method: Optional[str] = "fasterpam",
-        init: Optional[str] = "random",
-        max_iter: Optional[int] = 100,
-        random_state: Optional[int] = 42,
+        method: str = "fasterpam",
+        init: str = "random",
+        max_iter: int = 100,
+        random_state: int = 42,
     ) -> None:
         """Constructor for the ClusteringKMedoids class."""
         self.method = method
@@ -57,7 +56,7 @@ class ClusteringKMedoids:
         k: int,
         distance_metric: DistanceRandomForestProximity,
         sample_indices: np.ndarray,
-        random_state_subsampling: Union[int, None],
+        random_state_subsampling: int | None,
         verbose: int,
     ) -> np.ndarray:
         """
@@ -71,7 +70,7 @@ class ClusteringKMedoids:
         :param sample_indices: Indices of the samples to include in clustering.
         :type sample_indices: numpy.ndarray
         :param random_state_subsampling: Random seed for for subsampling reproducibility. Not used in this implementation.
-        :type random_state_subsampling: Union[int, None]
+        :type random_state_subsampling: int | None
         :param verbose: Verbosity level (0 = silent, 1 = progress messages). Not used in this implementation.
         :type verbose: int
 
@@ -114,30 +113,30 @@ class ClusteringClara:
     computed on demand from precomputed Random Forest terminal node assignments.
 
     :param sub_sample_size: Number or proportion of samples to draw for each CLARA iteration. If None, computes an adaptive subsample ratio based on dataset size, constrained between 10% and 80%, targeting approximately 1,000 samples. Default: None.
-    :type sub_sample_size: Optional[Union[int, float]]
+    :type sub_sample_size: int | float | None
     :param sampling_iter: Number of CLARA iterations to perform. If None, sets the number of sampling iterations log2(sample size), with a minimum of 5 iterations to ensure sufficient sampling. Default: None.
-    :type sampling_iter: Optional[int]
+    :type sampling_iter: int | None
     :param sampling_target: List of target class labels for stratified subsampling. If provided, ensures that the subsample maintains the class distribution of the original dataset. Default: None.
-    :type sampling_target: Optional[list]
+    :type sampling_target: list | None
     :param method: Computation method for the K-Medoids algorithm. Default: "fasterpam".
-    :type method: Optional[str]
+    :type method: str
     :param init: Initialization strategy for the K-Medoids algorithm. Default: "random".
-    :type init: Optional[str]
+    :type init: str
     :param max_iter: Maximum number of iterations for the K-Medoids algorithm. Default: 100.
-    :type max_iter: Optional[int]
+    :type max_iter: int
     :param random_state: Random seed for reproducibility. Default: 42.
-    :type random_state: Optional[int]
+    :type random_state: int
     """
 
     def __init__(
         self,
-        sub_sample_size: Optional[Union[int, float]] = None,
-        sampling_iter: Optional[int] = None,
-        sampling_target: Optional[list] = None,
-        method: Optional[str] = "fasterpam",
-        init: Optional[str] = "random",
-        max_iter: Optional[int] = 100,
-        random_state: Optional[int] = 42,
+        sub_sample_size: int | float | None = None,
+        sampling_iter: int | None = None,
+        sampling_target: list | None = None,
+        method: str = "fasterpam",
+        init: str = "random",
+        max_iter: int = 100,
+        random_state: int = 42,
     ) -> None:
         """Constructor for the ClusteringClara class."""
         self.sub_sample_size = sub_sample_size
@@ -156,7 +155,7 @@ class ClusteringClara:
         k: int,
         distance_metric: DistanceRandomForestProximity,
         sample_indices: np.ndarray,
-        random_state_subsampling: Union[int, None],
+        random_state_subsampling: int | None,
         verbose: int,
     ) -> np.ndarray:
         """
@@ -172,7 +171,7 @@ class ClusteringClara:
         :param sample_indices: Indices of the samples to include in clustering.
         :type sample_indices: numpy.ndarray
         :param random_state_subsampling: Random seed for for subsampling reproducibility. If None, use `random_state` defined in constructor.
-        :type random_state_subsampling: Union[int, None]
+        :type random_state_subsampling: int | None
         :param verbose: Verbosity level (0 = silent, 1 = progress messages).
         :type verbose: int
 

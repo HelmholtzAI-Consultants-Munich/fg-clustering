@@ -13,7 +13,6 @@ from matplotlib.axes import Axes
 from matplotlib import rc_context
 from matplotlib.colors import ListedColormap, to_rgba
 from plotly.subplots import make_subplots
-from typing import Tuple, List, Union
 from pathlib import Path
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 
@@ -32,7 +31,7 @@ def plot_feature_importance(
     save: str,
     reorder: bool = False,
     recolor: bool = False,
-) -> Tuple[Figure, List[Axes]]:
+) -> tuple[Figure, list[Axes]]:
     """
     Visualize global and local feature importance values as bar charts.
 
@@ -45,14 +44,14 @@ def plot_feature_importance(
     :param num_cols: Number of columns in the subplot layout.
     :type num_cols: int
     :param save: If specified, path prefix to save plots.
-    :type save: int
-    :param reorder: If True, reorder the local importance values to match the global importance order.
+    :type save: str
+    :param reorder: If True, reorder the local importance values to match the global importance order. Default: False.
     :type reorder: bool
-    :param recolor: If True, recolor the bars based on the global importance order.
+    :param recolor: If True, recolor the bars based on the global importance order. Default: False.
     :type recolor: bool
 
     :return: Matplotlib figure and axes with bar charts of global and local feature importance values.
-    :rtype: Tuple[Figure, List[Axes]]
+    :rtype: tuple[Figure, list[Axes]]
     """
     # Determine figure size dynamically based on the number of features
     num_features_GFI = len(feature_importance_global.index)
@@ -78,10 +77,18 @@ def plot_feature_importance(
                 "Importance": feature_importance_global.to_list(),
             }
         ).sort_values(by="Importance", ascending=False)
-        kwargs = dict(color="#3470a3") if not recolor else dict(
-            hue="Feature",
-            palette=dict(zip(importance_global["Feature"].to_list(),
-                             sns.color_palette("tab20", n_colors=len(importance_global)))),
+        kwargs = (
+            dict(color="#3470a3")
+            if not recolor
+            else dict(
+                hue="Feature",
+                palette=dict(
+                    zip(
+                        importance_global["Feature"].to_list(),
+                        sns.color_palette("tab20", n_colors=len(importance_global)),
+                    )
+                ),
+            )
         )
         if top_n:
             importance_global = importance_global.iloc[:top_n,]
@@ -96,9 +103,7 @@ def plot_feature_importance(
             if reorder:
                 # do not sort - use the global importance order instead
                 importance_local = (
-                    feature_importance_local[[cluster]]
-                    .iloc[importance_global.index]
-                    .reset_index()
+                    feature_importance_local[[cluster]].iloc[importance_global.index].reset_index()
                 )
                 importance_local.columns = ["Feature", "Importance"]
             else:
@@ -129,7 +134,7 @@ def plot_distributions(
     num_cols: int,
     cmap_target_dict: dict,
     save: str,
-) -> Tuple[Figure, List[Axes]]:
+) -> tuple[Figure, list[Axes]]:
     """
     Plot the decision patterns that emerge from forest-guided clustering using feature distribution plots.
 
@@ -145,7 +150,7 @@ def plot_distributions(
     :type save: str
 
     :return: Feature distribution plots as matplotlib figure and axes.
-    :rtype: Tuple[Figure, List[Axes]]
+    :rtype: tuple[Figure, list[Axes]]
     """
 
     features_to_plot = data_clustering_ranked.drop("cluster", axis=1, inplace=False).columns.to_list()
@@ -184,8 +189,11 @@ def plot_distributions(
                 ax.legend(bbox_to_anchor=(1, 1), loc=2, fontsize="x-small")
             else:
                 # Plot categorical features as stacked barplots
-                count_df = data_clustering_ranked.groupby(
-                    ["cluster", feature], observed=False).size().unstack(fill_value=0)
+                count_df = (
+                    data_clustering_ranked.groupby(["cluster", feature], observed=False)
+                    .size()
+                    .unstack(fill_value=0)
+                )
 
                 # Get top 10 most frequent categories
                 top_categories = count_df.sum().nlargest(10).index
@@ -252,7 +260,7 @@ def plot_heatmap_classification(
     heatmap_type: str,
     cmap_target_dict: dict,
     save: str,
-) -> Union[Tuple[Figure, List[Axes]], go.Figure]:
+) -> tuple[Figure, list[Axes]] | go.Figure:
     """
     Plot the decision patterns that emerge from forest-guided clustering using feature heatmaps for classification tasks.
 
@@ -268,7 +276,7 @@ def plot_heatmap_classification(
     :type save: str
 
     :return: Either static matplotlib figure and axes or interactive plotly figure.
-    :rtype: Union[Tuple[Figure, List[Axes]], go.Figure]
+    :rtype: tuple[Figure, list[Axes]] | go.Figure
     """
     cluster_labels = data_clustering_ranked["cluster"]
 
@@ -316,7 +324,9 @@ def plot_heatmap_classification(
 
         # Add a custom legend or color bar for targets plot
         handles = [
-            plt.Line2D([0], [0], marker="o", color="w", markerfacecolor=target_legend_color_map[i], markersize=10)
+            plt.Line2D(
+                [0], [0], marker="o", color="w", markerfacecolor=target_legend_color_map[i], markersize=10
+            )
             for i in range(len(categories))
         ]
         ax_features.legend(
@@ -348,7 +358,9 @@ def plot_heatmap_classification(
             ]
 
         target_legend_color_map = {i: target_color_palette_rgb[i] for i in range(len(categories))}
-        target_colorscale = [[i / (len(categories) - 1), target_legend_color_map[i]] for i in range(len(categories))]
+        target_colorscale = [
+            [i / (len(categories) - 1), target_legend_color_map[i]] for i in range(len(categories))
+        ]
 
         fig = _plot_heatmaps_interactive(
             target,
@@ -381,12 +393,13 @@ def plot_heatmap_classification(
     else:
         raise ValueError(f'`heatmap_type` must be either "static" or "interactive"')
 
+
 def plot_heatmap_regression(
     data_clustering_ranked: pd.DataFrame,
     top_n: int,
     heatmap_type: str,
     save: str,
-) -> Union[Tuple[Figure, List[Axes]], go.Figure]:
+) -> tuple[Figure, list[Axes]] | go.Figure:
     """
     Plot the decision patterns that emerge from forest-guided clustering using feature heatmaps for regression tasks.
 
@@ -400,7 +413,7 @@ def plot_heatmap_regression(
     :type save: str
 
     :return: Either static matplotlib figure and axes or interactive plotly figure.
-    :rtype: Union[Tuple[Figure, List[Axes]], go.Figure]
+    :rtype: tuple[Figure, list[Axes]] | go.Figure
     """
     cluster_labels = data_clustering_ranked["cluster"]
 
@@ -442,7 +455,7 @@ def plot_heatmap_regression(
 
         plt.tight_layout()
         if save:
-            save_figure(save, '_heatmap')
+            save_figure(save, "_heatmap")
         return fig, [ax_target, ax_target_cb, ax_features, ax_features_cb, target_plot, feature_plot]
 
     elif heatmap_type == "interactive":
@@ -464,6 +477,7 @@ def plot_heatmap_regression(
         return fig
     else:
         raise ValueError(f'`heatmap_type` must be either "static" or "interactive"')
+
 
 def _process_features_for_heatmap(
     features: pd.DataFrame,
@@ -495,7 +509,7 @@ def _process_features_for_heatmap(
 def _get_heatmap_plotting_settings(
     target: pd.DataFrame,
     top_n: int,
-) -> Tuple[str, str, str, int, str]:
+) -> tuple[str, str, str, int, str]:
     """
     Define color schemes, boundary widths, and titles for heatmap plotting.
 
@@ -505,7 +519,7 @@ def _get_heatmap_plotting_settings(
     :type top_n: int
 
     :return: Tuple with color settings, boundary width, and heatmap title.
-    :rtype: Tuple[str, str, str, int, str]
+    :rtype: tuple[str, str, str, int, str]
     """
 
     color_target = "Greens"
@@ -520,19 +534,23 @@ def _get_heatmap_plotting_settings(
 
 
 def _insert_boundaries(
-        df: pd.DataFrame,
-        boundaries: np.ndarray,
-        boundaries_width: int,
+    df: pd.DataFrame,
+    boundaries: np.ndarray,
+    boundaries_width: int,
 ) -> pd.DataFrame:
     add = 0
     for boundary in boundaries:
-        df = pd.concat([
-            df.iloc[:, :boundary + add],  # until the boundary
-            pd.DataFrame(  # the NA block
-                np.full((df.shape[0], boundaries_width), pd.NA),
-                index=df.index, ),
-            df.iloc[:, boundary + add:]  # from the boundary
-        ], axis=1)
+        df = pd.concat(
+            [
+                df.iloc[:, : boundary + add],  # until the boundary
+                pd.DataFrame(  # the NA block
+                    np.full((df.shape[0], boundaries_width), pd.NA),
+                    index=df.index,
+                ),
+                df.iloc[:, boundary + add :],  # from the boundary
+            ],
+            axis=1,
+        )
         add += boundaries_width
     return df
 
@@ -544,7 +562,7 @@ def _plot_heatmaps_static(
     features_color: str,
     boundaries_color: str,
     title: str,
-) -> Tuple[Figure, Axes, Axes, Axes, Axes, Axes, Axes]:
+) -> tuple[Figure, Axes, Axes, Axes, Axes, Axes, Axes]:
     """
     Create a static (matplotlib) heatmap of target and feature values with visual cluster boundaries.
 
@@ -562,7 +580,7 @@ def _plot_heatmaps_static(
     :type title: str
 
     :return: Tuple of figure and axes objects for both heatmaps and colorbars.
-    :rtype: Tuple[Figure, Axes, Axes, Axes, Axes, Axes, Axes]
+    :rtype: tuple[Figure, Axes, Axes, Axes, Axes, Axes, Axes]
     """
 
     # Set up the figure and subplots
@@ -672,9 +690,7 @@ def _plot_heatmaps_interactive(
             showscale=target_showscale,  # Hide color bar for the target
             hoverongaps=False,
             customdata=np.tile(np.array(features.columns, dtype=str), target.shape),
-            hovertemplate="<b>Sample: %{customdata}</b><br>" +
-                          "x: %{x}<br>" +
-                          "target: %{z}<extra></extra>",
+            hovertemplate="<b>Sample: %{customdata}</b><br>" + "x: %{x}<br>" + "target: %{z}<extra></extra>",
         ),
         row=1,
         col=1,
@@ -693,10 +709,10 @@ def _plot_heatmaps_interactive(
             showscale=True,
             hoverongaps=False,
             customdata=np.tile(np.array(features.columns, dtype=str), (features.shape[0], 1)),
-            hovertemplate="<b>Sample: %{customdata}</b><br>" +
-                          "x: %{x}<br>" +
-                          "y: %{y}<br>" +
-                          "value: %{z}<extra></extra>",
+            hovertemplate="<b>Sample: %{customdata}</b><br>"
+            + "x: %{x}<br>"
+            + "y: %{y}<br>"
+            + "value: %{z}<extra></extra>",
         ),
         row=2,
         col=1,
@@ -720,8 +736,11 @@ def _plot_heatmaps_interactive(
     )
     # make sure ALL row labels are shown
     row_labels = ["target"] + list(features.index.astype(str))
-    fig.update_yaxes(type="category", tickmode="array",
-                     ticktext=row_labels, tickvals=row_labels,
-                     )
+    fig.update_yaxes(
+        type="category",
+        tickmode="array",
+        ticktext=row_labels,
+        tickvals=row_labels,
+    )
 
     return fig

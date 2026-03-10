@@ -9,7 +9,6 @@ import pandas as pd
 from tqdm import tqdm
 from joblib import Parallel, delayed
 from collections import defaultdict, Counter
-from typing import Union, Tuple, Optional
 
 from .utils import map_clusters_to_samples
 from .distance import DistanceRandomForestProximity
@@ -36,7 +35,7 @@ class Optimizer:
     :param distance_metric: An instance of DistanceRandomForestProximity.
     :type distance_metric: DistanceRandomForestProximity
     :param clustering_strategy: An instance of ClusteringKMedoids or ClusteringClara.
-    :type clustering_strategy: Union[ClusteringKMedoids, ClusteringClara]
+    :type clustering_strategy: ClusteringKMedoids | ClusteringClara
     :param random_state: Random seed for reproducibility.
     :type random_state: int
     """
@@ -44,7 +43,7 @@ class Optimizer:
     def __init__(
         self,
         distance_metric: DistanceRandomForestProximity,
-        clustering_strategy: Union[ClusteringKMedoids, ClusteringClara],
+        clustering_strategy: ClusteringKMedoids | ClusteringClara,
         random_state: int,
     ):
         """Constructor for the Optimizer class."""
@@ -55,14 +54,14 @@ class Optimizer:
     def optimizeK(
         self,
         y: pd.Series,
-        k_range: Tuple[int],
+        k_range: tuple[int, int],
         JI_bootstrap_iter: int,
-        JI_bootstrap_sample_size: Union[int, float],
+        JI_bootstrap_sample_size: int | float,
         JI_discart_value: float,
         model_type: str,
         n_jobs: int,
         verbose: int,
-    ) -> Tuple[int, float, dict, np.ndarray]:
+    ) -> tuple[int, float, dict, np.ndarray]:
         """
         Search for the optimal number of clusters within a specified range using clustering quality and stability metrics.
 
@@ -70,13 +69,13 @@ class Optimizer:
         based on a combination of cluster stability and low impurity (classification) or low variance (regression).
 
         :param y: Target variable.
-        :type y: Union[str, pandas.Series]
+        :type y: pandas.Series
         :param k_range: Range of k values to be evaluated (min_k, max_k).
         :type k_range: Tuple[int]
         :param JI_bootstrap_iter: Number of bootstrap iterations for Jaccard Index evaluation.
         :type JI_bootstrap_iter: int
         :param JI_bootstrap_sample_size: Number of samples to draw for each JI bootstrap.
-        :type JI_bootstrap_sample_size: Union[int, float]
+        :type JI_bootstrap_sample_size: int | float
         :param JI_discart_value: Jaccard Index threshold to discard unstable clusters.
         :type JI_discart_value: float
         :param model_type: Type of model, either "cla" for classification or "reg" for regression.
@@ -87,7 +86,7 @@ class Optimizer:
         :type verbose: int
 
         :return: Tuple containing the best k, its corresponding score, Jaccard stability per cluster, and cluster labels.
-        :rtype: Tuple[int, float, dict, numpy.ndarray]
+        :rtype: tuple[int, float, dict, numpy.ndarray]
         """
 
         self.n_samples_original = len(y)
@@ -170,11 +169,9 @@ class Optimizer:
 
         # reorder cluster labels by target mean
         reordered_cluster_labels = self._sort_clusters_by_target(
-            y=y, 
-            cluster_labels=cluster_labels,
-            model_type=model_type
-            )
-        
+            y=y, cluster_labels=cluster_labels, model_type=model_type
+        )
+
         return k, cluster_score, cluster_stability, reordered_cluster_labels
 
     def _compute_JI(
@@ -377,14 +374,14 @@ class Optimizer:
     ) -> np.ndarray:
         """
         Sorts clusters by the mean target value and reorders cluster labels accordingly.
-        
+
         :param y: Target values.
         :type y: pandas.Series
         :param cluster_labels: Labels from forest-guided clustering.
         :type cluster_labels: numpy.ndarray
         :param model_type: Type of model, either "cla" for classification or "reg" for regression.
         :type model_type: str
-    
+
         :return: New cluster labels, sorted by the target mean
         :rtype: numpy.ndarray
         """
@@ -395,23 +392,21 @@ class Optimizer:
 
         # use category codes for classification
         target = y.astype("category").cat.codes if model_type == "cla" else y
-    
-        df = pd.DataFrame({
-            "cluster": cluster_labels,
-            "target": target
-        })
-        
+
+        df = pd.DataFrame({"cluster": cluster_labels, "target": target})
+
         # get the mean target for each cluster
         mean_per_cluster = df.groupby("cluster")["target"].mean()
-    
+
         # get the original cluster labels, sorted by their mean target
         sorted_clusters = mean_per_cluster.sort_values().index
-    
+
         # create mapping from the old cluster labels to the new, ranked labels
-        cluster_mapping = {old_label: new_label for new_label, old_label in enumerate(sorted_clusters, start=1)}
-    
+        cluster_mapping = {
+            old_label: new_label for new_label, old_label in enumerate(sorted_clusters, start=1)
+        }
+
         # apply the re-labeling
         new_labels = pd.Series(cluster_labels).map(cluster_mapping)
-    
-        return new_labels.to_numpy()
 
+        return new_labels.to_numpy()

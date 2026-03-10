@@ -9,7 +9,6 @@ import uuid
 import numpy as np
 import pandas as pd
 
-from typing import Optional, Union
 from numba import njit, prange
 
 from scipy.stats import wasserstein_distance
@@ -30,15 +29,15 @@ class DistanceRandomForestProximity:
     Supports both in-memory and memory-efficient computation via disk-backed memmap arrays.
 
     :param memory_efficient: Whether to store the distance matrix in a memory-efficient way using a disk-based memmap. Default: False.
-    :type memory_efficient: Optional[bool]
+    :type memory_efficient: bool
     :param dir_distance_matrix: Directory path where the distance matrix should be stored when using memory-efficient mode. Default: None.
-    :type dir_distance_matrix: Optional[str]
+    :type dir_distance_matrix: str | None
     """
 
     def __init__(
         self,
-        memory_efficient: Optional[bool] = False,
-        dir_distance_matrix: Optional[str] = None,
+        memory_efficient: bool = False,
+        dir_distance_matrix: str | None = None,
     ) -> None:
         """Constructor for the DistanceRandomForestProximity class."""
         if memory_efficient:
@@ -52,14 +51,14 @@ class DistanceRandomForestProximity:
 
     def calculate_terminals(
         self,
-        estimator: Union[RandomForestClassifier, RandomForestRegressor],
+        estimator: RandomForestClassifier | RandomForestRegressor,
         X: pd.DataFrame,
     ) -> None:
         """
         Calculates and stores the terminal nodes of all samples across all trees in the Random Forest.
 
         :param estimator: A trained Random Forest estimator from sklearn.
-        :type estimator: Union[sklearn.ensemble.RandomForestClassifier, RandomForestRegressor]
+        :type estimator: RandomForestClassifier | RandomForestRegressor
         :param X: Input feature matrix.
         :type X: pandas.DataFrame
         """
@@ -67,8 +66,8 @@ class DistanceRandomForestProximity:
 
     def calculate_distance_matrix(
         self,
-        sample_indices: Union[np.ndarray, None],
-    ) -> Union[np.ndarray, np.memmap]:
+        sample_indices: np.ndarray | None,
+    ) -> tuple[np.ndarray | np.memmap, str | None]:
         """
         Computes the pairwise distance matrix between samples based on terminal node similarity
         derived from Random Forest models, where distance is defined as one minus the fraction
@@ -76,13 +75,13 @@ class DistanceRandomForestProximity:
         Optionally uses a disk-backed memmap array if `memory_efficient=True`.
 
         :param sample_indices: Indices of samples for which distance is calculated. If None, uses all samples.
-        :type sample_indices: Union[np.ndarray, None]
+        :type sample_indices: np.ndarray | None
 
         :raises ValueError: If terminal nodes have not been precomputed.
         :raises MemoryError: If insufficient disk space is available to store the memmap distance matrix.
 
         :return: A symmetric distance matrix with pairwise distances between samples.
-        :rtype: Union[numpy.ndarray, numpy.memmap]
+        :rtype: tuple[numpy.ndarray | numpy.memmap, str | None]
         """
         if self.terminals is None:
             raise ValueError(
@@ -118,8 +117,8 @@ class DistanceRandomForestProximity:
 
     def remove_distance_matrix(
         self,
-        distance_matrix: Union[np.ndarray, np.memmap],
-        file_distance_matrix: str,
+        distance_matrix: np.ndarray | np.memmap,
+        file_distance_matrix: str | None,
     ) -> None:
         """
         Removes the disk-backed distance matrix file if memory-efficient mode is enabled
@@ -127,9 +126,9 @@ class DistanceRandomForestProximity:
         file locking issues, especially on Windows.
 
         :param distance_matrix: The distance matrix object to delete.
-        :type distance_matrix: Union[numpy.ndarray, numpy.memmap]
+        :type distance_matrix: numpy.ndarray | numpy.memmap
         :param file_distance_matrix: Full path to the memmap file on disk.
-        :type file_distance_matrix: str
+        :type file_distance_matrix: str | None
         """
         try:
             distance_matrix.flush()
@@ -316,8 +315,8 @@ def _calculate_distances(
     terminals: np.ndarray,
     n: int,
     n_estimators: int,
-    distance_matrix: Union[np.ndarray, np.memmap],
-) -> Union[np.ndarray, np.memmap]:
+    distance_matrix: np.ndarray | np.memmap,
+) -> np.ndarray | np.memmap:
     """
     Computes the upper triangle of a pairwise distance matrix based on Random Forest terminal node similarity.
 
@@ -332,10 +331,10 @@ def _calculate_distances(
     :param n_estimators: Number of trees in the Random Forest model.
     :type n_estimators: int
     :param distance_matrix: Pre-allocated 2D array where the resulting distances will be stored.
-    :type distance_matrix: Union[numpy.ndarray, numpy.memmap]
+    :type distance_matrix: numpy.ndarray | numpy.memmap
 
     :return: The updated distance matrix with the upper triangle filled with computed distances.
-    :rtype: Union[numpy.ndarray, numpy.memmap]
+    :rtype: numpy.ndarray | numpy.memmap
     """
     for i in prange(n):
         for j in range(i + 1, n):  # no prange here due to write conflicts
