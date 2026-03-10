@@ -14,7 +14,7 @@ from pathlib import Path
 from collections import defaultdict
 from typing import Any
 
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.base import ClassifierMixin, RegressorMixin
 
 ############################################
 # Utility Functions
@@ -58,16 +58,12 @@ def check_input_estimator(
     :return: Tuple indicating whether the estimator is valid and its model type ('cla' or 'reg').
     :rtype: tuple[bool, str]
     """
-    valid_estimator = False
-    model_type = "invalid"
-    if isinstance(estimator, RandomForestClassifier):
-        valid_estimator = True
-        model_type = "cla"
-    elif isinstance(estimator, RandomForestRegressor):
-        valid_estimator = True
-        model_type = "reg"
-
-    return valid_estimator, model_type
+    if isinstance(estimator, ClassifierMixin):
+        return True, "cla"
+    elif isinstance(estimator, RegressorMixin):
+        return True, "reg"
+    else:
+        return False, "invalid"
 
 
 def matplotlib_to_plotly(
