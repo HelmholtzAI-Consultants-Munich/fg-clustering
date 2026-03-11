@@ -6,32 +6,49 @@ on:
       - main
     paths-ignore:
       - 'README.md'
-      - 'pyproject.toml'
       - 'docs/**'
       - 'tutorials/**'
-      - '.github/workflows/**'
   pull_request:
     branches:
       - main
     paths-ignore:
       - 'README.md'
-      - 'pyproject.toml'
       - 'docs/**'
       - 'tutorials/**'
-      - '.github/workflows/**'
   workflow_dispatch:
   workflow_call:
 
 jobs:
+
+  matrix:
+    name: Build python-version matrix from pyproject.toml
+    runs-on: ubuntu-latest
+    outputs:
+      python-versions: ${{ steps.set-matrix.outputs.python-versions }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Python (for parsing)
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - id: set-matrix
+        name: Parse requires-python and emit versions
+        shell: bash
+        run: |
+          echo "python-versions=$(python .github/scripts/ci_python_versions.py)" >> "$GITHUB_OUTPUT"
+
   build:
-  
+    needs: matrix
     runs-on: ${{ matrix.os }}
     strategy:
       max-parallel: 12
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.8","3.9", "3.10", "3.11", "3.12", "3.13"]
-        
+        python-version: ${{ fromJSON(needs.matrix.outputs.python-versions) }}  
     steps:
     - name: Checkout Repository 
       uses: actions/checkout@v3
