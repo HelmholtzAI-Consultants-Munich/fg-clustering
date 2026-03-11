@@ -60,7 +60,7 @@ class DistanceRandomForestProximity:
         :param estimator: A trained Random Forest estimator from sklearn.
         :type estimator: RandomForestClassifier | RandomForestRegressor
         :param X: Input feature matrix.
-        :type X: pandas.DataFrame
+        :type X: pd.DataFrame
         """
         self.terminals = estimator.apply(X).astype(np.int32)
 
@@ -81,7 +81,7 @@ class DistanceRandomForestProximity:
         :raises MemoryError: If insufficient disk space is available to store the memmap distance matrix.
 
         :return: A symmetric distance matrix with pairwise distances between samples.
-        :rtype: tuple[numpy.ndarray | numpy.memmap, str | None]
+        :rtype: tuple[np.ndarray | np.memmap, str | None]
         """
         if self.terminals is None:
             raise ValueError(
@@ -124,7 +124,7 @@ class DistanceRandomForestProximity:
         file locking issues, especially on Windows.
 
         :param distance_matrix: The distance matrix object to delete.
-        :type distance_matrix: numpy.ndarray | numpy.memmap
+        :type distance_matrix: np.ndarray | np.memmap
         :param file_distance_matrix: Full path to the memmap file on disk.
         :type file_distance_matrix: str | None
         """
@@ -170,10 +170,10 @@ class DistanceWasserstein:
         Scales all numeric features in the dataset using standard scaling (without centering the mean).
 
         :param X: Input feature matrix.
-        :type X: pandas.DataFrame
+        :type X: pd.DataFrame
 
         :return: Input feature matrix with numeric columns transformed.
-        :rtype: pandas.DataFrame
+        :rtype: pd.DataFrame
         """
         scaler = StandardScaler(with_mean=False)
         numeric_cols = X.select_dtypes(include="number").columns
@@ -193,9 +193,9 @@ class DistanceWasserstein:
         categorical features (returning max distance) and raw values for numerical ones.
 
         :param values_background: Feature values from the full dataset (background distribution).
-        :type values_background: pandas.Series
+        :type values_background: pd.Series
         :param values_cluster: Feature values for the current cluster.
-        :type values_cluster: pandas.Series
+        :type values_cluster: pd.Series
         :param is_categorical: Indicates whether the feature is categorical.
         :type is_categorical: bool
 
@@ -240,10 +240,10 @@ class DistanceJensenShannon:
         Scales all numeric features in the dataset using standard scaling (without centering the mean).
 
         :param X: Input feature matrix.
-        :type X: pandas.DataFrame
+        :type X: pd.DataFrame
 
         :return: Input feature matrix with numeric columns transformed.
-        :rtype: pandas.DataFrame
+        :rtype: pd.DataFrame
         """
         scaler = StandardScaler(with_mean=False)
         numeric_cols = X.select_dtypes(include="number").columns
@@ -263,9 +263,9 @@ class DistanceJensenShannon:
         features and histograms for numerical ones.
 
         :param values_background: Feature values from the full dataset (background distribution).
-        :type values_background: pandas.Series
+        :type values_background: pd.Series
         :param values_cluster: Feature values for the current cluster.
-        :type values_cluster: pandas.Series
+        :type values_cluster: pd.Series
         :param is_categorical: Indicates whether the feature is categorical.
         :type is_categorical: bool
 
@@ -308,7 +308,7 @@ class DistanceJensenShannon:
 ############################################
 
 
-@njit(parallel=True, fastmath=True)
+@njit(parallel=True)
 def _calculate_distances(
     terminals: np.ndarray,
     n: int,
@@ -323,23 +323,31 @@ def _calculate_distances(
     symmetric without a separate transpose step.
 
     :param terminals: 2D array of shape (n_samples, n_estimators), where each entry indicates the terminal node index for a sample in a tree.
-    :type terminals: numpy.ndarray
+    :type terminals: np.ndarray
     :param n: Number of samples.
     :type n: int
     :param n_estimators: Number of trees in the Random Forest model.
     :type n_estimators: int
     :param distance_matrix: Pre-allocated 2D array where the resulting distances will be stored.
-    :type distance_matrix: numpy.ndarray | numpy.memmap
+    :type distance_matrix: np.ndarray | np.memmap
 
     :return: The updated symmetric distance matrix with pairwise distances.
-    :rtype: numpy.ndarray | numpy.memmap
+    :rtype: np.ndarray | np.memmap
     """
     for i in prange(n):
-        for j in range(i + 1, n):  # no prange here due to write conflicts
-            proximity = np.sum(terminals[i, :] == terminals[j, :])
+        for j in range(i + 1, n):
+            # use explicit loop for proximity to avoid temporary array allocation and minimize memory traffic
+            proximity = 0
+            for t in range(n_estimators):
+                if terminals[i, t] == terminals[j, t]:
+                    proximity += 1
+
             distance = 1.0 - (proximity / n_estimators)
-            if distance > 0:
-                distance_matrix[i, j] = distance
-                distance_matrix[j, i] = distance
+            distance_matrix[i, j] = distance
+
+    # Fill lower triangle in a separate pass to ensure symmetry without race conditions (if done inside prange loop) and without allocating a full transpose.
+    for i in range(n):
+        for j in range(i + 1, n):
+            distance_matrix[j, i] = distance_matrix[i, j]
 
     return distance_matrix
