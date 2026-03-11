@@ -81,7 +81,7 @@ def forest_guided_clustering(
     :param verbose: Verbosity level (0 = silent, 1 = progress messages). Default: 1.
     :type verbose: int
 
-    :return: A Bunch object containing k, cluster scores, cluster stability, labels, and model type.
+    :return: A Bunch with best_k, ks, mean_ji, scores, stable_mask, cluster_jis, cluster_labels (dict by k), and model_type.
     :rtype: Bunch
     """
     # check estimator class
@@ -111,7 +111,7 @@ def forest_guided_clustering(
         clustering_strategy=clustering_strategy,
         random_state=random_state,
     )
-    k, cluster_score, cluster_stability, cluster_labels = optimizer.optimizeK(
+    results, best_k = optimizer.optimizeK(
         y=y,
         k_range=k_range,
         JI_bootstrap_iter=JI_bootstrap_iter,
@@ -123,10 +123,13 @@ def forest_guided_clustering(
     )
 
     return Bunch(
-        k=k,
-        cluster_score=cluster_score,
-        cluster_stability=cluster_stability,
-        cluster_labels=cluster_labels,
+        best_k=best_k,
+        ks=np.array([r["k"] for r in results]),
+        mean_ji=np.array([r["Mean_JI"] for r in results]),
+        scores=np.array([r["Score"] for r in results]),
+        stable_mask=np.array([r["Stable"] for r in results]),
+        cluster_jis={r["k"]: r["Cluster_JI"] for r in results},
+        cluster_labels={r["k"]: r["Cluster_labels"] for r in results},
         model_type=model_type,
     )
 
@@ -286,8 +289,9 @@ def plot_forest_guided_decision_paths(
         data_clustering_selected_featues = data_clustering
 
     if distributions:
-        distributions = plot_distributions(data_clustering_selected_featues,
-                                           top_n, num_cols, cmap_target_dict, save)
+        distributions = plot_distributions(
+            data_clustering_selected_featues, top_n, num_cols, cmap_target_dict, save
+        )
 
     if heatmap:
         if model_type == "reg":

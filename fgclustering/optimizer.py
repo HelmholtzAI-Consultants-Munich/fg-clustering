@@ -95,10 +95,8 @@ class Optimizer:
         self.n_jobs = n_jobs
         self.verbose = verbose
 
-        k = 1
-        cluster_score = np.inf
-        cluster_stability = None
-        cluster_labels = None
+        best_k = 1
+        best_score = np.inf
         results = []
 
         if self.verbose:
@@ -122,32 +120,20 @@ class Optimizer:
             )
             JI_k = round(np.mean([JI_per_cluster_k[cluster] for cluster in JI_per_cluster_k.keys()]), 3)
 
-            # only continue if jaccard indices are all larger than discart_value_JI (thus all clusters are stable)
-            if JI_k > JI_discart_value or (k_range[1] - k_range[0]) == 0:
-                if model_type == "cla":
-                    # compute balanced purities
-                    cluster_score_k = self._compute_balanced_average_impurity(y, cluster_labels_k)
-                elif model_type == "reg":
-                    # compute the total within cluster variation
-                    cluster_score_k = self._compute_total_within_cluster_variation(y, cluster_labels_k)
-                if cluster_score_k < cluster_score:
-                    k = k_optimizer
-                    cluster_score = cluster_score_k
-                    cluster_stability = JI_per_cluster_k
-                    cluster_labels = cluster_labels_k
-                if cluster_score_k == cluster_score:
-                    JI_opt = round(
-                        np.mean([cluster_stability[cluster] for cluster in cluster_stability.keys()]), 3
-                    )
-                    if JI_k > JI_opt:
-                        k = k_optimizer
-                        cluster_score = cluster_score_k
-                        cluster_stability = JI_per_cluster_k
-                        cluster_labels = cluster_labels_k
+            # compute cluster score
+            if model_type == "cla":
+                # compute balanced purities
+                cluster_score_k = self._compute_balanced_average_impurity(y, cluster_labels_k)
+            elif model_type == "reg":
+                # compute the total within cluster variation
+                cluster_score_k = self._compute_total_within_cluster_variation(y, cluster_labels_k)
 
-            else:
-                cluster_score_k = None
+            # reorder cluster labels by target mean
+            reordered_cluster_labels = self._sort_clusters_by_target(
+                y=y, cluster_labels=cluster_labels_k, model_type=model_type
+            )
 
+            # store results
             results.append(
                 {
                     "k": k_optimizer,
@@ -155,24 +141,28 @@ class Optimizer:
                     "Mean_JI": JI_k,
                     "Score": cluster_score_k,
                     "Cluster_JI": dict(sorted(JI_per_cluster_k.items())),
+                    "Cluster_labels": reordered_cluster_labels,
                 }
             )
+
+            if JI_k > JI_discart_value and cluster_score_k < best_score:
+                best_k = k_optimizer
+                best_score = cluster_score_k
+
         if verbose:
-            if k == 1:
+            if best_k == 1:
                 warnings.warn(f"No stable clusters were found for JI cutoff {JI_discart_value}!")
-            if k > 1 and not (k_range[1] - k_range[0]) == 0:
-                print(f"\nOptimal number of clusters k = {k}")
+            if best_k > 1 and not (k_range[1] - k_range[0]) == 0:
+                print(f"\nOptimal number of clusters k = {best_k}")
 
-            results_df = pd.DataFrame(results)
             print("\nClustering Evaluation Summary:")
-            print(results_df[["k", "Score", "Stable", "Mean_JI", "Cluster_JI"]].to_string(index=False))
+            print(
+                pd.DataFrame(results)[["k", "Score", "Stable", "Mean_JI", "Cluster_JI"]].to_string(
+                    index=False
+                )
+            )
 
-        # reorder cluster labels by target mean
-        reordered_cluster_labels = self._sort_clusters_by_target(
-            y=y, cluster_labels=cluster_labels, model_type=model_type
-        )
-
-        return k, cluster_score, cluster_stability, reordered_cluster_labels
+        return results, best_k
 
     def _compute_JI(
         self,
