@@ -1,12 +1,10 @@
 import os
 import gc
 import time
-import kmedoids
 import argparse
 import numpy as np
 import pandas as pd
 
-from numba import njit, prange
 from memory_profiler import memory_usage
 
 from sklearn.datasets import make_classification
