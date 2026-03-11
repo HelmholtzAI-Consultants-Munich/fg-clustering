@@ -36,9 +36,9 @@ def plot_feature_importance(
     Visualize global and local feature importance values as bar charts.
 
     :param feature_importance_local: Local importance values per cluster.
-    :type feature_importance_local: pandas.DataFrame
+    :type feature_importance_local: pd.DataFrame
     :param feature_importance_global: Global mean importance values across clusters.
-    :type feature_importance_global: pandas.Series
+    :type feature_importance_global: pd.Series
     :param top_n: If specified, number of top-ranked features to plot.
     :type top_n: int
     :param num_cols: Number of columns in the subplot layout.
@@ -486,10 +486,10 @@ def _process_features_for_heatmap(
     Convert categorical features to numeric codes and normalize all features using MinMax scaling.
 
     :param features: DataFrame containing the features to be encoded and scaled.
-    :type features: pandas.DataFrame
+    :type features: pd.DataFrame
 
     :return: Transformed and normalized features.
-    :rtype: pandas.DataFrame
+    :rtype: pd.DataFrame
     """
 
     # Encode categorical features as numeric
@@ -514,7 +514,7 @@ def _get_heatmap_plotting_settings(
     Define color schemes, boundary widths, and titles for heatmap plotting.
 
     :param target: Target variable.
-    :type target: pandas.DataFrame
+    :type target: pd.DataFrame
     :param top_n: If specified, number of top-ranked features to display in the title.
     :type top_n: int
 
@@ -567,11 +567,11 @@ def _plot_heatmaps_static(
     Create a static (matplotlib) heatmap of target and feature values with visual cluster boundaries.
 
     :param target: Target variable.
-    :type target: pandas.DataFrame
+    :type target: pd.DataFrame
     :param target_cmap: Colormap used for the target heatmap.
     :type target_cmap: ListedColormap
     :param features: Normalized feature matrix.
-    :type features: pandas.DataFrame
+    :type features: pd.DataFrame
     :param features_color: Colormap used for the feature heatmap.
     :type features_color: str
     :param boundaries_color: Color used for the dividers in the feature heatmap.
@@ -660,7 +660,7 @@ def _plot_heatmaps_interactive(
     Create an interactive (Plotly) heatmap of target and feature values with visual cluster boundaries.
 
     :param target: Target variable.
-    :type target: pandas.DataFrame
+    :type target: pd.DataFrame
     :param target_colorscale: Color scale used for the target heatmap.
     :type target_colorscale: list
     :param target_colorbar: Color bar used for the target heatmap.
@@ -668,7 +668,7 @@ def _plot_heatmaps_interactive(
     :param target_showscale: Whether to display the color scale for the target heatmap.
     :type target_showscale: bool
     :param features: Normalized feature matrix.
-    :type features: pandas.DataFrame
+    :type features: pd.DataFrame
     :param features_color: Colormap used for the feature heatmap.
     :type features_color: str
     :param title: Title of the heatmap figure.

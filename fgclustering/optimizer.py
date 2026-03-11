@@ -69,9 +69,9 @@ class Optimizer:
         based on a combination of cluster stability and low impurity (classification) or low variance (regression).
 
         :param y: Target variable.
-        :type y: pandas.Series
+        :type y: pd.Series
         :param k_range: Range of k values to be evaluated (min_k, max_k).
-        :type k_range: Tuple[int]
+        :type k_range: tuple[int, int]
         :param JI_bootstrap_iter: Number of bootstrap iterations for Jaccard Index evaluation.
         :type JI_bootstrap_iter: int
         :param JI_bootstrap_sample_size: Number of samples to draw for each JI bootstrap.
@@ -86,7 +86,7 @@ class Optimizer:
         :type verbose: int
 
         :return: Tuple containing the best k, its corresponding score, Jaccard stability per cluster, and cluster labels.
-        :rtype: tuple[int, float, dict, numpy.ndarray]
+        :rtype: tuple[int, float, dict, np.ndarray]
         """
 
         self.n_samples_original = len(y)
@@ -185,7 +185,7 @@ class Optimizer:
         :param k: Number of clusters.
         :type k: int
         :param cluster_labels_original: Cluster labels of original clustering on full dataset.
-        :type cluster_labels_original: numpy.ndarray
+        :type cluster_labels_original: np.ndarray
 
         :return: Dictionary of average Jaccard Index per cluster.
         :rtype: dict
@@ -303,9 +303,9 @@ class Optimizer:
         Compute the balanced Gini impurity across clusters for classification tasks.
 
         :param categorical_values: Target labels for each sample.
-        :type categorical_values: pandas.Series
+        :type categorical_values: pd.Series
         :param cluster_labels: Cluster assignments for each sample.
-        :type cluster_labels: numpy.ndarray
+        :type cluster_labels: np.ndarray
 
         :return: Mean balanced Gini impurity across clusters.
         :rtype: float
@@ -349,9 +349,9 @@ class Optimizer:
         Compute total within-cluster variation relative to the overall variance, used for regression evaluation.
 
         :param continuous_values: Target values for each sample.
-        :type continuous_values: pandas.Series
+        :type continuous_values: pd.Series
         :param cluster_labels: Cluster assignments for each sample.
-        :type cluster_labels: numpy.ndarray
+        :type cluster_labels: np.ndarray
 
         :return: Normalized within-cluster variation score.
         :rtype: float
@@ -378,14 +378,14 @@ class Optimizer:
         Sorts clusters by the mean target value and reorders cluster labels accordingly.
 
         :param y: Target values.
-        :type y: pandas.Series
+        :type y: pd.Series
         :param cluster_labels: Labels from forest-guided clustering.
-        :type cluster_labels: numpy.ndarray
+        :type cluster_labels: np.ndarray
         :param model_type: Type of model, either "cla" for classification or "reg" for regression.
         :type model_type: str
 
         :return: New cluster labels, sorted by the target mean
-        :rtype: numpy.ndarray
+        :rtype: np.ndarray
         """
 
         # ensure y is a series

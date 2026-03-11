@@ -59,9 +59,9 @@ def forest_guided_clustering(
     :param estimator: A fitted RandomForestClassifier or RandomForestRegressor model.
     :type estimator: RandomForestClassifier | RandomForestRegressor
     :param X: Input feature matrix.
-    :type X: pandas.DataFrame
+    :type X: pd.DataFrame
     :param y: Target variable, i.e. target values or name of the target column in X.
-    :type y: str | pandas.Series
+    :type y: str | pd.Series
     :param clustering_distance_metric: An instance of DistanceRandomForestProximity.
     :type clustering_distance_metric: DistanceRandomForestProximity
     :param clustering_strategy: An instance of ClusteringKMedoids or ClusteringClara.
@@ -148,11 +148,11 @@ def forest_guided_feature_importance(
     which features are most important for distinguishing clusters, providing interpretability into the model’s decision structure.
 
     :param X: Input feature matrix.
-    :type X: pandas.DataFrame
+    :type X: pd.DataFrame
     :param y: Target variable, i.e. target values or name of the target column in X.
-    :type y: str | pandas.Series
+    :type y: str | pd.Series
     :param cluster_labels: Labels from forest-guided clustering. Output of `forest_guided_clustering()`.
-    :type cluster_labels: numpy.ndarray
+    :type cluster_labels: np.ndarray
     :param model_type: Type of model, either "cla" for classification or "reg" for regression. Output of `forest_guided_clustering()`.
     :type model_type: str
     :param feature_importance_distance_metric: Distance metric for computing feature importance ("wasserstein" or "jensenshannon"). Default: "wasserstein".
@@ -204,9 +204,9 @@ def plot_forest_guided_feature_importance(
     This function produces a series of bar plots to highlight which features drive cluster separations.
 
     :param feature_importance_local: Local importance values per cluster. Output of `plot_forest_guided_feature_importance()`.
-    :type feature_importance_local: pandas.DataFrame
+    :type feature_importance_local: pd.DataFrame
     :param feature_importance_global: Global mean importance values across clusters. Output of `plot_forest_guided_feature_importance()`.
-    :type feature_importance_global: pandas.Series
+    :type feature_importance_global: pd.Series
     :param top_n: If specified, number of top-ranked features to plot. Default: None.
     :type top_n: int | None
     :param num_cols: Number of columns in the subplot layout. Default: 4.

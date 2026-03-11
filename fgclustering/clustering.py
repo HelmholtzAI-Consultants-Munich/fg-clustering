@@ -68,7 +68,7 @@ class ClusteringKMedoids:
         :param distance_metric: An instance of DistanceRandomForestProximity with precomputed terminals.
         :type distance_metric: DistanceRandomForestProximity
         :param sample_indices: Indices of the samples to include in clustering.
-        :type sample_indices: numpy.ndarray
+        :type sample_indices: np.ndarray
         :param random_state_subsampling: Random seed for for subsampling reproducibility. Not used in this implementation.
         :type random_state_subsampling: int | None
         :param verbose: Verbosity level (0 = silent, 1 = progress messages). Not used in this implementation.
@@ -77,7 +77,7 @@ class ClusteringKMedoids:
         :raises ValueError: If terminal nodes are not precomputed in the distance metric.
 
         :return: Cluster labels for each input sample index.
-        :rtype: numpy.ndarray
+        :rtype: np.ndarray
         """
         if distance_metric.terminals is None:
             raise ValueError("Terminals need to be precomputed!")
@@ -169,7 +169,7 @@ class ClusteringClara:
         :param distance_metric: An instance of DistanceRandomForestProximity with precomputed terminals.
         :type distance_metric: DistanceRandomForestProximity
         :param sample_indices: Indices of the samples to include in clustering.
-        :type sample_indices: numpy.ndarray
+        :type sample_indices: np.ndarray
         :param random_state_subsampling: Random seed for for subsampling reproducibility. If None, use `random_state` defined in constructor.
         :type random_state_subsampling: int | None
         :param verbose: Verbosity level (0 = silent, 1 = progress messages).
@@ -178,7 +178,7 @@ class ClusteringClara:
         :raises ValueError: If terminal nodes are not precomputed in the distance metric.
 
         :return: Cluster labels for each input sample index.
-        :rtype: numpy.ndarray
+        :rtype: np.ndarray
         """
         if distance_metric.terminals is None:
             raise ValueError("Terminals need to be precomputed!")
@@ -277,7 +277,7 @@ class ClusteringClara:
 ############################################
 
 
-@njit(parallel=True, fastmath=True)
+@njit(parallel=True)
 def _calculate_inertia(
     terminals: np.ndarray,
     sample_idx: np.ndarray,
@@ -288,11 +288,11 @@ def _calculate_inertia(
     where distances are defined as Random Forest proximity-based distances.
 
     :param terminals: 2D array of shape (n_samples, n_estimators), where each entry indicates the terminal node index for a sample in a tree.
-    :type terminals: numpy.ndarray
+    :type terminals: np.ndarray
     :param sample_idx: Indices of samples for which inertia is calculated.
-    :type sample_idx: numpy.ndarray
+    :type sample_idx: np.ndarray
     :param medoids_idx: Indices of medoids used to calculate inertia.
-    :type medoids_idx: numpy.ndarray
+    :type medoids_idx: np.ndarray
 
     :return: Total inertia value for the sample set.
     :rtype: float
@@ -316,7 +316,7 @@ def _calculate_inertia(
     return np.sum(inertia)
 
 
-@njit(parallel=True, fastmath=True)
+@njit(parallel=True)
 def _asign_labels(
     terminals: np.ndarray,
     sample_idx: np.ndarray,
@@ -326,14 +326,14 @@ def _asign_labels(
     Assign each sample to the cluster of the closest medoid based on Random Forest proximity-based distances.
 
     :param terminals: 2D array of shape (n_samples, n_estimators), where each entry indicates the terminal node index for a sample in a tree.
-    :type terminals: numpy.ndarray
+    :type terminals: np.ndarray
     :param sample_idx: Indices of the samples to assign to clusters.
-    :type sample_idx: numpy.ndarray
+    :type sample_idx: np.ndarray
     :param medoids_idx: Indices of medoids used to assign cluster labels.
-    :type medoids_idx: numpy.ndarray
+    :type medoids_idx: np.ndarray
 
     :return: Cluster labels for each input sample index.
-    :rtype: numpy.ndarray
+    :rtype: np.ndarray
     """
     n_estimators = terminals.shape[1]
     n_samples = len(sample_idx)
@@ -346,7 +346,11 @@ def _asign_labels(
 
         for j in range(n_medoids):
             medoid = medoids_idx[j]
-            proximity = np.sum(terminals[sample, :] == terminals[medoid, :])
+            # use explicit loop for proximity to avoid temporary array allocation and minimize memory traffic
+            proximity = 0
+            for t in range(n_estimators):
+                if terminals[sample, t] == terminals[medoid, t]:
+                    proximity += 1
             cluster_label_sample[j] = 1.0 - (proximity / n_estimators)
 
         cluster_labels[i] = np.argmin(cluster_label_sample)

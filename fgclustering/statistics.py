@@ -46,18 +46,18 @@ class FeatureImportance:
         Computes feature importance scores for clustered data using a selected distance metric.
 
         :param X: Input feature matrix.
-        :type X: pandas.DataFrame
+        :type X: pd.DataFrame
         :param y: Target variable.
-        :type y: pandas.Series
+        :type y: pd.Series
         :param cluster_labels: Labels from forest-guided clustering.
-        :type cluster_labels: numpy.ndarray
+        :type cluster_labels: np.ndarray
         :param model_type: Type of model, either "cla" for classification or "reg" for regression.
         :type model_type: str
         :param verbose: Verbosity level (0 = silent, 1 = progress messages).
         :type verbose: int
 
         :return: Tuple containing local feature importance scores, global feature importance scores, and the clustering data ordered by the global feature importance.
-        :rtype: tuple[pandas.DataFrame, pandas.Series, pandas.DataFrame]
+        :rtype: tuple[pd.DataFrame, pd.Series, pd.DataFrame]
         """
         self.verbose = verbose
 
@@ -90,12 +90,12 @@ class FeatureImportance:
         Calculates the distance of each feature between clusters and background.
 
         :param X: Input feature matrix.
-        :type X: pandas.DataFrame
+        :type X: pd.DataFrame
         :param cluster_labels: Labels from forest-guided clustering.
-        :type cluster_labels: numpy.ndarray
+        :type cluster_labels: np.ndarray
 
         :return: A DataFrame of local feature importance scores.
-        :rtype: pandas.DataFrame
+        :rtype: pd.DataFrame
         """
         clusters_unique = np.unique(cluster_labels)
         distances = pd.DataFrame(index=X.columns, columns=clusters_unique)
