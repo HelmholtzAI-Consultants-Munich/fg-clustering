@@ -48,7 +48,7 @@ abstract: >-
   subpopulations, disentangled disease-relevant signals from confounders, and 
   recovered known and novel gene expression patterns. FGC bridges the gap 
   between performance and interpretability by providing structure-aware insights 
-  that go beyond feature-level attribution. :contentReference[oaicite:1]{index=1}
+  that go beyond feature-level attribution.
 
 keywords:
   - XAI
