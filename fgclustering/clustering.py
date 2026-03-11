@@ -308,7 +308,11 @@ def _calculate_inertia(
 
         for j in range(n_medoids):
             medoid = medoids_idx[j]
-            proximity = np.sum(terminals[sample, :] == terminals[medoid, :])
+            # use explicit loop for proximity to avoid temporary array allocation and minimize memory traffic
+            proximity = 0
+            for t in range(n_estimators):
+                if terminals[sample, t] == terminals[medoid, t]:
+                    proximity += 1
             distances[j] = 1.0 - (proximity / n_estimators)
 
         inertia[i] = np.min(distances)
