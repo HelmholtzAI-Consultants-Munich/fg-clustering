@@ -14,7 +14,7 @@ from pathlib import Path
 from collections import defaultdict
 from typing import Any
 
-from sklearn.base import ClassifierMixin, RegressorMixin
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 ############################################
 # Utility Functions
@@ -29,9 +29,9 @@ def check_input_data(
     Splits the input into features and target. If `y` is a string, it's interpreted as the name of the target column in `X`.
 
     :param X: Input features as a DataFrame or array-like object.
-    :type X: pandas.DataFrame
+    :type X: pd.DataFrame
     :param y: Target values or name of the target column.
-    :type y: str | pandas.Series
+    :type y: str | pd.Series
 
     :return: Tuple of feature DataFrame and target Series.
     :rtype: tuple[pd.DataFrame, pd.Series]
@@ -58,9 +58,9 @@ def check_input_estimator(
     :return: Tuple indicating whether the estimator is valid and its model type ('cla' or 'reg').
     :rtype: tuple[bool, str]
     """
-    if isinstance(estimator, ClassifierMixin):
+    if isinstance(estimator, RandomForestClassifier):
         return True, "cla"
-    elif isinstance(estimator, RegressorMixin):
+    elif isinstance(estimator, RandomForestRegressor):
         return True, "reg"
     else:
         return False, "invalid"
