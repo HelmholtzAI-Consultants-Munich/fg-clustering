@@ -105,7 +105,7 @@ class TestOptimizer(unittest.TestCase):
 
         self.distance_metric.calculate_terminals(estimator=model, X=X)
 
-        k, _, _, _ = self.optimizer.optimizeK(
+        results, best_k = self.optimizer.optimizeK(
             y=y,
             k_range=(2, 7),
             JI_bootstrap_iter=100,
@@ -116,7 +116,7 @@ class TestOptimizer(unittest.TestCase):
             verbose=self.verbose,
         )
 
-        self.assertEqual(k, 6, f"Expected k=6 for classification, got {k}")
+        self.assertEqual(best_k, 6, f"Expected k=6 for classification, got {best_k}")
 
     def test_optimizeK_regression(self):
         model_type = "reg"
@@ -124,7 +124,7 @@ class TestOptimizer(unittest.TestCase):
 
         self.distance_metric.calculate_terminals(estimator=model, X=X)
 
-        k, _, _, _ = self.optimizer.optimizeK(
+        results, best_k = self.optimizer.optimizeK(
             y=y,
             k_range=(2, 7),
             JI_bootstrap_iter=100,
@@ -135,7 +135,7 @@ class TestOptimizer(unittest.TestCase):
             verbose=self.verbose,
         )
 
-        self.assertIn(k, [2, 3, 4], f"Expected k in [2, 3, 4] for regression, got {k}")
+        self.assertIn(best_k, [2, 3, 4], f"Expected k in [2, 3, 4] for regression, got {best_k}")
 
     def test_optimizeK_output_structure(self):
         model_type = "cla"
@@ -143,7 +143,7 @@ class TestOptimizer(unittest.TestCase):
 
         self.distance_metric.calculate_terminals(model, X)
 
-        output = self.optimizer.optimizeK(
+        results, best_k = self.optimizer.optimizeK(
             y=y,
             k_range=(2, 4),
             JI_bootstrap_iter=10,
@@ -154,11 +154,11 @@ class TestOptimizer(unittest.TestCase):
             verbose=self.verbose,
         )
 
-        self.assertEqual(len(output), 4)
-        self.assertIsInstance(output[0], int)
-        self.assertIsInstance(output[1], float)
-        self.assertIsInstance(output[2], dict)
-        self.assertIsInstance(output[3], np.ndarray)
+        self.assertEqual(len(results), 3)  # k in {2, 3, 4}
+        self.assertIsInstance(results, list)
+        self.assertTrue(all(isinstance(r, dict) and "k" in r and "Score" in r for r in results))
+        self.assertIsInstance(best_k, int)
+        self.assertIn(best_k, [2, 3, 4])
 
     def test_compute_JI_stable(self):
         k = 3

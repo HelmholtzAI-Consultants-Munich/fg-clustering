@@ -100,7 +100,7 @@ class TestForestGuidedClustering(unittest.TestCase):
         )
 
         # Check the result
-        self.assertEqual(result.k, 2, "Wrong optimal number of clusters (k)")
+        self.assertEqual(result.best_k, 2, "Wrong optimal number of clusters (k)")
 
     def test_forest_guided_clustering_invalid_estimator_type(self):
         with self.assertRaises(ValueError):
@@ -121,7 +121,7 @@ class TestForestGuidedClustering(unittest.TestCase):
             clustering_strategy=self.clustering_strategy,
             JI_discart_value=1.1,
         )
-        self.assertEqual(result.k, 1)
+        self.assertEqual(result.best_k, 1)
 
     def test_forest_guided_clustering_memory_efficient(self):
         result = forest_guided_clustering(
@@ -134,7 +134,7 @@ class TestForestGuidedClustering(unittest.TestCase):
             JI_bootstrap_iter=self.JI_bootstrap_iter,
             n_jobs=self.n_jobs,
         )
-        self.assertIsInstance(result.k, int)
+        self.assertIsInstance(result.best_k, int)
 
     def test_forest_guided_feature_importance_output(self):
 
