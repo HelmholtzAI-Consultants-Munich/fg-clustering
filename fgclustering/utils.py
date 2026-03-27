@@ -48,22 +48,21 @@ def check_input_data(
 
 def check_input_estimator(
     estimator: Any,
-) -> tuple[bool, str]:
+) -> type[RandomForestClassifier] | type[RandomForestRegressor] | None:
     """
-    Checks whether the given estimator is a supported RandomForest model and determines its type.
+    Checks whether the given estimator is a supported RandomForest model and returns its class (``type(estimator)``).
 
     :param estimator: Trained model to validate.
     :type estimator: Any
 
-    :return: Tuple indicating whether the estimator is valid and its model type ('cla' or 'reg').
-    :rtype: tuple[bool, str]
+    :return: ``type(estimator)`` (``RandomForestClassifier``, ``RandomForestRegressor``, or a subclass of one of them), or None if the estimator is not supported.
+    :rtype: type[RandomForestClassifier] | type[RandomForestRegressor] | None
     """
     if isinstance(estimator, RandomForestClassifier):
-        return True, "cla"
-    elif isinstance(estimator, RandomForestRegressor):
-        return True, "reg"
-    else:
-        return False, "invalid"
+        return type(estimator)
+    if isinstance(estimator, RandomForestRegressor):
+        return type(estimator)
+    return None
 
 
 def matplotlib_to_plotly(

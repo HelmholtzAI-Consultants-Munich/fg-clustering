@@ -144,7 +144,7 @@ class TestForestGuidedClustering(unittest.TestCase):
             X=self.X,
             y=self.y,
             cluster_labels=cluster_labels,
-            model_type="cla",
+            model_type=RandomForestClassifier,
             feature_importance_distance_metric="wasserstein",
         )
         # test output structure
@@ -166,7 +166,7 @@ class TestForestGuidedClustering(unittest.TestCase):
                 X=self.X,
                 y=self.y,
                 cluster_labels=cluster_labels,
-                model_type="cla",
+                model_type=RandomForestClassifier,
                 feature_importance_distance_metric="invalid_metric",
             )
 
@@ -178,11 +178,12 @@ class TestForestGuidedClustering(unittest.TestCase):
         save = os.path.join(self.tmp_path, "test_fgc")
 
         plot_forest_guided_feature_importance(
-            feature_importance_local,
-            feature_importance_global,
+            feature_importance_local=feature_importance_local,
+            feature_importance_global=feature_importance_global,
             top_n=5,
             num_cols=2,
             save=save,
+            show=False,
         )
         self.assertTrue(
             os.path.exists(f"{save}_feature_importance.png"), "Feature importance plot file was not saved."
@@ -199,12 +200,13 @@ class TestForestGuidedClustering(unittest.TestCase):
 
         plot_forest_guided_decision_paths(
             data_clustering=data_clustering,
-            model_type="cla",
+            model_type=RandomForestClassifier,
             top_n=5,
             distributions=True,
             heatmap=True,
             heatmap_type="static",
             save=save,
+            show=False,
         )
         self.assertTrue(os.path.exists(f"{save}_boxplots.png"), "Decision path plot file was not saved.")
         self.assertTrue(os.path.exists(f"{save}_heatmap.png"), "Decision path plot file was not saved.")

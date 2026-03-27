@@ -10,6 +10,8 @@ from tqdm import tqdm
 from joblib import Parallel, delayed
 from collections import defaultdict, Counter
 
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+
 from .utils import map_clusters_to_samples
 from .distance import DistanceRandomForestProximity
 from .clustering import ClusteringKMedoids, ClusteringClara
@@ -58,7 +60,7 @@ class Optimizer:
         JI_bootstrap_iter: int,
         JI_bootstrap_sample_size: int | float,
         JI_discart_value: float,
-        model_type: str,
+        model_type: type[RandomForestClassifier] | type[RandomForestRegressor],
         n_jobs: int,
         verbose: int,
     ) -> tuple[int, float, dict, np.ndarray]:
@@ -78,8 +80,8 @@ class Optimizer:
         :type JI_bootstrap_sample_size: int | float
         :param JI_discart_value: Jaccard Index threshold to discard unstable clusters.
         :type JI_discart_value: float
-        :param model_type: Type of model, either "cla" for classification or "reg" for regression.
-        :type model_type: str
+        :param model_type: Estimator class from ``forest_guided_clustering`` (``RandomForestClassifier`` or ``RandomForestRegressor``, or a subclass).
+        :type model_type: type[RandomForestClassifier] | type[RandomForestRegressor]
         :param n_jobs: Number of parallel jobs.
         :type n_jobs: int
         :param verbose: Verbosity level (0 = silent, 1 = progress messages).
@@ -121,12 +123,16 @@ class Optimizer:
             JI_k = round(np.mean([JI_per_cluster_k[cluster] for cluster in JI_per_cluster_k.keys()]), 3)
 
             # compute cluster score
-            if model_type == "cla":
+            if issubclass(model_type, RandomForestClassifier):
                 # compute balanced purities
                 cluster_score_k = self._compute_balanced_average_impurity(y, cluster_labels_k)
-            elif model_type == "reg":
+            elif issubclass(model_type, RandomForestRegressor):
                 # compute the total within cluster variation
                 cluster_score_k = self._compute_total_within_cluster_variation(y, cluster_labels_k)
+            else:
+                raise ValueError(
+                    "model_type must be RandomForestClassifier or RandomForestRegressor (or a subclass thereof)."
+                )
 
             # reorder cluster labels by target mean
             reordered_cluster_labels = self._sort_clusters_by_target(
@@ -362,7 +368,7 @@ class Optimizer:
         self,
         y: pd.Series,
         cluster_labels: np.ndarray,
-        model_type: str,
+        model_type: type[RandomForestClassifier] | type[RandomForestRegressor],
     ) -> np.ndarray:
         """
         Sorts clusters by the mean target value and reorders cluster labels accordingly.
@@ -371,8 +377,8 @@ class Optimizer:
         :type y: pd.Series
         :param cluster_labels: Labels from forest-guided clustering.
         :type cluster_labels: np.ndarray
-        :param model_type: Type of model, either "cla" for classification or "reg" for regression.
-        :type model_type: str
+        :param model_type: Estimator class (``RandomForestClassifier`` or ``RandomForestRegressor``, or a subclass).
+        :type model_type: type[RandomForestClassifier] | type[RandomForestRegressor]
 
         :return: New cluster labels, sorted by the target mean
         :rtype: np.ndarray
@@ -383,7 +389,9 @@ class Optimizer:
             y = pd.Series(y)
 
         # use category codes for classification
-        target = y.astype("category").cat.codes if model_type == "cla" else y
+        target = (
+            y.astype("category").cat.codes if issubclass(model_type, RandomForestClassifier) else y
+        )
 
         df = pd.DataFrame({"cluster": cluster_labels, "target": target})
 

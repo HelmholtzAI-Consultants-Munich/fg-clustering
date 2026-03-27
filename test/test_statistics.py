@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from sklearn.datasets import make_classification, make_regression
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 from fgclustering.statistics import FeatureImportance, DistanceJensenShannon, DistanceWasserstein
 
@@ -47,7 +48,7 @@ class TestFeatureImportance(unittest.TestCase):
         X, y = self._generate_classification_data()
         fi = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=True))
         local, global_, df = fi.calculate_feature_importance(
-            X, y, self.clusters, model_type="cla", verbose=self.verbose
+            X, y, self.clusters, model_type=RandomForestClassifier, verbose=self.verbose
         )
 
         self.assertIsInstance(local, pd.DataFrame)
@@ -60,7 +61,7 @@ class TestFeatureImportance(unittest.TestCase):
         X, y = self._generate_regression_data()
         fi = FeatureImportance(distance_metric=DistanceJensenShannon(scale_features=False))
         local, global_, df = fi.calculate_feature_importance(
-            X, y, self.clusters, model_type="reg", verbose=self.verbose
+            X, y, self.clusters, model_type=RandomForestRegressor, verbose=self.verbose
         )
 
         self.assertIsInstance(local, pd.DataFrame)
@@ -74,7 +75,7 @@ class TestFeatureImportance(unittest.TestCase):
         X["constant"] = 1  # Add zero-variance feature
         fi = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=True))
         local, global_, _ = fi.calculate_feature_importance(
-            X, y, self.clusters, model_type="cla", verbose=self.verbose
+            X, y, self.clusters, model_type=RandomForestClassifier, verbose=self.verbose
         )
 
         self.assertTrue(local.loc["constant"].isna().all())
@@ -85,13 +86,13 @@ class TestFeatureImportance(unittest.TestCase):
         X["cat_feat"] = np.random.choice(["A", "B", "C"], size=len(X))
         fi = FeatureImportance(distance_metric=DistanceJensenShannon(scale_features=False))
         local, global_, _ = fi.calculate_feature_importance(
-            X, y, self.clusters, model_type="cla", verbose=self.verbose
+            X, y, self.clusters, model_type=RandomForestClassifier, verbose=self.verbose
         )
 
         self.assertIn("cat_feat", local.index)
 
     def test_calculate_feature_importance_ranking_correctness(self):
-        model_type = "cla"  # classifier
+        model_type = RandomForestClassifier  # classifier
 
         # Create dataset
         X = pd.DataFrame(
@@ -124,7 +125,7 @@ class TestFeatureImportance(unittest.TestCase):
     def test_calculate_feature_importance_local_feature_importance(self):
         # Parameters
         thr_distance = 0
-        model_type = "cla"
+        model_type = RandomForestClassifier
 
         # Create synthetic test data
         X = pd.DataFrame.from_dict(
@@ -168,7 +169,7 @@ class TestFeatureImportance(unittest.TestCase):
         )
         y = pd.Series([0, 0, 0, 0, 1, 1, 1, 1])  # dummy target
         cluster_labels = np.array([0, 0, 0, 0, 1, 1, 1, 1])
-        model_type = "cla"
+        model_type = RandomForestClassifier
 
         # Run for Wasserstein
         fi_w = FeatureImportance(distance_metric=DistanceWasserstein(scale_features=True))

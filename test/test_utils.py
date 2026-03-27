@@ -56,20 +56,24 @@ class TestUtils(unittest.TestCase):
 
     def test_check_input_estimator_classifier(self):
         model = RandomForestClassifier()
-        valid, mtype = check_input_estimator(model)
-        self.assertTrue(valid)
-        self.assertEqual(mtype, "cla")
+        mtype = check_input_estimator(model)
+        self.assertIs(mtype, RandomForestClassifier)
 
     def test_check_input_estimator_regressor(self):
         model = RandomForestRegressor()
-        valid, mtype = check_input_estimator(model)
-        self.assertTrue(valid)
-        self.assertEqual(mtype, "reg")
+        mtype = check_input_estimator(model)
+        self.assertIs(mtype, RandomForestRegressor)
+
+    def test_check_input_estimator_returns_actual_class_for_subclass(self):
+        class CustomRF(RandomForestClassifier):
+            pass
+
+        model = CustomRF()
+        self.assertIs(check_input_estimator(model), CustomRF)
 
     def test_check_input_estimator_invalid(self):
-        valid, mtype = check_input_estimator("not_a_model")
-        self.assertFalse(valid)
-        self.assertEqual(mtype, "invalid")
+        mtype = check_input_estimator("not_a_model")
+        self.assertIsNone(mtype)
 
     def test_matplotlib_to_plotly_output_format(self):
         colorscale = matplotlib_to_plotly("viridis", pl_entries=10)

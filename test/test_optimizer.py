@@ -49,7 +49,7 @@ class TestOptimizer(unittest.TestCase):
             pass
 
     def _train_model(self, model_type):
-        if model_type == "cla":
+        if model_type is RandomForestClassifier:
             X, y = make_classification(
                 n_samples=300,
                 n_features=10,
@@ -67,7 +67,7 @@ class TestOptimizer(unittest.TestCase):
                 oob_score=True,
                 random_state=self.random_state,
             )
-        elif model_type == "reg":
+        elif model_type is RandomForestRegressor:
             X, y = make_regression(
                 n_samples=500,
                 n_features=10,
@@ -100,7 +100,7 @@ class TestOptimizer(unittest.TestCase):
         return terminals
 
     def test_optimizeK_classification(self):
-        model_type = "cla"
+        model_type = RandomForestClassifier
         X, y, model = self._train_model(model_type)
 
         self.distance_metric.calculate_terminals(estimator=model, X=X)
@@ -119,7 +119,7 @@ class TestOptimizer(unittest.TestCase):
         self.assertEqual(best_k, 6, f"Expected k=6 for classification, got {best_k}")
 
     def test_optimizeK_regression(self):
-        model_type = "reg"
+        model_type = RandomForestRegressor
         X, y, model = self._train_model(model_type)
 
         self.distance_metric.calculate_terminals(estimator=model, X=X)
@@ -138,7 +138,7 @@ class TestOptimizer(unittest.TestCase):
         self.assertIn(best_k, [2, 3, 4], f"Expected k in [2, 3, 4] for regression, got {best_k}")
 
     def test_optimizeK_output_structure(self):
-        model_type = "cla"
+        model_type = RandomForestClassifier
         X, y, model = self._train_model(model_type)
 
         self.distance_metric.calculate_terminals(model, X)
@@ -315,7 +315,7 @@ class TestOptimizer(unittest.TestCase):
 
         optimizer = Optimizer(distance_metric=None, clustering_strategy=None, random_state=self.random_state)
     
-        new_labels = optimizer._sort_clusters_by_target(y, cluster_labels, model_type="cla")
+        new_labels = optimizer._sort_clusters_by_target(y, cluster_labels, model_type=RandomForestClassifier)
         
         expected = np.array([2, 2, 1, 1])
         np.testing.assert_array_equal(new_labels, expected)
@@ -327,7 +327,7 @@ class TestOptimizer(unittest.TestCase):
 
         optimizer = Optimizer(distance_metric=None, clustering_strategy=None, random_state=self.random_state)
         
-        new_labels = optimizer._sort_clusters_by_target(y, cluster_labels, model_type="reg")
+        new_labels = optimizer._sort_clusters_by_target(y, cluster_labels, model_type=RandomForestRegressor)
         
         expected = np.array([3, 3, 1, 1, 2, 2])
         np.testing.assert_array_equal(new_labels, expected)
@@ -339,7 +339,7 @@ class TestOptimizer(unittest.TestCase):
 
         optimizer = Optimizer(distance_metric=None, clustering_strategy=None, random_state=self.random_state)
         
-        new_labels = optimizer._sort_clusters_by_target(y, cluster_labels, model_type="reg")
+        new_labels = optimizer._sort_clusters_by_target(y, cluster_labels, model_type=RandomForestRegressor)
         
         expected = np.array([2, 2, 3, 3, 1, 1])
         np.testing.assert_array_equal(new_labels, expected)

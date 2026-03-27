@@ -7,6 +7,7 @@ import pandas as pd
 
 from tqdm import tqdm
 from pandas.api.types import is_numeric_dtype, is_string_dtype
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 from .distance import DistanceJensenShannon, DistanceWasserstein
 
@@ -39,7 +40,7 @@ class FeatureImportance:
         X: pd.DataFrame,
         y: pd.Series,
         cluster_labels: np.ndarray,
-        model_type: str,
+        model_type: type[RandomForestClassifier] | type[RandomForestRegressor],
         verbose: int,
     ) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
         """
@@ -51,8 +52,8 @@ class FeatureImportance:
         :type y: pd.Series
         :param cluster_labels: Labels from forest-guided clustering.
         :type cluster_labels: np.ndarray
-        :param model_type: Type of model, either "cla" for classification or "reg" for regression.
-        :type model_type: str
+        :param model_type: Estimator class from ``forest_guided_clustering`` (``RandomForestClassifier`` or ``RandomForestRegressor``, or a subclass).
+        :type model_type: type[RandomForestClassifier] | type[RandomForestRegressor]
         :param verbose: Verbosity level (0 = silent, 1 = progress messages).
         :type verbose: int
 
