@@ -14,24 +14,179 @@ from matplotlib import rc_context
 from matplotlib.colors import ListedColormap, to_rgba
 from plotly.subplots import make_subplots
 from pathlib import Path
-from sklearn.preprocessing import MinMaxScaler, LabelEncoder
+from typing import Any
+
+from sklearn.preprocessing import MinMaxScaler, LabelEncoder, StandardScaler
 
 from .utils import matplotlib_to_plotly, save_figure
+
+CLIP_ZSCORE_NEGATIVE = -3
+CLIP_ZSCORE_POSITIVE = 3
 
 ############################################
 # Plotting Functions
 ############################################
 
 
+def plot_optimizer_results(
+    ks: list[int],
+    scores: list[float],
+    mean_ji: list[float],
+    cluster_jis: dict[int, dict[int, float]],
+    best_k: int | None = None,
+    JI_discart_value: float | None = None,
+    show: bool = True,
+    save: str | None = None,
+    cmap: dict[str, Any] | None = None,
+    figsize: tuple[float, float] | None = None,
+) -> tuple[Figure, Axes] | None:
+    """
+    Plot optimizer results: clustering score, mean Jaccard stability, and per-cluster stability.
+
+    Produces a single figure with number of clusters (k) on the x-axis; left y-axis shows
+    mean cluster stability (Jaccard index) with a min–max band and per-cluster points,
+    and right y-axis shows the clustering score. Optionally marks the best k and a
+    stability threshold.
+
+    :param ks: Number of clusters evaluated (one value per run).
+    :type ks: list[int]
+    :param scores: Clustering score for each k (same length as ks).
+    :type scores: list[float]
+    :param mean_ji: Mean Jaccard stability (cluster stability) for each k (same length as ks).
+    :type mean_ji: list[float]
+    :param cluster_jis: Per-cluster Jaccard stability for each k. Keys are values from ks; each value is a dict mapping cluster id to stability (float).
+    :type cluster_jis: dict[int, dict[int, float]]
+    :param best_k: If set, a vertical line and label are drawn at this k. Default is None.
+    :type best_k: int | None
+    :param JI_discart_value: If set, a horizontal line is drawn at this stability threshold. Default is None.
+    :type JI_discart_value: float | None
+    :param show: If True, call ``matplotlib.pyplot.show()`` before returning. If False, return the figure and axes so the plot can be customized further. Default is True.
+    :type show: bool
+    :param save: If set, the figure is saved using this path base (with an "_optimizer_results" suffix).
+    :type save: str | None
+    :param cmap: Color map; cmap.values() are passed to seaborn's color palette. If None, the "colorblind" palette is used.
+    :type cmap: dict[str, Any] | None
+    :param figsize: (width, height) in inches. If None, size is derived from the number of k values.
+    :type figsize: tuple[float, float] | None
+    :return: The Matplotlib figure and main axes (left y-axis) if ``show`` is False; otherwise None.
+    :rtype: tuple[Figure, Axes] | None
+    """
+    # ---- Build summary per k ----
+    summary_rows = []
+    cluster_rows = []
+
+    for k, score, mean_ji in zip(ks, scores, mean_ji):
+        ji_vals = list(cluster_jis[k].values())
+
+        summary_rows.append(
+            {
+                "k": k,
+                "score": score,
+                "mean_ji": mean_ji,
+                "min_ji": min(ji_vals),
+                "max_ji": max(ji_vals),
+            }
+        )
+
+        for ji in ji_vals:
+            cluster_rows.append({"k": k, "ji": ji})
+
+    df_summary = pd.DataFrame(summary_rows)
+    df_clusters = pd.DataFrame(cluster_rows)
+
+    if figsize is None:
+        figsize = (len(ks) / 2, len(ks) / 3)
+
+    if cmap is not None:
+        color_palette = sns.color_palette(list(cmap.values()))
+        c_ji = color_palette[0]
+        c_score = color_palette[1]
+    else:
+        color_palette = sns.color_palette("colorblind")
+        c_ji = color_palette[0]
+        c_score = color_palette[3]
+
+    # ---- Style ----
+    sns.set_theme(style="white", context="paper")
+    fig, ax = plt.subplots(figsize=figsize)
+
+    # ---- Score (scatter only, no duplication) ----
+    sns.scatterplot(data=df_summary, x="k", y="score", ax=ax, marker="^", s=70, color=c_score, zorder=3)
+
+    # ---- Mean stability line ----
+    sns.lineplot(
+        data=df_summary,
+        x="k",
+        y="mean_ji",
+        ax=ax,
+        color=c_ji,
+        linewidth=1.5,
+        marker="o",
+        markersize=7,
+        zorder=4,
+    )
+
+    # ---- Cluster-level stability scatter ----
+    sns.scatterplot(data=df_clusters, x="k", y="ji", ax=ax, s=20, alpha=0.25, color=c_ji, zorder=2)
+
+    # ---- Min–Max band (now correct & clean) ----
+    ax.fill_between(
+        df_summary["k"],
+        df_summary["min_ji"],
+        df_summary["max_ji"],
+        color=c_ji,
+        alpha=0.15,
+        linewidth=0,
+        zorder=1,
+    )
+
+    # ---- Axis styling ----
+    ax.set_xlabel("Number of clusters $k$")
+    ax.set_ylabel("Cluster Stability", color=c_ji)
+    ax.set_ylim(0, 1.02)
+    ax.tick_params(axis="y", colors=c_ji)
+    ax.spines["left"].set_color(c_ji)
+    ax.spines["right"].set_visible(False)
+    ax.spines["top"].set_visible(False)
+
+    # ---- Right axis for score ----
+    ax_r = ax.twinx()
+    ax_r.set_ylabel("Clustering Score", color=c_score)
+    ax_r.set_ylim(0, 1.02)
+    ax_r.tick_params(axis="y", colors=c_score)
+    ax_r.spines["right"].set_color(c_score)
+    ax_r.spines["left"].set_visible(False)
+    ax_r.spines["top"].set_visible(False)
+
+    # ---- Best k ----
+    if best_k is not None and best_k in df_summary["k"].values:
+        ax.axvline(best_k, linestyle=":", linewidth=1, color="0.5")
+        ax.text(best_k, 0.5, f"k = {best_k}", rotation=90, ha="right", va="top", fontsize=9, color="0.5")
+
+    # ---- Threshold ----
+    if JI_discart_value is not None:
+        ax.axhline(JI_discart_value, linestyle="--", linewidth=0.7, color=c_ji)
+
+    plt.tight_layout(rect=(0, 0, 1, 0.95))
+
+    if save:
+        save_figure(save, "_optimizer_results")
+    if show:
+        plt.show()
+    else:
+        return fig, ax
+
+
 def plot_feature_importance(
     feature_importance_local: pd.DataFrame,
     feature_importance_global: pd.Series,
-    top_n: int,
-    num_cols: int,
-    save: str,
+    top_n: int | None = None,
+    num_cols: int = 4,
+    save: str | None = None,
+    show: bool = True,
     reorder: bool = False,
     recolor: bool = False,
-) -> tuple[Figure, list[Axes]]:
+) -> tuple[Figure, list[Axes]] | None:
     """
     Visualize global and local feature importance values as bar charts.
 
@@ -40,18 +195,20 @@ def plot_feature_importance(
     :param feature_importance_global: Global mean importance values across clusters.
     :type feature_importance_global: pd.Series
     :param top_n: If specified, number of top-ranked features to plot.
-    :type top_n: int
+    :type top_n: int | None
     :param num_cols: Number of columns in the subplot layout.
     :type num_cols: int
-    :param save: If specified, path prefix to save plots.
-    :type save: str
+    :param save: If set, the figure is saved using this path base (with a "_feature_importance" suffix).
+    :type save: str | None
+    :param show: If True, call ``matplotlib.pyplot.show()`` before returning. If False, return the figure and axes so the plot can be customized further. Default is True.
+    :type show: bool
     :param reorder: If True, reorder the local importance values to match the global importance order. Default: False.
     :type reorder: bool
     :param recolor: If True, recolor the bars based on the global importance order. Default: False.
     :type recolor: bool
 
-    :return: Matplotlib figure and axes with bar charts of global and local feature importance values.
-    :rtype: tuple[Figure, list[Axes]]
+    :return: Matplotlib figure and axes with bar charts of global and local feature importance values if ``show`` is False; otherwise None.
+    :rtype: tuple[Figure, list[Axes]] | None
     """
     # Determine figure size dynamically based on the number of features
     num_features_GFI = len(feature_importance_global.index)
@@ -125,32 +282,38 @@ def plot_feature_importance(
 
         if save:
             save_figure(save, "_feature_importance")
-        return fig, fig.axes
+        if show:
+            plt.show()
+        else:
+            return fig, fig.axes
 
 
 def plot_distributions(
     data_clustering_ranked: pd.DataFrame,
-    top_n: int,
+    top_n: int | None,
     num_cols: int,
     cmap_target_dict: dict,
-    save: str,
-) -> tuple[Figure, list[Axes]]:
+    save: str | None = None,
+    show: bool = True,
+) -> tuple[Figure, list[Axes]] | None:
     """
     Plot the decision patterns that emerge from forest-guided clustering using feature distribution plots.
 
     :param data_clustering_ranked: DataFrame of clustering data ordered by the global feature importance.
     :type data_clustering_ranked: pd.DataFrame
     :param top_n: If specified, number of top-ranked features to plot.
-    :type top_n: int
+    :type top_n: int | None
     :param num_cols: Number of columns in the subplot layout.
     :type num_cols: int
     :param cmap_target_dict: If specified, custom color map for categorical targets.
     :type cmap_target_dict: dict
-    :param save: If specified, path prefix to save plots.
-    :type save: str
+    :param save: If set, the figure is saved using this path base (with a "_boxplots" suffix).
+    :type save: str | None
+    :param show: If True, call ``matplotlib.pyplot.show()`` before returning. If False, return the figure and axes so the plot can be customized further. Default is True.
+    :type show: bool
 
-    :return: Feature distribution plots as matplotlib figure and axes.
-    :rtype: tuple[Figure, list[Axes]]
+    :return: Feature distribution plots as matplotlib figure and axes if ``show`` is False; otherwise None.
+    :rtype: tuple[Figure, list[Axes]] | None
     """
 
     features_to_plot = data_clustering_ranked.drop("cluster", axis=1, inplace=False).columns.to_list()
@@ -251,32 +414,38 @@ def plot_distributions(
 
     if save:
         save_figure(save, "_boxplots")
-    return fig, fig.axes
+    if show:
+        plt.show()
+    else:
+        return fig, fig.axes
 
 
 def plot_heatmap_classification(
     data_clustering_ranked: pd.DataFrame,
-    top_n: int,
+    top_n: int | None,
     heatmap_type: str,
     cmap_target_dict: dict,
-    save: str,
-) -> tuple[Figure, list[Axes]] | go.Figure:
+    save: str | None = None,
+    show: bool = True,
+) -> tuple[Figure, list[Axes]] | go.Figure | None:
     """
     Plot the decision patterns that emerge from forest-guided clustering using feature heatmaps for classification tasks.
 
     :param data_clustering_ranked: DataFrame of clustering data ordered by the global feature importance.
     :type data_clustering_ranked: pd.DataFrame
     :param top_n: If specified, number of top-ranked features to plot.
-    :type top_n: int
+    :type top_n: int | None
     :param heatmap_type: Heatmap shown in "static" or "interactive" style.
     :type heatmap_type: str
     :param cmap_target_dict: If specified, custom color map for categorical targets.
     :type cmap_target_dict: dict
-    :param save: If specified, path prefix to save plots.
-    :type save: str
+    :param save: If set, the figure is saved using this path base (with a "_heatmap" suffix for static plots, or as "{stem}_interactive_heatmap.html" in the same directory for interactive plots).
+    :type save: str | None
+    :param show: If True, display the figure before returning (matplotlib: ``plt.show()``; interactive Plotly: ``fig.show()``). If False, return the figure object for further customization. Default is True.
+    :type show: bool
 
-    :return: Either static matplotlib figure and axes or interactive plotly figure.
-    :rtype: tuple[Figure, list[Axes]] | go.Figure
+    :return: Static matplotlib figure and axes, interactive Plotly figure, or None if ``show`` is True.
+    :rtype: tuple[Figure, list[Axes]] | go.Figure | None
     """
     cluster_labels = data_clustering_ranked["cluster"]
 
@@ -288,7 +457,7 @@ def plot_heatmap_classification(
     categories = target_encoder.classes_
 
     # Process features and transpose for plotting
-    features = _process_features_for_heatmap(data_clustering_ranked.drop(columns=["target", "cluster"]))
+    features = _process_features_for_plotting(data_clustering_ranked.drop(columns=["target", "cluster"]))
     features = features.T
 
     # Determine cluster boundaries for separator space
@@ -334,14 +503,17 @@ def plot_heatmap_classification(
             categories,
             title="Target Categories",
             loc="lower center",
-            bbox_to_anchor=(0.5, -0.3),
+            bbox_to_anchor=(0.5, -0.2),
             ncol=len(categories),
         )
 
         plt.tight_layout()
         if save:
             save_figure(save, "_heatmap")
-        return fig, [ax_target, ax_target_cb, ax_features, ax_features_cb, target_plot, feature_plot]
+        if show:
+            plt.show()
+        else:
+            return fig, [ax_target, ax_target_cb, ax_features, ax_features_cb, target_plot, feature_plot]
 
     elif heatmap_type == "interactive":
         if cmap_target_dict is not None:
@@ -388,7 +560,10 @@ def plot_heatmap_classification(
             p = Path(save)
             p.parent.mkdir(parents=True, exist_ok=True)
             fig.write_html(p.parent / f"{p.stem}_interactive_heatmap.html")
-        return fig
+        if show:
+            fig.show()
+        else:
+            return fig
 
     else:
         raise ValueError(f'`heatmap_type` must be either "static" or "interactive"')
@@ -396,24 +571,27 @@ def plot_heatmap_classification(
 
 def plot_heatmap_regression(
     data_clustering_ranked: pd.DataFrame,
-    top_n: int,
+    top_n: int | None,
     heatmap_type: str,
-    save: str,
-) -> tuple[Figure, list[Axes]] | go.Figure:
+    save: str | None = None,
+    show: bool = True,
+) -> tuple[Figure, list[Axes]] | go.Figure | None:
     """
     Plot the decision patterns that emerge from forest-guided clustering using feature heatmaps for regression tasks.
 
     :param data_clustering_ranked: DataFrame of clustering data ordered by the global feature importance.
     :type data_clustering_ranked: pd.DataFrame
     :param top_n: If specified, number of top-ranked features to plot.
-    :type top_n: int
+    :type top_n: int | None
     :param heatmap_type: Heatmap shown in "static" or "interactive" style.
     :type heatmap_type: str
-    :param save: If specified, path prefix to save plots.
-    :type save: str
+    :param save: If set, the figure is saved using this path base (with a "_heatmap" suffix for static plots, or as "{stem}_interactive_heatmap.html" in the same directory for interactive plots).
+    :type save: str | None
+    :param show: If True, display the figure before returning (matplotlib: ``plt.show()``; interactive Plotly: ``fig.show()``). If False, return the figure object for further customization. Default is True.
+    :type show: bool
 
-    :return: Either static matplotlib figure and axes or interactive plotly figure.
-    :rtype: tuple[Figure, list[Axes]] | go.Figure
+    :return: Static matplotlib figure and axes, interactive Plotly figure, or None if ``show`` is True.
+    :rtype: tuple[Figure, list[Axes]] | go.Figure | None
     """
     cluster_labels = data_clustering_ranked["cluster"]
 
@@ -422,7 +600,7 @@ def plot_heatmap_regression(
     target = pd.DataFrame([target], index=["target"])
 
     # Process features and transpose for plotting
-    features = _process_features_for_heatmap(data_clustering_ranked.drop(columns=["target", "cluster"]))
+    features = _process_features_for_plotting(data_clustering_ranked.drop(columns=["target", "cluster"]))
     features = features.T
 
     # Determine cluster boundaries for separator space
@@ -456,7 +634,10 @@ def plot_heatmap_regression(
         plt.tight_layout()
         if save:
             save_figure(save, "_heatmap")
-        return fig, [ax_target, ax_target_cb, ax_features, ax_features_cb, target_plot, feature_plot]
+        if show:
+            plt.show()
+        else:
+            return fig, [ax_target, ax_target_cb, ax_features, ax_features_cb, target_plot, feature_plot]
 
     elif heatmap_type == "interactive":
         target_colorbar = dict(title="Target Scale", x=1.2)
@@ -474,12 +655,135 @@ def plot_heatmap_regression(
             p = Path(save)
             p.parent.mkdir(parents=True, exist_ok=True)
             fig.write_html(p.parent / f"{p.stem}_interactive_heatmap.html")
-        return fig
+        if show:
+            fig.show()
+        else:
+            return fig
     else:
         raise ValueError(f'`heatmap_type` must be either "static" or "interactive"')
 
 
-def _process_features_for_heatmap(
+def plot_dotplot(
+    data_clustering_ranked: pd.DataFrame,
+    feature_importance_global: pd.Series,
+    feature_importance_local: pd.DataFrame,
+    top_n: int | None = None,
+    save: str | None = None,
+    show: bool = True,
+):
+    features = data_clustering_ranked.drop(columns=["cluster", "target"])
+    features = _process_features_for_plotting(features)
+    features["cluster"] = data_clustering_ranked["cluster"]
+
+    fi_global = feature_importance_global.sort_values(ascending=False)
+    fi_local = feature_importance_local.loc[fi_global.index]
+
+    avgs = features.groupby("cluster").mean(numeric_only=True).T
+    avgs = avgs.loc[fi_global.index]
+    avgs["global_rank"] = range(1, len(avgs) + 1)
+
+    melted = (
+        avgs.reset_index()
+        .rename(columns={"index": "feature"})
+        .melt(id_vars=["feature", "global_rank"], var_name="cluster", value_name="feature_avg")
+        .merge(
+            fi_local.reset_index()
+            .rename(columns={"index": "feature"})
+            .melt(id_vars="feature", var_name="cluster", value_name="local_importance"),
+            on=["feature", "cluster"],
+        )
+    )
+
+    n_features = len(fi_global)
+    n_clusters = melted["cluster"].nunique()
+
+    fig_width = max(6.5, np.ceil(5 * n_features / 25)) + 1.5
+    fig_height = max(2.5, 0.8 * n_clusters + 1.8)
+
+    with sns.axes_style("white"):
+        fig, axes = plt.subplots(
+            figsize=(fig_width, fig_height), ncols=2, width_ratios=[30, 1.5], facecolor="none", dpi=400
+        )
+        ax, ax_cbar = axes[0]
+
+        # fig = plt.figure(figsize=(fig_width, fig_height), dpi=400)
+        # gs = fig.add_gridspec(nrows=1, ncols=2, width_ratios=[30, 1.5])
+        # ax_cbar = fig.add_subplot(gs[0, 1])
+
+        scatter = sns.scatterplot(
+            data=melted,
+            x="global_rank",
+            y="cluster",
+            hue="feature_avg",
+            size="local_importance",
+            palette="RdBu_r",
+            sizes=(10, 150),
+            size_norm=(0, 1),
+            legend=False,
+            ax=ax,
+        )
+
+        ax.set(
+            xlim=(0.5, len(fi_global) + 0.5),
+            xticks=range(1, len(fi_global) + 1),
+            xticklabels=fi_global.index,
+            xlabel=None,
+            ylim=(0.5, melted.cluster.nunique() + 0.5),
+            yticks=sorted(melted.cluster.unique()),
+            ylabel="cluster",
+        )
+        ax.tick_params(axis="x", rotation=90)
+
+        cbar = fig.colorbar(
+            plt.cm.ScalarMappable(
+                norm=plt.Normalize(vmin=CLIP_ZSCORE_NEGATIVE, vmax=CLIP_ZSCORE_POSITIVE), cmap="RdBu_r"
+            ),
+            cax=ax_cbar,
+            orientation="vertical",
+        )
+        cbar.set_ticks(np.linspace(CLIP_ZSCORE_NEGATIVE, CLIP_ZSCORE_POSITIVE, 5))
+        cbar.set_label("Features")
+        cbar.ax.tick_params(labelsize=6)
+
+        handles = [
+            ax.scatter([], [], s=10 + (150 - 10) * v, color="gray", alpha=0.5, label=f"{v:.1f}")
+            for v in [0.1, 0.5, 1.0]
+        ]
+
+        ax.legend(
+            handles=handles,
+            title="Feature Importance",
+            loc="upper right",
+            bbox_to_anchor=(1, 1.1),
+            ncol=1,
+            fontsize=6,
+            title_fontsize=8,
+            frameon=True,
+            labelspacing=1.2,
+            handletextpad=0.4,
+            borderpad=1,
+        )
+
+        if top_n is not None:
+            ax.set_title(f"Top {top_n} features by global importance")
+        else:
+            ax.set_title("Feature importance by cluster")
+
+        ax.set_aspect("auto")
+        sns.despine(ax=ax, left=True, bottom=True)
+
+    plt.tight_layout()
+
+    if save:
+        save_figure(save, "_dotplot")
+
+    if show:
+        plt.show()
+    else:
+        return fig, ax
+
+
+def _process_features_for_plotting(
     features: pd.DataFrame,
 ) -> pd.DataFrame:
     """
@@ -499,9 +803,11 @@ def _process_features_for_heatmap(
             features[col] = features[col].cat.codes
 
     # Normalize all features (both encoded categorical and continuous)
-    scaler = MinMaxScaler()
+    # scaler = MinMaxScaler()
+    scaler = StandardScaler()
     scaler.set_output(transform="pandas")
     features = scaler.fit_transform(features)
+    features = features.clip(CLIP_ZSCORE_NEGATIVE, CLIP_ZSCORE_POSITIVE)
 
     return features
 
