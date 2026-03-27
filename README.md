@@ -116,11 +116,11 @@ fgc = forest_guided_clustering(
     clustering_strategy=ClusteringKMedoids(),
 )
 
-# evaluate feature importance
+# evaluate feature importance for best k
 feature_importance = forest_guided_feature_importance(
     X=X, 
     y=y, 
-    cluster_labels=fgc.cluster_labels,
+    cluster_labels=fgc.cluster_labels[fgc.best_k],
     model_type=fgc.model_type,
 )
 
