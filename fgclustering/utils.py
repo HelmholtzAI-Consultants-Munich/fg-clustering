@@ -24,7 +24,8 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 def check_input_data(
     X: pd.DataFrame,
     y: str | pd.Series,
-) -> tuple[pd.DataFrame, pd.Series]:
+    y_pred: np.ndarray | pd.Series | None = None,
+) -> tuple[pd.DataFrame, pd.Series, pd.Series | None]:
     """
     Splits the input into features and target. If `y` is a string, it's interpreted as the name of the target column in `X`.
 
@@ -32,9 +33,11 @@ def check_input_data(
     :type X: pd.DataFrame
     :param y: Target values or name of the target column.
     :type y: str | pd.Series
+    :param y_pred: Optional predictions aligned with rows of ``X`` / ``y``; if omitted, the third return value is ``None``.
+    :type y_pred: np.ndarray | pd.Series | None
 
-    :return: Tuple of feature DataFrame and target Series.
-    :rtype: tuple[pd.DataFrame, pd.Series]
+    :return: Feature DataFrame, target Series, and predictions as a Series or ``None``.
+    :rtype: tuple[pd.DataFrame, pd.Series, pd.Series | None]
     """
     if isinstance(y, str):
         y_data = pd.Series(X[y]).reset_index(drop=True)
@@ -43,7 +46,10 @@ def check_input_data(
         y_data = pd.Series(y).reset_index(drop=True)
         X_data = pd.DataFrame(X).reset_index(drop=True)
 
-    return X_data, y_data
+    y_pred_data = (
+        pd.Series(y_pred).reset_index(drop=True) if y_pred is not None else None
+    )
+    return X_data, y_data, y_pred_data
 
 
 def check_input_estimator(

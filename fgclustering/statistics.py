@@ -39,8 +39,8 @@ class FeatureImportance:
         self,
         X: pd.DataFrame,
         y: pd.Series,
+        y_pred: pd.Series | None,
         cluster_labels: np.ndarray,
-        model_type: type[RandomForestClassifier] | type[RandomForestRegressor],
         verbose: int,
     ) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
         """
@@ -50,10 +50,10 @@ class FeatureImportance:
         :type X: pd.DataFrame
         :param y: Target variable.
         :type y: pd.Series
+        :param y_pred: Predicted target values, or None to omit from the clustering data frame.
+        :type y_pred: pd.Series | None
         :param cluster_labels: Labels from forest-guided clustering.
         :type cluster_labels: np.ndarray
-        :param model_type: Estimator class from ``forest_guided_clustering`` (``RandomForestClassifier`` or ``RandomForestRegressor``, or a subclass).
-        :type model_type: type[RandomForestClassifier] | type[RandomForestRegressor]
         :param verbose: Verbosity level (0 = silent, 1 = progress messages).
         :type verbose: int
 
@@ -63,7 +63,11 @@ class FeatureImportance:
         self.verbose = verbose
 
         data_clustering = pd.concat(
-            [X, y.rename("target"), pd.Series(cluster_labels, name="cluster")], axis=1
+            [X]
+            + [y.rename("target")]
+            + ([y_pred.rename("predicted_target")] if y_pred is not None else [])
+            + [pd.Series(cluster_labels, name="cluster")],
+            axis=1,
         )
 
         feature_importance_local = self._calculate_cluster_distance(X=X, cluster_labels=cluster_labels)
@@ -72,13 +76,12 @@ class FeatureImportance:
         feature_importance_global = feature_importance_local.mean(axis=1)
 
         # Sort features by mean and extract names
-        features_ranked = ["cluster", "target"] + feature_importance_global.sort_values(
-            ascending=False
-        ).index.tolist()
+        fixed_cols = ["cluster", "target"] + (["predicted_target"] if y_pred is not None else [])
+        features_ranked = fixed_cols + feature_importance_global.sort_values(ascending=False).index.tolist()
 
         # Sort and rank clustering dataframe
         data_clustering_ranked = data_clustering[features_ranked]
-        data_clustering_ranked = data_clustering_ranked.sort_values(by=["cluster", "target"])
+        data_clustering_ranked = data_clustering_ranked.sort_values(by=fixed_cols)
 
         return feature_importance_local, feature_importance_global, data_clustering_ranked
 
@@ -147,4 +150,3 @@ class FeatureImportance:
         distances.columns = [cluster for cluster in clusters_unique]
 
         return distances
-
