@@ -119,7 +119,6 @@ def forest_guided_clustering(
     )
 
     # optimize k
-    y_pred = estimator.predict(X)
     clustering_distance_metric.calculate_terminals(estimator=estimator, X=X)
 
     optimizer = Optimizer(
