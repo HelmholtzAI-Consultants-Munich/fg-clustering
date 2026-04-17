@@ -81,6 +81,8 @@ def matplotlib_to_plotly(
     :return: List of Plotly-compatible color mappings.
     :rtype: list
     """
+    if pl_entries < 2:
+        raise ValueError(f"pl_entries must be >= 2, got {pl_entries}")
     cmap = matplotlib.colormaps.get_cmap(cmap_name)
     h = np.linspace(0, 1, pl_entries)
     colors = cmap(h)[:, :3]
