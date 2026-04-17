@@ -376,8 +376,14 @@ def plot_distributions(
             ax.legend(bbox_to_anchor=(1, 1), loc=2, fontsize="x-small")
             continue
 
-        df[feature] = df[feature].astype("string")
-        count_df = df.groupby(["cluster", feature], observed=False).size().unstack(fill_value=0)
+        feature_series = df[feature].astype("string")
+        count_df = (
+            pd.DataFrame({"cluster": df["cluster"], feature: feature_series})
+            .groupby(["cluster", feature], observed=False)
+            .size()
+            .unstack(fill_value=0)
+        )
+
         top_categories = count_df.sum().nlargest(10).index
         count_df = count_df[
             top_categories.tolist() + [c for c in count_df.columns if c not in top_categories]
@@ -390,7 +396,7 @@ def plot_distributions(
             width=0.8,
             color=sns.color_palette(
                 color_spec["color_features_cat"],
-                n_colors=df[feature].nunique(),
+                n_colors=feature_series.nunique(),
                 as_cmap=False,
             ),
             legend=False,
