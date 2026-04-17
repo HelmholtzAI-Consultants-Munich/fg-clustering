@@ -1,53 +1,60 @@
-# This CITATION.cff file was generated with cffinit.
-# Visit https://bit.ly/cffinit to generate yours today!
-
 cff-version: 1.2.0
 title: >-
-  Forest-Guided Clustering - Explainability for
-  Random Forest Models
+  Forest-Guided Clustering — Shedding Light into the Random Forest Black Box
 message: >-
-  "If you use this software, please cite it as
-  below."
+  If you use this software in your research or applications, please cite the 
+  associated preprint below.
+
 type: software
+
 authors:
   - given-names: Lisa
     family-names: Barros de Andrade e Sousa
     email: lisa.barros.andrade.sousa@gmail.com
     affiliation: Helmholtz AI
-    orcid: 'https://orcid.org/0000-0001-7702-9782'
+    orcid: "https://orcid.org/0000-0001-7702-9782"
+  - given-names: Gregor
+    family-names: Miller
+  - given-names: Ronan
+    family-names: Le Gleut
   - given-names: Dominik
     family-names: Thalmeier
   - given-names: Helena
     family-names: Pelin
-    email: helena.pelin@helmholtz-muenchen.de
-    affiliation: Helmholtz AI
-    orcid: 'https://orcid.org/0000-0001-8875-4285'
   - given-names: Marie
     family-names: Piraud
+    affiliation: Helmholtz AI
+
 identifiers:
   - type: doi
-    value: 10.5281/zenodo.6445529
+    value: 10.48550/arXiv.2507.19455
+
 repository-code: >-
   https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering
 url: >-
   https://forest-guided-clustering.readthedocs.io/en/latest/
+
 abstract: >-
-  This python package is about explainability of
-  Random Forest models. Standard explainability
-  methods (e.g. feature importance) assume
-  independence of model features and hence, are not
-  suited in the presence of correlated features. The
-  Forest-Guided Clustering algorithm does not assume
-  independence of model features, because it computes
-  the feature importance based on subgroups of
-  instances that follow similar decision rules within
-  the Random Forest model. Hence, this method is well
-  suited for cases with high correlation among model
-  features.
+  Random Forests (RF), despite their widespread use and strong performance on 
+  tabular data, remain difficult to interpret due to their ensemble nature. We 
+  present Forest-Guided Clustering (FGC), a model-specific explainability method 
+  that reveals both local and global structure in RFs by grouping instances 
+  according to shared decision paths. FGC produces human-interpretable clusters 
+  aligned with the model's internal logic and computes cluster-specific and 
+  global feature importance scores to derive decision rules underlying RF 
+  predictions. FGC accurately recovered latent subclass structure on a benchmark 
+  dataset and outperformed classical clustering and post-hoc explanation methods. 
+  Applied to an AML transcriptomic dataset, FGC uncovered biologically coherent 
+  subpopulations, disentangled disease-relevant signals from confounders, and 
+  recovered known and novel gene expression patterns. FGC bridges the gap 
+  between performance and interpretability by providing structure-aware insights 
+  that go beyond feature-level attribution.
+
 keywords:
   - XAI
   - explainable machine learning
   - Random Forest
+  - clustering
+  - model interpretability
+
 license: MIT
-version: v0.2.0
-date-released: '2022-04-11'
