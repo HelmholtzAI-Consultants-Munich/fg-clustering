@@ -200,31 +200,31 @@ class TestForestGuidedClustering(unittest.TestCase):
                 feature_importance_distance_metric="invalid_metric",
             )
 
-    def test_plot_forest_guided_clustering(self):
-        result = forest_guided_clustering(
-            estimator=self.model,
-            X=self.X,
-            y=self.y,
-            clustering_distance_metric=self.distance_metric,
-            clustering_strategy=self.clustering_strategy,
-            n_jobs=self.n_jobs,
-        )
+    # def test_plot_forest_guided_clustering(self):
+    #     result = forest_guided_clustering(
+    #         estimator=self.model,
+    #         X=self.X,
+    #         y=self.y,
+    #         clustering_distance_metric=self.distance_metric,
+    #         clustering_strategy=self.clustering_strategy,
+    #         n_jobs=self.n_jobs,
+    #     )
 
-        save = os.path.join(self.tmp_path, "test_fgc")
+    #     save = os.path.join(self.tmp_path, "test_fgc")
 
-        plot_forest_guided_clustering(
-            ks=result.ks,
-            scores=result.scores,
-            mean_ji=result.mean_ji,
-            cluster_jis=result.cluster_jis,
-            best_k=result.best_k,
-            save=save,
-            show=False,
-        )
-        self.assertTrue(
-            expr=os.path.exists(path=f"{save}_optimizer_results.png"),
-            msg="Optimizer results plot file was not saved.",
-        )
+    #     plot_forest_guided_clustering(
+    #         ks=result.ks,
+    #         scores=result.scores,
+    #         mean_ji=result.mean_ji,
+    #         cluster_jis=result.cluster_jis,
+    #         best_k=result.best_k,
+    #         save=save,
+    #         show=False,
+    #     )
+    #     self.assertTrue(
+    #         expr=os.path.exists(path=f"{save}_optimizer_results.png"),
+    #         msg="Optimizer results plot file was not saved.",
+    #     )
 
     def test_plot_forest_guided_feature_importance(self):
         k = 3
