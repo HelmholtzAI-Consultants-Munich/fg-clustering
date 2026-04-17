@@ -62,7 +62,7 @@ class Optimizer:
         model_type: type[RandomForestClassifier] | type[RandomForestRegressor],
         n_jobs: int,
         verbose: int,
-    ) -> tuple[list[dict], int]:
+    ) -> tuple[list[dict], int | None]:
         """
         Search for the optimal number of clusters within a given range using quality and stability criteria.
 
@@ -70,7 +70,8 @@ class Optimizer:
         cluster stability is estimated using repeated subsampling and Jaccard Index matching,
         and a task-specific cluster quality score is computed. Classification tasks use
         balanced average impurity, whereas regression tasks use normalized within-cluster
-        variation. The best solution is the stable clustering with the lowest score.
+        variation. The best solution is the stable clustering with the lowest score, or
+        ``None`` if no ``k`` meets the Jaccard stability threshold.
 
         :param y: Target values aligned with the full dataset.
         :type y: pd.Series
@@ -89,8 +90,9 @@ class Optimizer:
         :param verbose: Verbosity level controlling progress output and printed summaries.
         :type verbose: int
 
-        :return: List of result dictionaries for all evaluated ``k`` values and the selected best ``k``.
-        :rtype: tuple[list[dict], int]
+        :return: List of result dictionaries for all evaluated ``k`` values and the selected best ``k``,
+            or ``None`` when no clustering is stable under ``JI_discart_value``.
+        :rtype: tuple[list[dict], int | None]
         """
 
         self.n_samples_original = len(y)
@@ -158,9 +160,9 @@ class Optimizer:
                 best_score = cluster_score_k
 
         if verbose:
-            if best_k == 1:
+            if best_k is None:
                 warnings.warn(f"No stable clusters were found for JI cutoff {JI_discart_value}!")
-            if best_k > 1 and not (k_range[1] - k_range[0]) == 0:
+            if best_k is not None and best_k > 1 and not (k_range[1] - k_range[0]) == 0:
                 print(f"\nOptimal number of clusters k = {best_k}")
 
             print("\nClustering Evaluation Summary:")
