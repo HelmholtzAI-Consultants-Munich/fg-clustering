@@ -152,7 +152,7 @@ def forest_guided_feature_importance(
     X: pd.DataFrame,
     y: str | pd.Series,
     cluster_labels: np.ndarray,
-    y_pred: pd.Series | None = None,
+    y_pred: np.ndarray | pd.Series | None = None,
     feature_importance_distance_metric: str = "wasserstein",
     verbose: int = 1,
 ) -> Bunch:
@@ -173,7 +173,7 @@ def forest_guided_feature_importance(
     :param cluster_labels: Cluster labels produced by forest-guided clustering.
     :type cluster_labels: np.ndarray
     :param y_pred: Optional predicted target values aligned with ``X`` and ``y``.
-    :type y_pred: pd.Series | None
+    :type y_pred: np.ndarray | pd.Series | None
     :param feature_importance_distance_metric: Distance metric used for feature importance calculation, either ``"wasserstein"`` or ``"jensenshannon"``.
     :type feature_importance_distance_metric: str
     :param verbose: Verbosity level controlling progress output.
