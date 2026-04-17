@@ -22,9 +22,9 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 
 def check_input_data(
-    X: pd.DataFrame,
-    y: str | pd.Series,
-    y_pred: np.ndarray | pd.Series | None = None,
+    X: pd.DataFrame | np.ndarray,
+    y: pd.Series | np.ndarray | str,
+    y_pred: pd.Series | np.ndarray | None = None,
 ) -> tuple[pd.DataFrame, pd.Series, pd.Series | None]:
     """
     Normalize input data into aligned feature, target, and optional prediction objects.
@@ -34,11 +34,11 @@ def check_input_data(
     they align by position.
 
     :param X: Input data containing features and, when ``y`` is a string, the target column.
-    :type X: pd.DataFrame
+    :type X: pd.DataFrame | np.ndarray
     :param y: Target column name in ``X``, or a target vector aligned with the rows of ``X``.
-    :type y: str | pd.Series
+    :type y: pd.Series | np.ndarray | str
     :param y_pred: Optional prediction values aligned with the rows of ``X``.
-    :type y_pred: np.ndarray | pd.Series | None
+    :type y_pred: pd.Series | np.ndarray | None
 
     :return: Tuple containing the feature matrix, target vector, and optional prediction vector.
     :rtype: tuple[pd.DataFrame, pd.Series, pd.Series | None]
