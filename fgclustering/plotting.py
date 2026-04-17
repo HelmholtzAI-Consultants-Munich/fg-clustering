@@ -13,9 +13,8 @@ from matplotlib.axes import Axes
 from matplotlib.colors import ListedColormap, to_rgba
 from plotly.subplots import make_subplots
 from pathlib import Path
-from typing import Any
 
-from sklearn.preprocessing import MinMaxScaler, LabelEncoder, StandardScaler
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 from .utils import matplotlib_to_plotly, save_figure
 
