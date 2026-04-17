@@ -114,6 +114,7 @@ fgc = forest_guided_clustering(
     y=y, 
     clustering_distance_metric=DistanceRandomForestProximity(), 
     clustering_strategy=ClusteringKMedoids(),
+    random_state=42,
 )
 
 # evaluate feature importance for best k
