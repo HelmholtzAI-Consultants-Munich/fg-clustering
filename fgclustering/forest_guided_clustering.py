@@ -57,7 +57,7 @@ def forest_guided_clustering(
     JI_bootstrap_sample_size: int | float | None = None,
     JI_discart_value: float = 0.6,
     n_jobs: int = 1,
-    random_state: int = 42,
+    random_state: int | None = None,
     verbose: int = 1,
 ) -> Bunch:
     """
@@ -91,7 +91,7 @@ def forest_guided_clustering(
     :type JI_discart_value: float
     :param n_jobs: Number of parallel jobs used during optimization.
     :type n_jobs: int
-    :param random_state: Random seed used for reproducibility.
+    :param random_state: Random seed used for reproducibility. Default is None, which means that no random seed is used.
     :type random_state: int
     :param verbose: Verbosity level controlling progress bars and printed output.
     :type verbose: int
@@ -403,11 +403,11 @@ def plot_forest_guided_decision_paths(
     if "predicted_target" in data_clustering.columns:
         columns_fixed.append("predicted_target")
     columns_to_select = columns_fixed + feature_importance_global_selected.index.tolist()
-    data_clustering_selected_featues = data_clustering.loc[:, columns_to_select]
+    data_clustering_selected_features = data_clustering.loc[:, columns_to_select]
 
     if distributions:
         distributions = plot_distributions(
-            data_clustering_ranked=data_clustering_selected_featues,
+            data_clustering_ranked=data_clustering_selected_features,
             top_n=top_n,
             num_cols=num_cols,
             color_spec=color_spec,
@@ -418,7 +418,7 @@ def plot_forest_guided_decision_paths(
     if heatmap:
         if issubclass(model_type, RandomForestRegressor):
             heatmap = plot_heatmap_regression(
-                data_clustering_ranked=data_clustering_selected_featues,
+                data_clustering_ranked=data_clustering_selected_features,
                 top_n=top_n,
                 heatmap_type=heatmap_type,
                 color_spec=color_spec,
@@ -427,7 +427,7 @@ def plot_forest_guided_decision_paths(
             )
         elif issubclass(model_type, RandomForestClassifier):
             heatmap = plot_heatmap_classification(
-                data_clustering_ranked=data_clustering_selected_featues,
+                data_clustering_ranked=data_clustering_selected_features,
                 top_n=top_n,
                 heatmap_type=heatmap_type,
                 color_spec=color_spec,
@@ -441,7 +441,7 @@ def plot_forest_guided_decision_paths(
 
     if dotplot:
         dotplot = plot_dotplot(
-            data_clustering_ranked=data_clustering_selected_featues,
+            data_clustering_ranked=data_clustering_selected_features,
             feature_importance_global=feature_importance_global_selected,
             feature_importance_local=feature_importance_local,
             top_n=top_n,
