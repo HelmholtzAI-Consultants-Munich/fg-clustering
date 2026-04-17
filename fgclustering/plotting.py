@@ -240,9 +240,6 @@ def plot_feature_importance(
         }
     ).sort_values(by="Importance", ascending=False)
 
-    if top_n:
-        importance_global = importance_global.iloc[:top_n,]
-
     if recolor:
         feats = importance_global["Feature"].tolist()
         kwargs = {
@@ -251,6 +248,9 @@ def plot_feature_importance(
         }
     else:
         kwargs = {"color": color_spec["color_base"]}
+
+    if top_n:
+        importance_global = importance_global.iloc[:top_n,]
 
     ### Plotting
 
@@ -633,11 +633,11 @@ def plot_heatmap_classification(
 
     cluster_labels = data_clustering_ranked["cluster"]
 
-    target_encoder = LabelEncoder()
-    rows = [target_encoder.fit_transform(data_clustering_ranked["target"])]
+    target_encoder = LabelEncoder().fit(data_clustering_ranked["target"])
+    rows = [target_encoder.transform(data_clustering_ranked["target"])]
     idx = ["target"]
     if "predicted_target" in data_clustering_ranked.columns:
-        rows.append(target_encoder.fit_transform(data_clustering_ranked["predicted_target"]))
+        rows.append(target_encoder.transform(data_clustering_ranked["predicted_target"]))
         idx.append("predicted_target")
     target = pd.DataFrame(rows, index=idx)
     categories = target_encoder.classes_
