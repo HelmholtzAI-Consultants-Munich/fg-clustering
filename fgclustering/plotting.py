@@ -73,14 +73,14 @@ def plot_optimizer_results(
     summary_rows = []
     cluster_rows = []
 
-    for k, score, mean_ji in zip(ks, scores, mean_ji):
+    for k, score, mean_ji_k in zip(ks, scores, mean_ji):
         ji_vals = list(cluster_jis[k].values())
 
         summary_rows.append(
             {
                 "k": k,
                 "score": score,
-                "mean_ji": mean_ji,
+                "mean_ji": mean_ji_k,
                 "min_ji": min(ji_vals),
                 "max_ji": max(ji_vals),
             }
