@@ -387,6 +387,11 @@ def plot_forest_guided_decision_paths(
     :return: Tuple containing the requested plot objects when ``show`` is ``False``; omitted plots are returned as ``None``.
     :rtype: tuple[tuple[Figure, list[Axes]] | bool | None, tuple[Figure, list[Axes]] | go.Figure | bool | None, tuple[Figure, Any] | bool | None] | None
     """
+
+    plot_distributions = None
+    plot_heatmap = None
+    plot_dotplot = None
+
     color_spec = {**DEFAULT_COLOR_SPEC, **(color_spec or {})}
 
     # select top n features and cluster, target for plotting
@@ -404,7 +409,7 @@ def plot_forest_guided_decision_paths(
     data_clustering_selected_features = data_clustering.loc[:, columns_to_select]
 
     if distributions:
-        distributions = plot_distributions(
+        plot_distributions = plot_distributions(
             data_clustering_ranked=data_clustering_selected_features,
             top_n=top_n,
             num_cols=num_cols,
@@ -415,7 +420,7 @@ def plot_forest_guided_decision_paths(
 
     if heatmap:
         if issubclass(model_type, RandomForestRegressor):
-            heatmap = plot_heatmap_regression(
+            plot_heatmap = plot_heatmap_regression(
                 data_clustering_ranked=data_clustering_selected_features,
                 top_n=top_n,
                 heatmap_type=heatmap_type,
@@ -424,7 +429,7 @@ def plot_forest_guided_decision_paths(
                 save=save,
             )
         elif issubclass(model_type, RandomForestClassifier):
-            heatmap = plot_heatmap_classification(
+            plot_heatmap = plot_heatmap_classification(
                 data_clustering_ranked=data_clustering_selected_features,
                 top_n=top_n,
                 heatmap_type=heatmap_type,
@@ -438,7 +443,7 @@ def plot_forest_guided_decision_paths(
             )
 
     if dotplot:
-        dotplot = plot_dotplot(
+        plot_dotplot = plot_dotplot(
             data_clustering_ranked=data_clustering_selected_features,
             feature_importance_global=feature_importance_global_selected,
             feature_importance_local=feature_importance_local,
@@ -449,4 +454,4 @@ def plot_forest_guided_decision_paths(
         )
 
     if not show:
-        return distributions, heatmap, dotplot
+        return plot_distributions, plot_heatmap, plot_dotplot
