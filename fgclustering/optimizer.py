@@ -38,14 +38,14 @@ class Optimizer:
     :param clustering_strategy: Clustering strategy used to generate cluster assignments.
     :type clustering_strategy: ClusteringKMedoids | ClusteringClara
     :param random_state: Random seed used for reproducibility.
-    :type random_state: int
+    :type random_state: int | None
     """
 
     def __init__(
         self,
         distance_metric: DistanceRandomForestProximity,
         clustering_strategy: ClusteringKMedoids | ClusteringClara,
-        random_state: int,
+        random_state: int | None,
     ):
         """Constructor for the Optimizer class."""
         self.distance_metric = distance_metric

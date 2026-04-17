@@ -91,7 +91,7 @@ def forest_guided_clustering(
     :param n_jobs: Number of parallel jobs used during optimization.
     :type n_jobs: int
     :param random_state: Random seed used for reproducibility. Default is None, which means that no random seed is used.
-    :type random_state: int
+    :type random_state: int | None
     :param verbose: Verbosity level controlling progress bars and printed output.
     :type verbose: int
 
