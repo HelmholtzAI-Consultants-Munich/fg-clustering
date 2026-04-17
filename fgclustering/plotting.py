@@ -1060,7 +1060,7 @@ def _plot_heatmaps_interactive(
     :rtype: go.Figure
     """
 
-    fig = make_subplots(rows=2, cols=1, row_heights=[0.1, 0.9], shared_xaxes=True, vertical_spacing=0.02)
+    fig = make_subplots(rows=2, cols=1, row_heights=[0.15, 0.85], shared_xaxes=True, vertical_spacing=0.02)
 
     # Target heatmap (top row) with categorical colors
     fig.add_trace(
@@ -1117,7 +1117,11 @@ def _plot_heatmaps_interactive(
         margin_pad=5,  # add some space between the row labels and the heatmap itself
     )
     # make sure ALL row labels are shown
-    row_labels = ["target"] + list(features.index.astype(str))
+    row_labels = (
+        ["target"]
+        + (["predicted_target"] if "predicted_target" in target.index else [])
+        + list(features.index.astype(str))
+    )
     fig.update_yaxes(
         type="category",
         tickmode="array",
