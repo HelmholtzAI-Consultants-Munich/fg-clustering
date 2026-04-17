@@ -330,10 +330,10 @@ def plot_forest_guided_decision_paths(
     feature_importance_global: pd.Series,
     feature_importance_local: pd.DataFrame,
     model_type: type[RandomForestClassifier] | type[RandomForestRegressor],
-    distributions: bool = True,
-    heatmap: bool = True,
+    draw_distributions: bool = True,
+    draw_dotplot: bool = True,
+    draw_heatmap: bool = True,
     heatmap_type: str = "static",
-    dotplot: bool = True,
     top_n: int | None = None,
     num_cols: int = 6,
     color_spec: dict | None = None,
@@ -387,11 +387,6 @@ def plot_forest_guided_decision_paths(
     :return: Tuple containing the requested plot objects when ``show`` is ``False``; omitted plots are returned as ``None``.
     :rtype: tuple[tuple[Figure, list[Axes]] | bool | None, tuple[Figure, list[Axes]] | go.Figure | bool | None, tuple[Figure, Any] | bool | None] | None
     """
-
-    plot_distributions = None
-    plot_heatmap = None
-    plot_dotplot = None
-
     color_spec = {**DEFAULT_COLOR_SPEC, **(color_spec or {})}
 
     # select top n features and cluster, target for plotting
@@ -408,8 +403,8 @@ def plot_forest_guided_decision_paths(
     columns_to_select = columns_fixed + feature_importance_global_selected.index.tolist()
     data_clustering_selected_features = data_clustering.loc[:, columns_to_select]
 
-    if distributions:
-        plot_distributions = plot_distributions(
+    if draw_distributions:
+        distributions_out = plot_distributions(
             data_clustering_ranked=data_clustering_selected_features,
             top_n=top_n,
             num_cols=num_cols,
@@ -417,10 +412,12 @@ def plot_forest_guided_decision_paths(
             show=show,
             save=save,
         )
+    else:
+        distributions_out = None
 
-    if heatmap:
+    if draw_heatmap:
         if issubclass(model_type, RandomForestRegressor):
-            plot_heatmap = plot_heatmap_regression(
+            heatmap_out = plot_heatmap_regression(
                 data_clustering_ranked=data_clustering_selected_features,
                 top_n=top_n,
                 heatmap_type=heatmap_type,
@@ -429,7 +426,7 @@ def plot_forest_guided_decision_paths(
                 save=save,
             )
         elif issubclass(model_type, RandomForestClassifier):
-            plot_heatmap = plot_heatmap_classification(
+            heatmap_out = plot_heatmap_classification(
                 data_clustering_ranked=data_clustering_selected_features,
                 top_n=top_n,
                 heatmap_type=heatmap_type,
@@ -441,9 +438,11 @@ def plot_forest_guided_decision_paths(
             raise ValueError(
                 "model_type must be RandomForestClassifier or RandomForestRegressor (or a subclass thereof)."
             )
+    else:
+        heatmap_out = None
 
-    if dotplot:
-        plot_dotplot = plot_dotplot(
+    if draw_dotplot:
+        dotplot_out = plot_dotplot(
             data_clustering_ranked=data_clustering_selected_features,
             feature_importance_global=feature_importance_global_selected,
             feature_importance_local=feature_importance_local,
@@ -452,6 +451,8 @@ def plot_forest_guided_decision_paths(
             show=show,
             save=save,
         )
+    else:
+        dotplot_out = None
 
     if not show:
-        return plot_distributions, plot_heatmap, plot_dotplot
+        return distributions_out, dotplot_out, heatmap_out
