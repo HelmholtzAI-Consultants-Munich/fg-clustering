@@ -99,7 +99,7 @@ class Optimizer:
         self.n_jobs = n_jobs
         self.verbose = verbose
 
-        best_k = 1
+        best_k = None
         best_score = np.inf
         results = []
 
