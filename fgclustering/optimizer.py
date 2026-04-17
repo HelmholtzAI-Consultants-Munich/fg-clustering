@@ -62,7 +62,7 @@ class Optimizer:
         model_type: type[RandomForestClassifier] | type[RandomForestRegressor],
         n_jobs: int,
         verbose: int,
-    ) -> tuple[int, float, dict, np.ndarray]:
+    ) -> tuple[list[dict], int]:
         """
         Search for the optimal number of clusters within a given range using quality and stability criteria.
 
