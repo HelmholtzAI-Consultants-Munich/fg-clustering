@@ -126,7 +126,7 @@ class TestForestGuidedClustering(unittest.TestCase):
             clustering_strategy=self.clustering_strategy,
             JI_discart_value=1.1,
         )
-        self.assertEqual(first=result.best_k, second=1)
+        self.assertIsNone(result.best_k)
 
     def test_forest_guided_clustering_memory_efficient(self):
         result = forest_guided_clustering(
@@ -200,7 +200,7 @@ class TestForestGuidedClustering(unittest.TestCase):
                 feature_importance_distance_metric="invalid_metric",
             )
 
-    def test_plot_forest_guided_feature_importance(self):
+    def test_plot_forest_guided_clustering(self):
         result = forest_guided_clustering(
             estimator=self.model,
             X=self.X,
