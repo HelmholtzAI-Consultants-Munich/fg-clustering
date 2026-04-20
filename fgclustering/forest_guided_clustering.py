@@ -343,8 +343,8 @@ def plot_forest_guided_decision_paths(
 ) -> (
     tuple[
         tuple[Figure, list[Axes]] | None,
+        tuple[Figure, list[Axes]] | None,
         tuple[Figure, list[Axes]] | go.Figure | None,
-        tuple[Figure, Any] | None,
     ]
     | None
 ):
@@ -386,7 +386,7 @@ def plot_forest_guided_decision_paths(
     :type save: str | None
 
     :return: Tuple containing the requested plot objects when ``show`` is ``False``; omitted plots are returned as ``None``.
-    :rtype: tuple[tuple[Figure, list[Axes]] | None, tuple[Figure, list[Axes]] | go.Figure | None, tuple[Figure, Any] | None] | None
+    :rtype: tuple[tuple[Figure, list[Axes]] | None, tuple[Figure, list[Axes]] | None, tuple[Figure, list[Axes]] | go.Figure | None] | None
     """
     color_spec = {**DEFAULT_COLOR_SPEC, **(color_spec or {})}
 
@@ -416,6 +416,19 @@ def plot_forest_guided_decision_paths(
     else:
         distributions_out = None
 
+    if draw_dotplot:
+        dotplot_out = plot_dotplot(
+            data_clustering_ranked=data_clustering_selected_features,
+            feature_importance_global=feature_importance_global_selected,
+            feature_importance_local=feature_importance_local,
+            top_n=top_n,
+            color_spec=color_spec,
+            show=show,
+            save=save,
+        )
+    else:
+        dotplot_out = None
+
     if draw_heatmap:
         if issubclass(model_type, RandomForestRegressor):
             heatmap_out = plot_heatmap_regression(
@@ -441,19 +454,6 @@ def plot_forest_guided_decision_paths(
             )
     else:
         heatmap_out = None
-
-    if draw_dotplot:
-        dotplot_out = plot_dotplot(
-            data_clustering_ranked=data_clustering_selected_features,
-            feature_importance_global=feature_importance_global_selected,
-            feature_importance_local=feature_importance_local,
-            top_n=top_n,
-            color_spec=color_spec,
-            show=show,
-            save=save,
-        )
-    else:
-        dotplot_out = None
 
     if not show:
         return distributions_out, dotplot_out, heatmap_out
