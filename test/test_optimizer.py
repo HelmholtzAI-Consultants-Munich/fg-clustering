@@ -343,9 +343,10 @@ class TestOptimizer(unittest.TestCase):
 
         optimizer = Optimizer(distance_metric=None, clustering_strategy=None, random_state=self.random_state)
 
-        new_labels = optimizer._sort_clusters_by_target(
+        mapping = optimizer._sort_clusters_by_target(
             y=y, cluster_labels=cluster_labels, model_type=RandomForestClassifier
         )
+        new_labels = pd.Series(cluster_labels).map(mapping).to_numpy(dtype=int)
 
         expected = np.array([2, 2, 1, 1])
         np.testing.assert_array_equal(new_labels, expected)
@@ -356,9 +357,10 @@ class TestOptimizer(unittest.TestCase):
 
         optimizer = Optimizer(distance_metric=None, clustering_strategy=None, random_state=self.random_state)
 
-        new_labels = optimizer._sort_clusters_by_target(
+        mapping = optimizer._sort_clusters_by_target(
             y=y, cluster_labels=cluster_labels, model_type=RandomForestRegressor
         )
+        new_labels = pd.Series(cluster_labels).map(mapping).to_numpy(dtype=int)
 
         expected = np.array([3, 3, 1, 1, 2, 2])
         np.testing.assert_array_equal(new_labels, expected)
@@ -369,9 +371,10 @@ class TestOptimizer(unittest.TestCase):
 
         optimizer = Optimizer(distance_metric=None, clustering_strategy=None, random_state=self.random_state)
 
-        new_labels = optimizer._sort_clusters_by_target(
+        mapping = optimizer._sort_clusters_by_target(
             y=y, cluster_labels=cluster_labels, model_type=RandomForestRegressor
         )
+        new_labels = pd.Series(cluster_labels).map(mapping).to_numpy(dtype=int)
 
         expected = np.array([2, 2, 3, 3, 1, 1])
         np.testing.assert_array_equal(new_labels, expected)

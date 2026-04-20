@@ -142,9 +142,7 @@ class Optimizer:
             cluster_mapping = self._sort_clusters_by_target(
                 y=y, cluster_labels=cluster_labels_k, model_type=model_type
             )
-
-            # apply the re-labeling
-            reordered_cluster_labels = pd.Series(cluster_labels_k).map(cluster_mapping)
+            reordered_cluster_labels = pd.Series(cluster_labels_k).map(cluster_mapping).to_numpy(dtype=int)
             reordered_JI_per_cluster_k = {
                 cluster_mapping[cid]: JI_per_cluster_k[cid] for cid in JI_per_cluster_k.keys()
             }
@@ -157,7 +155,7 @@ class Optimizer:
                     "Mean_JI": JI_k,
                     "Score": cluster_score_k,
                     "Cluster_JI": dict(sorted(reordered_JI_per_cluster_k.items())),
-                    "Cluster_labels": reordered_cluster_labels.to_numpy(),
+                    "Cluster_labels": reordered_cluster_labels,
                 }
             )
 
@@ -398,11 +396,12 @@ class Optimizer:
         model_type: type[RandomForestClassifier] | type[RandomForestRegressor],
     ) -> dict[int, int]:
         """
-        Reorder cluster labels according to the mean target value within each cluster.
+        Build a mapping from original cluster labels to new labels ranked by mean target.
 
         For classification tasks, target values are first converted to category codes. Cluster
-        means are then computed and used to rank clusters in ascending order. Original
-        cluster labels are remapped to consecutive labels starting at 1.
+        means are then computed and used to rank clusters in ascending order. The returned
+        dictionary maps each original cluster id to a consecutive label starting at 1. Callers
+        should remap per-sample labels and Jaccard dictionaries with this mapping.
 
         :param y: Target values aligned with the cluster labels.
         :type y: pd.Series
@@ -411,7 +410,7 @@ class Optimizer:
         :param model_type: Estimator class used to determine whether classification or regression handling is applied.
         :type model_type: type[RandomForestClassifier] | type[RandomForestRegressor]
 
-        :return: Cluster labels remapped according to ascending mean target value.
+        :return: Mapping from each original cluster label to its rank label (1-based).
         :rtype: dict[int, int]
         """
 

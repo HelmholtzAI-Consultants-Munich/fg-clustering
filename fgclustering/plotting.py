@@ -273,7 +273,7 @@ def plot_feature_importance(
         if reorder:
             importance_local = (
                 feature_importance_local[cluster]
-                .iloc[importance_global.index]
+                .loc[importance_global["Feature"].tolist()]
                 .rename_axis("Feature")
                 .reset_index(name="Importance")
             )
