@@ -2,6 +2,9 @@
 # Imports
 ############################################
 
+from collections.abc import Sequence
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -27,13 +30,13 @@ CLIP_ZSCORE_POSITIVE = 3
 
 
 def plot_optimizer_results(
-    ks: list[int],
-    scores: list[float],
-    mean_ji: list[float],
+    ks: Sequence[int] | np.ndarray,
+    scores: Sequence[float] | np.ndarray,
+    mean_ji: Sequence[float] | np.ndarray,
     cluster_jis: dict[int, dict[int, float]],
     best_k: int | None,
     JI_discart_value: float | None,
-    color_spec: dict,
+    color_spec: dict[str, Any],
     show: bool,
     save: str | None,
 ) -> tuple[Figure, Axes] | None:
@@ -47,11 +50,11 @@ def plot_optimizer_results(
     ``JI_discart_value`` with a horizontal cutoff.
 
     :param ks: Candidate numbers of clusters evaluated by the optimizer, in plotting order.
-    :type ks: list[int]
+    :type ks: collections.abc.Sequence[int] | numpy.ndarray
     :param scores: Clustering score for each value in ``ks``; must be aligned with ``ks``.
-    :type scores: list[float]
+    :type scores: collections.abc.Sequence[float] | numpy.ndarray
     :param mean_ji: Mean Jaccard stability for each value in ``ks``; must be aligned with ``ks``.
-    :type mean_ji: list[float]
+    :type mean_ji: collections.abc.Sequence[float] | numpy.ndarray
     :param cluster_jis: Mapping from each ``k`` to per-cluster Jaccard stability values.
     :type cluster_jis: dict[int, dict[int, float]]
     :param best_k: Value of ``k`` to highlight with a vertical reference line when present in ``ks``.
@@ -59,7 +62,7 @@ def plot_optimizer_results(
     :param JI_discart_value: Optional horizontal reference line for the Jaccard stability threshold.
     :type JI_discart_value: float | None
     :param color_spec: Color specification dictionary containing ``"color_score"`` and ``"color_ji"``.
-    :type color_spec: dict
+    :type color_spec: dict[str, Any]
     :param show: If ``True``, display the figure with ``plt.show()``; otherwise return it.
     :type show: bool
     :param save: Base path with extension; saves ``{stem}_optimizer_results{suffix}`` when provided.

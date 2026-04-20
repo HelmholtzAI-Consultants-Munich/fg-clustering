@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 import plotly.graph_objects as go
+from collections.abc import Sequence
 from typing import Any
 
 from matplotlib.figure import Figure
@@ -207,13 +208,13 @@ def forest_guided_feature_importance(
 
 
 def plot_forest_guided_clustering(
-    ks: list[int],
-    scores: list[float],
-    mean_ji: list[float],
+    ks: Sequence[int] | np.ndarray,
+    scores: Sequence[float] | np.ndarray,
+    mean_ji: Sequence[float] | np.ndarray,
     cluster_jis: dict[int, dict[int, float]],
     best_k: int | None = None,
     JI_discart_value: float | None = None,
-    color_spec: dict | None = None,
+    color_spec: dict[str, Any] | None = None,
     show: bool = True,
     save: str | None = None,
 ) -> tuple[Figure, Axes] | None:
@@ -227,11 +228,11 @@ def plot_forest_guided_clustering(
     provided colors with the default color specification.
 
     :param ks: Evaluated numbers of clusters.
-    :type ks: list[int]
+    :type ks: collections.abc.Sequence[int] | numpy.ndarray
     :param scores: Clustering quality score for each value in ``ks``.
-    :type scores: list[float]
+    :type scores: collections.abc.Sequence[float] | numpy.ndarray
     :param mean_ji: Mean Jaccard stability for each value in ``ks``.
-    :type mean_ji: list[float]
+    :type mean_ji: collections.abc.Sequence[float] | numpy.ndarray
     :param cluster_jis: Per-cluster Jaccard stability values for each ``k``.
     :type cluster_jis: dict[int, dict[int, float]]
     :param best_k: Optional value of ``k`` to highlight in the plot.
@@ -239,7 +240,7 @@ def plot_forest_guided_clustering(
     :param JI_discart_value: Optional Jaccard stability threshold to draw as a horizontal reference line.
     :type JI_discart_value: float | None
     :param color_spec: Optional dictionary overriding entries of ``DEFAULT_COLOR_SPEC``.
-    :type color_spec: dict | None
+    :type color_spec: dict[str, Any] | None
     :param show: If ``True``, display the figure; otherwise return it.
     :type show: bool
     :param save: Optional output path used to save the figure.
