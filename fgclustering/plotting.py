@@ -714,7 +714,7 @@ def plot_heatmap_classification(
         ]
         color_target_legend = {i: color_target_palette_rgb[i] for i in range(len(categories))}
         colorscale_target = [
-            [i / (len(categories) - 1), color_target_legend[i]] for i in range(len(categories))
+            [i / max(2, (len(categories) - 1)), color_target_legend[i]] for i in range(len(categories))
         ]
 
         fig = _plot_heatmaps_interactive(
