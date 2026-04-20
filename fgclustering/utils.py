@@ -44,13 +44,23 @@ def check_input_data(
     :rtype: tuple[pd.DataFrame, pd.Series, pd.Series | None]
     """
     if isinstance(y, str):
-        y_data = pd.Series(X[y]).reset_index(drop=True)
-        X_data = pd.DataFrame(X.drop(columns=[y])).reset_index(drop=True)
+        if isinstance(X, pd.DataFrame) and y in X.columns:
+            y_data = pd.Series(X[y]).reset_index(drop=True)
+            X_data = pd.DataFrame(X.drop(columns=[y])).reset_index(drop=True)
+        else:
+            raise ValueError(
+                "X must be a pandas DataFrame and y must be a column name in X when y is a string."
+            )
     else:
         y_data = pd.Series(y).reset_index(drop=True)
         X_data = pd.DataFrame(X).reset_index(drop=True)
 
     y_pred_data = pd.Series(y_pred).reset_index(drop=True) if y_pred is not None else None
+
+    if len(y_data) != len(X_data):
+        raise ValueError("X, y and y_pred must have the same number of rows.")
+    if y_pred_data is not None and len(y_data) != len(y_pred_data):
+        raise ValueError("X, y and y_pred must have the same number of rows.")
     return X_data, y_data, y_pred_data
 
 
