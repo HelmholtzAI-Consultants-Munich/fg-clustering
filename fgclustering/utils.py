@@ -58,7 +58,7 @@ def check_input_data(
     y_pred_data = pd.Series(y_pred).reset_index(drop=True) if y_pred is not None else None
 
     if len(y_data) != len(X_data):
-        raise ValueError("X, y and y_pred must have the same number of rows.")
+        raise ValueError("X and y must have the same number of rows.")
     if y_pred_data is not None and len(y_data) != len(y_pred_data):
         raise ValueError("X, y and y_pred must have the same number of rows.")
     return X_data, y_data, y_pred_data
