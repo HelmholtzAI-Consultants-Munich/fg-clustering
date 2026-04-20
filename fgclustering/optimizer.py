@@ -396,7 +396,7 @@ class Optimizer:
         y: pd.Series,
         cluster_labels: np.ndarray,
         model_type: type[RandomForestClassifier] | type[RandomForestRegressor],
-    ) -> np.ndarray:
+    ) -> dict[int, int]:
         """
         Reorder cluster labels according to the mean target value within each cluster.
 
@@ -412,7 +412,7 @@ class Optimizer:
         :type model_type: type[RandomForestClassifier] | type[RandomForestRegressor]
 
         :return: Cluster labels remapped according to ascending mean target value.
-        :rtype: np.ndarray
+        :rtype: dict[int, int]
         """
 
         # ensure y is a series
