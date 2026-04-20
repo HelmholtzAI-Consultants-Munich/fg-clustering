@@ -114,24 +114,35 @@ fgc = forest_guided_clustering(
     y=y, 
     clustering_distance_metric=DistanceRandomForestProximity(), 
     clustering_strategy=ClusteringKMedoids(),
+    random_state=42,
 )
 
-# evaluate feature importance
-feature_importance = forest_guided_feature_importance(
+# evaluate feature importance for best k
+fgc_fi = forest_guided_feature_importance(
     X=X, 
     y=y, 
-    cluster_labels=fgc.cluster_labels,
-    model_type=fgc.model_type,
+    y_pred=model.predict(X),
+    cluster_labels=fgc.cluster_labels[fgc.best_k],
 )
 
 # visualize the results
+plot_forest_guided_clustering(
+    ks=fgc.ks, 
+    scores=fgc.scores, 
+    mean_ji=fgc.mean_ji, 
+    cluster_jis=fgc.cluster_jis, 
+    best_k=fgc.best_k, 
+)
+
 plot_forest_guided_feature_importance(
-    feature_importance_local=feature_importance.feature_importance_local,
-    feature_importance_global=feature_importance.feature_importance_global
+    feature_importance_local=fgc_fi.feature_importance_local,
+    feature_importance_global=fgc_fi.feature_importance_global
 )
 
 plot_forest_guided_decision_paths(
-    data_clustering=feature_importance.data_clustering,
+    data_clustering=fgc_fi.data_clustering,
+    feature_importance_global=fgc_fi.feature_importance_global,
+    feature_importance_local=fgc_fi.feature_importance_local,
     model_type=fgc.model_type,
 )
 ```

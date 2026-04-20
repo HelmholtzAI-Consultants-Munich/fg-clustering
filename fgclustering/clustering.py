@@ -21,19 +21,20 @@ from .utils import check_sub_sample_size, custom_round
 
 class ClusteringKMedoids:
     """
-    Implements the K-Medoids algorithm using Random Forest proximity-based distances.
+    Cluster samples with the K-Medoids algorithm using Random Forest proximity-based distances.
 
-    To ensure memory-efficiency and scalability to large datasets, a precomputed
-    distance matrix is not required. Instead, the distance matrix is computed
-    on the fly using Random Forest terminal nodes.
+    Pairwise distances are derived from precomputed Random Forest terminal node
+    assignments. The distance matrix for the requested samples is computed on demand,
+    which avoids requiring a permanently stored full distance matrix and supports
+    memory-efficient workflows.
 
-    :param method: Computation method for the K-Medoids algorithm. Default: "fasterpam".
+    :param method: Optimization method used by the K-Medoids implementation.
     :type method: str
-    :param init: Initialization strategy for the K-Medoids algorithm. Default: "random".
+    :param init: Initialization strategy used for selecting starting medoids.
     :type init: str
-    :param max_iter: Maximum number of iterations for the K-Medoids algorithm. Default: 100.
+    :param max_iter: Maximum number of K-Medoids update iterations.
     :type max_iter: int
-    :param random_state: Random seed for reproducibility. Default: 42.
+    :param random_state: Random seed used for reproducibility.
     :type random_state: int
     """
 
@@ -60,23 +61,26 @@ class ClusteringKMedoids:
         verbose: int,
     ) -> np.ndarray:
         """
-        Executes K-Medoids clustering on a (sub-)set of samples by computing proximity-based
-        distances on the fly using terminal node information.
+        Run K-Medoids clustering on the selected samples using Random Forest proximity distances.
+
+        The required distance matrix is computed from the precomputed terminal node
+        assignments stored in ``distance_metric``. The resulting labels are shifted to
+        one-based indexing before being returned.
 
         :param k: Number of clusters.
         :type k: int
-        :param distance_metric: An instance of DistanceRandomForestProximity with precomputed terminals.
+        :param distance_metric: Distance metric object with precomputed Random Forest terminal nodes.
         :type distance_metric: DistanceRandomForestProximity
-        :param sample_indices: Indices of the samples to include in clustering.
+        :param sample_indices: Indices of the samples to cluster.
         :type sample_indices: np.ndarray
-        :param random_state_subsampling: Random seed for for subsampling reproducibility. Not used in this implementation.
+        :param random_state_subsampling: Optional subsampling seed. Not used in this implementation.
         :type random_state_subsampling: int | None
-        :param verbose: Verbosity level (0 = silent, 1 = progress messages). Not used in this implementation.
+        :param verbose: Verbosity level. Not used in this implementation.
         :type verbose: int
 
-        :raises ValueError: If terminal nodes are not precomputed in the distance metric.
+        :raises ValueError: If terminal nodes have not been precomputed in ``distance_metric``.
 
-        :return: Cluster labels for each input sample index.
+        :return: One-based cluster labels for the selected samples.
         :rtype: np.ndarray
         """
         if distance_metric.terminals is None:
@@ -103,28 +107,27 @@ class ClusteringKMedoids:
 
 class ClusteringClara:
     """
-    Implements the CLARA (Clustering Large Applications) algorithm using Random Forest
-    proximity-based distances. CLARA allows K-Medoids clustering on large datasets by
-    performing it on several subsamples of the dataset and selecting the best set of
-    medoids based on total intra-cluster distances (inertia).
+    Cluster samples with the CLARA algorithm using Random Forest proximity-based distances.
 
-    To optimize memory usage and enable scalability for large datasets, it is not required
-    to precompute the full distance matrix. Instead, pairwise distances for subsamples are
-    computed on demand from precomputed Random Forest terminal node assignments.
+    CLARA repeatedly draws subsamples, runs K-Medoids on each subsample, and selects the
+    medoid set with the best total inertia on the full input sample set. Distances are
+    computed on demand from precomputed Random Forest terminal node assignments, which
+    enables scalable clustering without requiring a full precomputed distance matrix in
+    memory.
 
-    :param sub_sample_size: Number or proportion of samples to draw for each CLARA iteration. If None, computes an adaptive subsample ratio based on dataset size, constrained between 10% and 80%, targeting approximately 1,000 samples. Default: None.
+    :param sub_sample_size: Number or proportion of samples drawn in each CLARA iteration, or ``None`` to choose an adaptive size.
     :type sub_sample_size: int | float | None
-    :param sampling_iter: Number of CLARA iterations to perform. If None, sets the number of sampling iterations log2(sample size), with a minimum of 5 iterations to ensure sufficient sampling. Default: None.
+    :param sampling_iter: Number of CLARA subsampling iterations, or ``None`` to choose it automatically.
     :type sampling_iter: int | None
-    :param sampling_target: List of target class labels for stratified subsampling. If provided, ensures that the subsample maintains the class distribution of the original dataset. Default: None.
+    :param sampling_target: Optional target values used for stratified subsampling.
     :type sampling_target: list | None
-    :param method: Computation method for the K-Medoids algorithm. Default: "fasterpam".
+    :param method: Optimization method used by the K-Medoids implementation.
     :type method: str
-    :param init: Initialization strategy for the K-Medoids algorithm. Default: "random".
+    :param init: Initialization strategy used for selecting starting medoids.
     :type init: str
-    :param max_iter: Maximum number of iterations for the K-Medoids algorithm. Default: 100.
+    :param max_iter: Maximum number of K-Medoids update iterations.
     :type max_iter: int
-    :param random_state: Random seed for reproducibility. Default: 42.
+    :param random_state: Random seed used for reproducibility.
     :type random_state: int
     """
 
@@ -159,25 +162,27 @@ class ClusteringClara:
         verbose: int,
     ) -> np.ndarray:
         """
-        Executes CLARA-based K-Medoids clustering on a (sub-)set of samples by iteratively
-        sampling subsets of the input set, computing proximity-based distances on the fly
-        using terminal node information, and identifying the best set of medoids based on
-        inertia. Cluster labels for all samples are assigned using the best-performing medoids.
+        Run CLARA clustering on the selected samples using Random Forest proximity distances.
+
+        Repeated subsamples of the input sample set are drawn, K-Medoids is fit on each
+        subsample, and the medoid set with the lowest full-sample inertia is retained. Final
+        labels for all selected samples are then assigned according to the best medoids. The
+        returned labels use one-based indexing.
 
         :param k: Number of clusters.
         :type k: int
-        :param distance_metric: An instance of DistanceRandomForestProximity with precomputed terminals.
+        :param distance_metric: Distance metric object with precomputed Random Forest terminal nodes.
         :type distance_metric: DistanceRandomForestProximity
-        :param sample_indices: Indices of the samples to include in clustering.
+        :param sample_indices: Indices of the samples to cluster.
         :type sample_indices: np.ndarray
-        :param random_state_subsampling: Random seed for for subsampling reproducibility. If None, use `random_state` defined in constructor.
+        :param random_state_subsampling: Optional random seed controlling CLARA subsampling; if ``None``, the instance-level ``random_state`` is used.
         :type random_state_subsampling: int | None
-        :param verbose: Verbosity level (0 = silent, 1 = progress messages).
+        :param verbose: Verbosity level controlling progress-related output from helper routines.
         :type verbose: int
 
-        :raises ValueError: If terminal nodes are not precomputed in the distance metric.
+        :raises ValueError: If terminal nodes have not been precomputed in ``distance_metric``.
 
-        :return: Cluster labels for each input sample index.
+        :return: One-based cluster labels for the selected samples.
         :rtype: np.ndarray
         """
         if distance_metric.terminals is None:
@@ -284,17 +289,19 @@ def _calculate_inertia(
     medoids_idx: np.ndarray,
 ) -> float:
     """
-    Compute the total total intra-cluster distances (inertia) for a set of samples,
-    where distances are defined as Random Forest proximity-based distances.
+    Compute the total inertia of a sample set with respect to a given set of medoids.
 
-    :param terminals: 2D array of shape (n_samples, n_estimators), where each entry indicates the terminal node index for a sample in a tree.
+    For each sample, the distance to the closest medoid is computed from Random Forest
+    terminal node proximity, and these minimum distances are summed across all samples.
+
+    :param terminals: Array of terminal node assignments with shape ``(n_samples, n_estimators)``.
     :type terminals: np.ndarray
-    :param sample_idx: Indices of samples for which inertia is calculated.
+    :param sample_idx: Indices of the samples whose inertia is evaluated.
     :type sample_idx: np.ndarray
-    :param medoids_idx: Indices of medoids used to calculate inertia.
+    :param medoids_idx: Indices of the medoid samples.
     :type medoids_idx: np.ndarray
 
-    :return: Total inertia value for the sample set.
+    :return: Total inertia of the sample set.
     :rtype: float
     """
     n_estimators = terminals.shape[1]
@@ -327,16 +334,20 @@ def _asign_labels(
     medoids_idx: np.ndarray,
 ) -> np.ndarray:
     """
-    Assign each sample to the cluster of the closest medoid based on Random Forest proximity-based distances.
+    Assign each sample to the nearest medoid using Random Forest proximity-based distances.
 
-    :param terminals: 2D array of shape (n_samples, n_estimators), where each entry indicates the terminal node index for a sample in a tree.
+    For every sample in ``sample_idx``, the distance to each medoid is computed from the
+    terminal node assignments, and the label of the closest medoid is returned using
+    zero-based indexing.
+
+    :param terminals: Array of terminal node assignments with shape ``(n_samples, n_estimators)``.
     :type terminals: np.ndarray
-    :param sample_idx: Indices of the samples to assign to clusters.
+    :param sample_idx: Indices of the samples to assign.
     :type sample_idx: np.ndarray
-    :param medoids_idx: Indices of medoids used to assign cluster labels.
+    :param medoids_idx: Indices of the medoid samples.
     :type medoids_idx: np.ndarray
 
-    :return: Cluster labels for each input sample index.
+    :return: Zero-based cluster labels for the input samples.
     :rtype: np.ndarray
     """
     n_estimators = terminals.shape[1]

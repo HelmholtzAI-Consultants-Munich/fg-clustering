@@ -30,7 +30,7 @@ class TestClusteringKMedoids(unittest.TestCase):
         self.random_state = 42
 
         self.X, self.y, self.model = self._train_model()
-        self.sample_indices = np.arange(100)
+        self.sample_indices = np.arange(stop=100)
 
     def _train_model(self):
 
@@ -41,7 +41,7 @@ class TestClusteringKMedoids(unittest.TestCase):
             n_informative=5,
             random_state=self.random_state,
         )
-        X = pd.DataFrame(X, columns=[f"feature_{i}" for i in range(X.shape[1])])
+        X = pd.DataFrame(data=X, columns=[f"feature_{i}" for i in range(X.shape[1])])
         y = y
 
         model = RandomForestClassifier(
@@ -52,7 +52,7 @@ class TestClusteringKMedoids(unittest.TestCase):
             oob_score=True,
             random_state=self.random_state,
         )
-        model.fit(X, y)
+        model.fit(X=X, y=y)
 
         return X, y, model
 
@@ -64,7 +64,7 @@ class TestClusteringKMedoids(unittest.TestCase):
 
     def test_run_clustering_output_shape(self):
         distance = DistanceRandomForestProximity(memory_efficient=False)
-        distance.calculate_terminals(self.model, self.X)
+        distance.calculate_terminals(estimator=self.model, X=self.X)
 
         clustering = ClusteringKMedoids()
         labels = clustering.run_clustering(
@@ -75,12 +75,12 @@ class TestClusteringKMedoids(unittest.TestCase):
             verbose=1,
         )
 
-        self.assertEqual(len(labels), len(self.sample_indices))
-        self.assertTrue(np.all(np.isin(labels, [1, 2, 3])))
+        self.assertEqual(first=len(labels), second=len(self.sample_indices))
+        self.assertTrue(expr=np.all(a=np.isin(element=labels, test_elements=[1, 2, 3])))
 
     def test_run_clustering_memory_efficient(self):
         distance = DistanceRandomForestProximity(memory_efficient=True, dir_distance_matrix=self.tmp_path)
-        distance.calculate_terminals(self.model, self.X)
+        distance.calculate_terminals(estimator=self.model, X=self.X)
 
         clustering = ClusteringKMedoids()
         labels = clustering.run_clustering(
@@ -91,12 +91,12 @@ class TestClusteringKMedoids(unittest.TestCase):
             verbose=1,
         )
 
-        self.assertEqual(len(labels), len(self.sample_indices))
-        self.assertTrue(np.all(np.isin(labels, [1, 2, 3, 4])))
+        self.assertEqual(first=len(labels), second=len(self.sample_indices))
+        self.assertTrue(expr=np.all(a=np.isin(element=labels, test_elements=[1, 2, 3, 4])))
 
     def test_run_clustering_invalid_sample_indices(self):
         distance = DistanceRandomForestProximity(memory_efficient=False)
-        distance.calculate_terminals(self.model, self.X)
+        distance.calculate_terminals(estimator=self.model, X=self.X)
 
         clustering = ClusteringKMedoids()
         with self.assertRaises(IndexError):
@@ -110,7 +110,7 @@ class TestClusteringKMedoids(unittest.TestCase):
 
     def test_run_clustering_different_k_values(self):
         distance = DistanceRandomForestProximity(memory_efficient=False)
-        distance.calculate_terminals(self.model, self.X)
+        distance.calculate_terminals(estimator=self.model, X=self.X)
 
         clustering = ClusteringKMedoids()
         for k in [2, 5, 7]:
@@ -121,8 +121,8 @@ class TestClusteringKMedoids(unittest.TestCase):
                 random_state_subsampling=None,
                 verbose=1,
             )
-            self.assertEqual(len(labels), len(self.sample_indices))
-            self.assertEqual(len(np.unique(labels)), k)
+            self.assertEqual(first=len(labels), second=len(self.sample_indices))
+            self.assertEqual(first=len(np.unique(ar=labels)), second=k)
 
 
 class TestClusteringClara(unittest.TestCase):
@@ -134,7 +134,7 @@ class TestClusteringClara(unittest.TestCase):
         self.random_state = 42
 
         self.X, self.y, self.model = self._train_model()
-        self.sample_indices = np.arange(100)
+        self.sample_indices = np.arange(stop=100)
 
     def _train_model(self):
 
@@ -145,7 +145,7 @@ class TestClusteringClara(unittest.TestCase):
             n_informative=5,
             random_state=self.random_state,
         )
-        X = pd.DataFrame(X, columns=[f"feature_{i}" for i in range(X.shape[1])])
+        X = pd.DataFrame(data=X, columns=[f"feature_{i}" for i in range(X.shape[1])])
         y = y
 
         model = RandomForestClassifier(
@@ -156,7 +156,7 @@ class TestClusteringClara(unittest.TestCase):
             oob_score=True,
             random_state=self.random_state,
         )
-        model.fit(X, y)
+        model.fit(X=X, y=y)
 
         return X, y, model
 
@@ -168,7 +168,7 @@ class TestClusteringClara(unittest.TestCase):
 
     def test_run_clustering_output_shape(self):
         distance = DistanceRandomForestProximity(memory_efficient=False)
-        distance.calculate_terminals(self.model, self.X)
+        distance.calculate_terminals(estimator=self.model, X=self.X)
 
         clara = ClusteringClara(sub_sample_size=50, sampling_iter=5)
         labels = clara.run_clustering(
@@ -179,12 +179,12 @@ class TestClusteringClara(unittest.TestCase):
             verbose=1,
         )
 
-        self.assertEqual(len(labels), len(self.sample_indices))
-        self.assertEqual(len(np.unique(labels)), 3)
+        self.assertEqual(first=len(labels), second=len(self.sample_indices))
+        self.assertEqual(first=len(np.unique(ar=labels)), second=3)
 
     def test_run_clustering_memory_efficient(self):
         distance = DistanceRandomForestProximity(memory_efficient=True, dir_distance_matrix=self.tmp_path)
-        distance.calculate_terminals(self.model, self.X)
+        distance.calculate_terminals(estimator=self.model, X=self.X)
 
         clara = ClusteringClara(sub_sample_size=50, sampling_iter=5)
         labels = clara.run_clustering(
@@ -195,12 +195,12 @@ class TestClusteringClara(unittest.TestCase):
             verbose=1,
         )
 
-        self.assertEqual(len(labels), len(self.sample_indices))
-        self.assertEqual(len(np.unique(labels)), 4)
+        self.assertEqual(first=len(labels), second=len(self.sample_indices))
+        self.assertEqual(first=len(np.unique(ar=labels)), second=4)
 
     def test_run_clustering_same_seed_gives_same_result(self):
         distance = DistanceRandomForestProximity(memory_efficient=False)
-        distance.calculate_terminals(self.model, self.X)
+        distance.calculate_terminals(estimator=self.model, X=self.X)
 
         clara1 = ClusteringClara(sub_sample_size=50, sampling_iter=5, random_state=0)
         clara2 = ClusteringClara(sub_sample_size=50, sampling_iter=5, random_state=0)
@@ -224,7 +224,7 @@ class TestClusteringClara(unittest.TestCase):
 
     def test_run_clustering_auto_iteration_fallback(self):
         distance = DistanceRandomForestProximity(memory_efficient=False)
-        distance.calculate_terminals(self.model, self.X)
+        distance.calculate_terminals(estimator=self.model, X=self.X)
 
         clara = ClusteringClara(sub_sample_size=50, sampling_iter=None)
         labels = clara.run_clustering(
@@ -235,11 +235,11 @@ class TestClusteringClara(unittest.TestCase):
             verbose=1,
         )
 
-        self.assertEqual(len(labels), len(self.sample_indices))
+        self.assertEqual(first=len(labels), second=len(self.sample_indices))
 
     def test_run_clustering_subsample_size_as_fraction(self):
         distance = DistanceRandomForestProximity(memory_efficient=False)
-        distance.calculate_terminals(self.model, self.X)
+        distance.calculate_terminals(estimator=self.model, X=self.X)
 
         clara = ClusteringClara(sub_sample_size=0.5, sampling_iter=3)
         labels = clara.run_clustering(
@@ -250,19 +250,19 @@ class TestClusteringClara(unittest.TestCase):
             verbose=1,
         )
 
-        self.assertEqual(len(labels), len(self.sample_indices))
+        self.assertEqual(first=len(labels), second=len(self.sample_indices))
 
     def test_run_clustering_clara_improves_with_more_iterations(self):
         # Create 3 clear Gaussian clusters
         X, y_true = make_blobs(n_samples=150, centers=3, cluster_std=0.5, random_state=42)
-        X = pd.DataFrame(X)
+        X = pd.DataFrame(data=X)
 
         model = RandomForestClassifier(n_estimators=20, random_state=42)
-        model.fit(X, y_true)
+        model.fit(X=X, y=y_true)
 
-        sample_indices = np.arange(len(X))
+        sample_indices = np.arange(stop=len(X))
         distance = DistanceRandomForestProximity(memory_efficient=False)
-        distance.calculate_terminals(model, X)
+        distance.calculate_terminals(estimator=model, X=X)
 
         # Clara with few iterations
         clara_few = ClusteringClara(sub_sample_size=0.5, sampling_iter=1, random_state=42)
@@ -274,7 +274,9 @@ class TestClusteringClara(unittest.TestCase):
             verbose=1,
         )
         inertia_few = _calculate_inertia(
-            distance.terminals, sample_indices, sample_indices[np.unique(labels_few, return_index=True)[1]]
+            terminals=distance.terminals,
+            sample_idx=sample_indices,
+            medoids_idx=sample_indices[np.unique(ar=labels_few, return_index=True)[1]],
         )
 
         # Clara with more iterations
@@ -287,7 +289,9 @@ class TestClusteringClara(unittest.TestCase):
             verbose=1,
         )
         inertia_many = _calculate_inertia(
-            distance.terminals, sample_indices, sample_indices[np.unique(labels_many, return_index=True)[1]]
+            terminals=distance.terminals,
+            sample_idx=sample_indices,
+            medoids_idx=sample_indices[np.unique(ar=labels_many, return_index=True)[1]],
         )
 
         # The inertia from more iterations should not be worse
@@ -309,12 +313,14 @@ class TestClusteringClara(unittest.TestCase):
         sample_idx = np.array([0, 1, 2])
         medoids_idx = np.array([0])  # only one medoid identical to sample 0 and 1
 
-        inertia = _calculate_inertia(terminals, sample_idx, medoids_idx)
+        inertia = _calculate_inertia(
+            terminals=terminals, sample_idx=sample_idx, medoids_idx=medoids_idx
+        )
 
         # Distance for samples 0 and 1 should be 0
         # Distance for sample 2 should be 1.0 (no match)
         expected = 0 + 0 + 1.0
-        assert np.isclose(inertia, expected), f"Expected inertia {expected}, got {inertia}"
+        assert np.isclose(a=inertia, b=expected), f"Expected inertia {expected}, got {inertia}"
 
     def test_asign_labels_basic(self):
         terminals = np.array(
@@ -329,7 +335,7 @@ class TestClusteringClara(unittest.TestCase):
         sample_idx = np.array([0, 1, 2])
         medoids_idx = np.array([0, 2])  # Two medoids: sample 0 and sample 2
 
-        labels = _asign_labels(terminals, sample_idx, medoids_idx)
+        labels = _asign_labels(terminals=terminals, sample_idx=sample_idx, medoids_idx=medoids_idx)
 
         # Expect:
         # sample 0 -> medoid 0 (label 0)
@@ -337,4 +343,4 @@ class TestClusteringClara(unittest.TestCase):
         # sample 2 -> medoid 1 (label 1)
         expected = np.array([0, 0, 1], dtype=np.int16)
 
-        assert np.array_equal(labels, expected), f"Expected labels {expected}, got {labels}"
+        assert np.array_equal(a1=labels, a2=expected), f"Expected labels {expected}, got {labels}"

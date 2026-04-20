@@ -4,7 +4,9 @@
 
 import numpy as np
 import pandas as pd
+
 import plotly.graph_objects as go
+from collections.abc import Sequence
 from typing import Any
 
 from matplotlib.figure import Figure
@@ -19,12 +21,25 @@ from .distance import DistanceWasserstein, DistanceJensenShannon, DistanceRandom
 from .optimizer import Optimizer
 from .statistics import FeatureImportance
 from .plotting import (
+    plot_optimizer_results,
     plot_feature_importance,
     plot_distributions,
     plot_heatmap_regression,
     plot_heatmap_classification,
+    plot_dotplot,
 )
 
+DEFAULT_COLOR_SPEC = {
+    "color_score": "#E69F00",
+    "color_ji": "#0072B2",
+    "color_base": "#bababa",
+    "color_recolor": "tab20",
+    "color_target": "Greens",
+    "color_target_cat": "Greens",
+    "color_features": "coolwarm",
+    "color_features_cat": "Greys",
+    "color_boundaries": "none",
+}
 
 ############################################
 # Forest-guided Clustering API
@@ -42,55 +57,55 @@ def forest_guided_clustering(
     JI_bootstrap_sample_size: int | float | None = None,
     JI_discart_value: float = 0.6,
     n_jobs: int = 1,
-    random_state: int = 42,
+    random_state: int | None = None,
     verbose: int = 1,
 ) -> Bunch:
     """
     Perform forest-guided clustering using proximity information derived from a Random Forest model.
 
-    This function uses the structure of a trained Random Forest to extract proximity-based similarities
-    between instances. Based on the proximity (number of shared terminal nodes), a distance matrix is calculated,
-    which is used to perform clustering via K-Medoids or CLARA. The number of clusters (k) can be optimized
-    using internal stability metrics such as the Jaccard Index (JI) across multiple bootstraps. The
-    optimization prioritizes both cluster stability and model-specific scoring (e.g., balanced impurity for
-    classification, within-cluster variance for regression). The function returns the best k with its score,
-    stability and assigned cluster labels for each sample of the input data.
+    The fitted Random Forest is used to compute proximity-based distances between samples,
+    which are then clustered with the chosen clustering strategy. The number of clusters
+    can be fixed or optimized over a range of candidate values using both clustering
+    stability and task-specific cluster quality. Stability is assessed with the Jaccard
+    Index across repeated subsamples, while quality is measured by balanced impurity for
+    classification or within-cluster variation for regression. The result is returned as a
+    ``Bunch`` containing clustering diagnostics and cluster labels for each evaluated ``k``.
 
-    :param estimator: A fitted RandomForestClassifier or RandomForestRegressor model.
+    :param estimator: Fitted RandomForestClassifier or RandomForestRegressor used to derive sample proximities.
     :type estimator: RandomForestClassifier | RandomForestRegressor
     :param X: Input feature matrix.
     :type X: pd.DataFrame
-    :param y: Target variable, i.e. target values or name of the target column in X.
+    :param y: Target variable, given either as target values or as the name of the target column in ``X``.
     :type y: str | pd.Series
-    :param clustering_distance_metric: An instance of DistanceRandomForestProximity.
+    :param clustering_distance_metric: Distance metric based on Random Forest terminal-node proximity.
     :type clustering_distance_metric: DistanceRandomForestProximity
-    :param clustering_strategy: An instance of ClusteringKMedoids or ClusteringClara.
+    :param clustering_strategy: Clustering strategy used to group samples from the distance matrix.
     :type clustering_strategy: ClusteringKMedoids | ClusteringClara
-    :param k: If int, number of clusters is fixed. If tuple, number of clusters is optimized within the given range. If None number of clusters is optimized within the range of 2 to 6. Default: None
+    :param k: Number of clusters if given as an integer, optimization range if given as ``(min_k, max_k)``, or ``None`` to use the default range ``(2, 6)``.
     :type k: int | tuple[int, int] | None
-    :param JI_bootstrap_iter: Number of bootstrap iterations for Jaccard Index evaluation. Default: 100
+    :param JI_bootstrap_iter: Number of subsampling iterations used to estimate Jaccard stability.
     :type JI_bootstrap_iter: int
-    :param JI_bootstrap_sample_size: Number or proportion of samples to draw for each JI bootstrap. If None, computes an adaptive subsample ratio based on dataset size, constrained between 10% and 80%, targeting approximately 1,000 samples. Default: None.
+    :param JI_bootstrap_sample_size: Number or proportion of samples drawn in each Jaccard stability iteration. If ``None``, an adaptive subsample size is chosen.
     :type JI_bootstrap_sample_size: int | float | None
-    :param JI_discart_value: Jaccard Index threshold to discard unstable clusters. Default: 0.6
+    :param JI_discart_value: Minimum mean Jaccard Index required for a clustering solution to be considered stable.
     :type JI_discart_value: float
-    :param n_jobs: Number of parallel jobs. Default: 1.
+    :param n_jobs: Number of parallel jobs used during optimization.
     :type n_jobs: int
-    :param random_state: Random seed for reproducibility. Default: 42.
-    :type random_state: int
-    :param verbose: Verbosity level (0 = silent, 1 = progress messages). Default: 1.
+    :param random_state: Random seed used for reproducibility. Default is None, which means that no random seed is used.
+    :type random_state: int | None
+    :param verbose: Verbosity level controlling progress bars and printed output.
     :type verbose: int
 
-    :return: A Bunch object containing k, cluster scores, cluster stability, labels, and model type.
+    :return: Bunch containing the selected ``best_k``, evaluated ``ks``, mean Jaccard stability, quality scores, stability mask, per-cluster Jaccard values, cluster labels per ``k``, and the estimator class as ``model_type``.
     :rtype: Bunch
     """
     # check estimator class
-    valid_estimator, model_type = check_input_estimator(estimator)
-    if not valid_estimator:
+    model_type = check_input_estimator(estimator)
+    if model_type is None:
         raise ValueError("Model must be a scikit-learn RandomForestClassifier or RandomForestRegressor")
 
     # format input data
-    X, y = check_input_data(X, y)
+    X, y, _ = check_input_data(X, y)
 
     # format range of k values
     k_range = check_k_range(k=k)
@@ -111,7 +126,7 @@ def forest_guided_clustering(
         clustering_strategy=clustering_strategy,
         random_state=random_state,
     )
-    k, cluster_score, cluster_stability, cluster_labels = optimizer.optimizeK(
+    results, best_k = optimizer.optimizeK(
         y=y,
         k_range=k_range,
         JI_bootstrap_iter=JI_bootstrap_iter,
@@ -123,10 +138,13 @@ def forest_guided_clustering(
     )
 
     return Bunch(
-        k=k,
-        cluster_score=cluster_score,
-        cluster_stability=cluster_stability,
-        cluster_labels=cluster_labels,
+        best_k=best_k,
+        ks=np.array([r["k"] for r in results]),
+        mean_ji=np.array([r["Mean_JI"] for r in results]),
+        scores=np.array([r["Score"] for r in results]),
+        stable_mask=np.array([r["Stable"] for r in results]),
+        cluster_jis={r["k"]: r["Cluster_JI"] for r in results},
+        cluster_labels={r["k"]: r["Cluster_labels"] for r in results},
         model_type=model_type,
     )
 
@@ -135,35 +153,37 @@ def forest_guided_feature_importance(
     X: pd.DataFrame,
     y: str | pd.Series,
     cluster_labels: np.ndarray,
-    model_type: str,
+    y_pred: np.ndarray | pd.Series | None = None,
     feature_importance_distance_metric: str = "wasserstein",
     verbose: int = 1,
 ) -> Bunch:
     """
-    Compute forest-guided feature importance by quantifying how much each feature contributes to cluster separation.
+    Compute forest-guided feature importance by measuring how strongly features separate clusters.
 
-    This function compares the distribution of each feature within a cluster to its distribution across the entire dataset,
-    using either the Wasserstein or Jensen-Shannon distance metric. Wasserstein distance is recommended for a dataset with primarily
-    continuous features, while Jensen-Shannon is better suited for categorical features. The resulting scores indicate
-    which features are most important for distinguishing clusters, providing interpretability into the model’s decision structure.
+    For each feature and cluster, the feature distribution inside the cluster is compared
+    against the background distribution across all samples. Depending on the selected
+    metric, either Wasserstein distance or Jensen-Shannon distance is used. The resulting
+    local feature importance values are aggregated across clusters to obtain global
+    feature importance, and the clustering table is reordered accordingly for downstream
+    visualization.
 
     :param X: Input feature matrix.
     :type X: pd.DataFrame
-    :param y: Target variable, i.e. target values or name of the target column in X.
+    :param y: Target variable, given either as target values or as the name of the target column in ``X``.
     :type y: str | pd.Series
-    :param cluster_labels: Labels from forest-guided clustering. Output of `forest_guided_clustering()`.
+    :param cluster_labels: Cluster labels produced by forest-guided clustering.
     :type cluster_labels: np.ndarray
-    :param model_type: Type of model, either "cla" for classification or "reg" for regression. Output of `forest_guided_clustering()`.
-    :type model_type: str
-    :param feature_importance_distance_metric: Distance metric for computing feature importance ("wasserstein" or "jensenshannon"). Default: "wasserstein".
+    :param y_pred: Optional predicted target values aligned with ``X`` and ``y``.
+    :type y_pred: np.ndarray | pd.Series | None
+    :param feature_importance_distance_metric: Distance metric used for feature importance calculation, either ``"wasserstein"`` or ``"jensenshannon"``.
     :type feature_importance_distance_metric: str
-    :param verbose: Verbosity level (0 = silent, 1 = progress messages). Default: 1.
+    :param verbose: Verbosity level controlling progress output.
     :type verbose: int
 
-    :return: A Bunch object containing local feature importances, global feature importances and the clustering data ordered by the global feature importance.
+    :return: Bunch containing local feature importance, global feature importance, and the clustering data reordered by global feature importance.
     :rtype: Bunch
     """
-    X, y = check_input_data(X, y)
+    X, y, y_pred = check_input_data(X, y, y_pred)
 
     if feature_importance_distance_metric == "wasserstein":
         feature_importance_distance_metric = DistanceWasserstein(scale_features=True)
@@ -177,7 +197,7 @@ def forest_guided_feature_importance(
     )
 
     fi_local, fi_global, data_clustering = feature_importance.calculate_feature_importance(
-        X=X, y=y, cluster_labels=cluster_labels, model_type=model_type, verbose=verbose
+        X=X, y=y, y_pred=y_pred, cluster_labels=cluster_labels, verbose=verbose
     )
 
     return Bunch(
@@ -187,40 +207,107 @@ def forest_guided_feature_importance(
     )
 
 
+def plot_forest_guided_clustering(
+    ks: Sequence[int] | np.ndarray,
+    scores: Sequence[float] | np.ndarray,
+    mean_ji: Sequence[float] | np.ndarray,
+    cluster_jis: dict[int, dict[int, float]],
+    best_k: int | None = None,
+    JI_discart_value: float | None = None,
+    color_spec: dict[str, Any] | None = None,
+    show: bool = True,
+    save: str | None = None,
+) -> tuple[Figure, Axes] | None:
+    """
+    Plot clustering quality and stability across the evaluated numbers of clusters.
+
+    The plot summarizes the optimizer output by showing the clustering score, mean
+    Jaccard stability, and per-cluster Jaccard stability for each evaluated value of
+    ``k``. Optionally, the selected ``best_k`` and a Jaccard stability threshold are
+    highlighted. Plot creation is delegated to the plotting module after merging the
+    provided colors with the default color specification.
+
+    :param ks: Evaluated numbers of clusters.
+    :type ks: collections.abc.Sequence[int] | numpy.ndarray
+    :param scores: Clustering quality score for each value in ``ks``.
+    :type scores: collections.abc.Sequence[float] | numpy.ndarray
+    :param mean_ji: Mean Jaccard stability for each value in ``ks``.
+    :type mean_ji: collections.abc.Sequence[float] | numpy.ndarray
+    :param cluster_jis: Per-cluster Jaccard stability values for each ``k``.
+    :type cluster_jis: dict[int, dict[int, float]]
+    :param best_k: Optional value of ``k`` to highlight in the plot.
+    :type best_k: int | None
+    :param JI_discart_value: Optional Jaccard stability threshold to draw as a horizontal reference line.
+    :type JI_discart_value: float | None
+    :param color_spec: Optional dictionary overriding entries of ``DEFAULT_COLOR_SPEC``.
+    :type color_spec: dict[str, Any] | None
+    :param show: If ``True``, display the figure; otherwise return it.
+    :type show: bool
+    :param save: Optional output path used to save the figure.
+    :type save: str | None
+
+    :return: Matplotlib figure and primary axes when ``show`` is ``False``; otherwise ``None``.
+    :rtype: tuple[Figure, Axes] | None
+    """
+    color_spec = {**DEFAULT_COLOR_SPEC, **(color_spec or {})}
+
+    return plot_optimizer_results(
+        ks=ks,
+        scores=scores,
+        mean_ji=mean_ji,
+        cluster_jis=cluster_jis,
+        best_k=best_k,
+        JI_discart_value=JI_discart_value,
+        color_spec=color_spec,
+        show=show,
+        save=save,
+    )
+
+
 def plot_forest_guided_feature_importance(
     feature_importance_local: pd.DataFrame,
     feature_importance_global: pd.Series,
     top_n: int | None = None,
     num_cols: int = 4,
-    save: str | None = None,
+    color_spec: dict | None = None,
     reorder: bool = False,
     recolor: bool = False,
-) -> tuple[Figure, list[Axes]]:
+    show: bool = True,
+    save: str | None = None,
+) -> tuple[Figure, list[Axes]] | None:
     """
-    Visualize global and local feature importance values as bar charts.
+    Plot global and cluster-specific feature importance values as horizontal bar charts.
 
-    The global importance represents the mean distance (importance) of each feature across
-    all clusters, while the local importance shows the feature impact within each cluster.
-    This function produces a series of bar plots to highlight which features drive cluster separations.
+    The global feature importance summarizes the average separation strength of each
+    feature across clusters, while the local feature importance values show the
+    cluster-specific contribution of each feature. The resulting figure contains one
+    global panel and one local panel per cluster, with optional feature reordering and
+    recoloring based on global rank.
 
-    :param feature_importance_local: Local importance values per cluster. Output of `plot_forest_guided_feature_importance()`.
+    :param feature_importance_local: Local feature importance values with features as rows and clusters as columns.
     :type feature_importance_local: pd.DataFrame
-    :param feature_importance_global: Global mean importance values across clusters. Output of `plot_forest_guided_feature_importance()`.
+    :param feature_importance_global: Global feature importance values indexed by feature name.
     :type feature_importance_global: pd.Series
-    :param top_n: If specified, number of top-ranked features to plot. Default: None.
+    :param top_n: Number of top-ranked features to display, or ``None`` to show all features.
     :type top_n: int | None
-    :param num_cols: Number of columns in the subplot layout. Default: 4.
+    :param num_cols: Maximum number of subplot columns in the figure layout.
     :type num_cols: int
-    :param save: If specified, path prefix to save plots. Default: None.
-    :type save: str | None
-    :param reorder: If True, reorder the local importance values to match the global importance order.
+    :param color_spec: Optional dictionary overriding entries of ``DEFAULT_COLOR_SPEC``.
+    :type color_spec: dict | None
+    :param reorder: If ``True``, order local feature panels according to the global feature ranking.
     :type reorder: bool
-    :param recolor: If True, recolor the bars based on the global importance order.
+    :param recolor: If ``True``, color local bars according to the global feature ranking.
     :type recolor: bool
+    :param show: If ``True``, display the figure; otherwise return it.
+    :type show: bool
+    :param save: Optional output path used to save the figure.
+    :type save: str | None
 
-    :return: Matplotlib figure and axes with bar charts of global and local feature importance values.
-    :rtype: tuple[Figure, list[Axes]]
+    :return: Matplotlib figure and axes when ``show`` is ``False``; otherwise ``None``.
+    :rtype: tuple[Figure, list[Axes]] | None
     """
+    color_spec = {**DEFAULT_COLOR_SPEC, **(color_spec or {})}
+
     assert isinstance(feature_importance_global, pd.Series), (
         f"Expected `feature_importance_global` to be a Series, but got {type(feature_importance_global)} "
         f"with shape {getattr(feature_importance_global, 'shape', 'N/A')}."
@@ -231,70 +318,142 @@ def plot_forest_guided_feature_importance(
         feature_importance_global=feature_importance_global,
         top_n=top_n,
         num_cols=num_cols,
-        save=save,
+        color_spec=color_spec,
         reorder=reorder,
         recolor=recolor,
+        show=show,
+        save=save,
     )
 
 
 def plot_forest_guided_decision_paths(
     data_clustering: pd.DataFrame,
-    model_type: str,
-    distributions: bool = True,
-    heatmap: bool = True,
+    feature_importance_global: pd.Series,
+    feature_importance_local: pd.DataFrame,
+    model_type: type[RandomForestClassifier] | type[RandomForestRegressor],
+    draw_distributions: bool = True,
+    draw_dotplot: bool = True,
+    draw_heatmap: bool = True,
     heatmap_type: str = "static",
     top_n: int | None = None,
     num_cols: int = 6,
-    cmap_target_dict: dict | None = None,
+    color_spec: dict | None = None,
+    show: bool = True,
     save: str | None = None,
-) -> tuple[tuple[Figure, list[Axes]] | None, (tuple[Figure, list[Axes]] | go.Figure) | None]:
+) -> (
+    tuple[
+        tuple[Figure, list[Axes]] | None,
+        tuple[Figure, list[Axes]] | None,
+        tuple[Figure, list[Axes]] | go.Figure | None,
+    ]
+    | None
+):
     """
-    Plot the decision patterns that emerge from forest-guided clustering using
-    feature distribution plots and feature heatmaps.
+    Visualize cluster-specific decision patterns using distributions, heatmaps, and dot plots.
 
-    This function combines cluster labels and top-ranked features to provide
-    visual insights into the decision paths formed by a Random Forest. Distribution
-    plots show how feature values vary across clusters, and heatmaps summarize
-    these patterns in either a static or interactive format.
+    This function selects the top-ranked features from ``data_clustering`` according to
+    global feature importance and then produces up to three complementary visualizations:
+    distribution plots, a heatmap, and a dot plot. The heatmap style can be static or
+    interactive, and the regression or classification heatmap variant is selected based
+    on ``model_type``. Each plot is optional and uses the merged default and user-provided
+    color specification.
 
-    :param data_clustering: DataFrame of clustering data ordered by the global feature importance. Output of `plot_forest_guided_feature_importance()`.
+    :param data_clustering: Clustering table containing ``cluster``, ``target``, optional ``predicted_target``, and feature columns.
     :type data_clustering: pd.DataFrame
-    :param model_type: Type of model, either "cla" for classification or "reg" for regression. Output of `forest_guided_clustering()`.
-    :type model_type: str
-    :param distributions: Whether to show the feature distribution plots. Default: True.
-    :type distributions: bool
-    :param heatmap: Whether to show the feature heatmap. Default: True.
-    :type heatmap: bool
-    :param heatmap_type: Heatmap shown in "static" or "interactive" style. Default: "static".
+    :param feature_importance_global: Global feature importance values used to rank and select features for plotting.
+    :type feature_importance_global: pd.Series
+    :param feature_importance_local: Local feature importance values used for the dot plot.
+    :type feature_importance_local: pd.DataFrame
+    :param model_type: Estimator class used to choose the regression or classification heatmap variant.
+    :type model_type: type[RandomForestClassifier] | type[RandomForestRegressor]
+    :param draw_distributions: If ``True``, generate cluster-wise feature distribution plots.
+    :type draw_distributions: bool
+    :param draw_dotplot: If ``True``, generate a dot plot summarizing local importance and direction of effect.
+    :type draw_dotplot: bool
+    :param draw_heatmap: If ``True``, generate a cluster-wise heatmap.
+    :type draw_heatmap: bool
+    :param heatmap_type: Heatmap rendering mode, either ``"static"`` or ``"interactive"``.
     :type heatmap_type: str
-    :param top_n: If specified, number of top-ranked features to plot. Default: None.
+    :param top_n: Number of top-ranked features to include, or ``None`` to include all ranked features.
     :type top_n: int | None
-    :param num_cols: Number of columns in the subplot layout. Default: 6.
+    :param num_cols: Number of subplot columns used for the distribution plot layout.
     :type num_cols: int
-    :param cmap_target_dict: If specified, custom color map for categorical targets. Default: None.
-    :type cmap_target_dict: dict | None
-    :param save: If specified, path prefix to save plots. Default: None.
+    :param color_spec: Optional dictionary overriding entries of ``DEFAULT_COLOR_SPEC``.
+    :type color_spec: dict | None
+    :param show: If ``True``, display the requested figures; otherwise return them.
+    :type show: bool
+    :param save: Optional output path used to save the generated figures.
     :type save: str | None
 
-    :return: Tuple of two optional plots. The first is always a matplotlib `fig, ax` pair, the second can be an interactive plotly Figure.
-    :rtype: tuple[tuple[Figure, list[Axes]] | None, (tuple[Figure, list[Axes]] | go.Figure) | None]
+    :return: Tuple containing the requested plot objects when ``show`` is ``False``; omitted plots are returned as ``None``.
+    :rtype: tuple[tuple[Figure, list[Axes]] | None, tuple[Figure, list[Axes]] | None, tuple[Figure, list[Axes]] | go.Figure | None] | None
     """
+    color_spec = {**DEFAULT_COLOR_SPEC, **(color_spec or {})}
+
     # select top n features and cluster, target for plotting
+    feature_importance_global = feature_importance_global.sort_values(ascending=False)
+
     if top_n:
-        data_clustering_selected_featues = data_clustering.iloc[:, : top_n + 2]
+        feature_importance_global_selected = feature_importance_global.iloc[:top_n,]
     else:
-        data_clustering_selected_featues = data_clustering
+        feature_importance_global_selected = feature_importance_global
 
-    if distributions:
-        distributions = plot_distributions(data_clustering_selected_featues,
-                                           top_n, num_cols, cmap_target_dict, save)
+    columns_fixed = ["cluster", "target"]
+    if "predicted_target" in data_clustering.columns:
+        columns_fixed.append("predicted_target")
+    columns_to_select = columns_fixed + feature_importance_global_selected.index.tolist()
+    data_clustering_selected_features = data_clustering.loc[:, columns_to_select]
 
-    if heatmap:
-        if model_type == "reg":
-            heatmap = plot_heatmap_regression(data_clustering_selected_featues, top_n, heatmap_type, save)
-        elif model_type == "cla":
-            heatmap = plot_heatmap_classification(
-                data_clustering_selected_featues, top_n, heatmap_type, cmap_target_dict, save
+    if draw_distributions:
+        distributions_out = plot_distributions(
+            data_clustering_ranked=data_clustering_selected_features,
+            top_n=top_n,
+            num_cols=num_cols,
+            color_spec=color_spec,
+            show=show,
+            save=save,
+        )
+    else:
+        distributions_out = None
+
+    if draw_dotplot:
+        dotplot_out = plot_dotplot(
+            data_clustering_ranked=data_clustering_selected_features,
+            feature_importance_global=feature_importance_global_selected,
+            feature_importance_local=feature_importance_local,
+            top_n=top_n,
+            color_spec=color_spec,
+            show=show,
+            save=save,
+        )
+    else:
+        dotplot_out = None
+
+    if draw_heatmap:
+        if issubclass(model_type, RandomForestRegressor):
+            heatmap_out = plot_heatmap_regression(
+                data_clustering_ranked=data_clustering_selected_features,
+                top_n=top_n,
+                heatmap_type=heatmap_type,
+                color_spec=color_spec,
+                show=show,
+                save=save,
             )
+        elif issubclass(model_type, RandomForestClassifier):
+            heatmap_out = plot_heatmap_classification(
+                data_clustering_ranked=data_clustering_selected_features,
+                top_n=top_n,
+                heatmap_type=heatmap_type,
+                color_spec=color_spec,
+                show=show,
+                save=save,
+            )
+        else:
+            raise ValueError(
+                "model_type must be RandomForestClassifier or RandomForestRegressor (or a subclass thereof)."
+            )
+    else:
+        heatmap_out = None
 
-    return distributions, heatmap
+    if not show:
+        return distributions_out, dotplot_out, heatmap_out

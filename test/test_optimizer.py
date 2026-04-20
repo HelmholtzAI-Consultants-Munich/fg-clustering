@@ -49,7 +49,7 @@ class TestOptimizer(unittest.TestCase):
             pass
 
     def _train_model(self, model_type):
-        if model_type == "cla":
+        if model_type is RandomForestClassifier:
             X, y = make_classification(
                 n_samples=300,
                 n_features=10,
@@ -67,7 +67,7 @@ class TestOptimizer(unittest.TestCase):
                 oob_score=True,
                 random_state=self.random_state,
             )
-        elif model_type == "reg":
+        elif model_type is RandomForestRegressor:
             X, y = make_regression(
                 n_samples=500,
                 n_features=10,
@@ -85,27 +85,27 @@ class TestOptimizer(unittest.TestCase):
                 random_state=self.random_state,
             )
 
-        X = pd.DataFrame(X)
+        X = pd.DataFrame(data=X)
         X.columns = [f"feature_{i}" for i in range(X.shape[1])]
-        model.fit(X, y)
+        model.fit(X=X, y=y)
 
         return X, y, model
 
     def _generate_terminals(self, n_clusters, samples_per_cluster, n_trees):
         terminals = np.repeat(
-            np.arange(n_trees) + np.arange(n_clusters).reshape(-1, 1) * n_trees,
-            samples_per_cluster,
+            a=np.arange(stop=n_trees) + np.arange(stop=n_clusters).reshape(-1, 1) * n_trees,
+            repeats=samples_per_cluster,
             axis=0,
-        ).astype(np.int32)
+        ).astype(dtype=np.int32)
         return terminals
 
     def test_optimizeK_classification(self):
-        model_type = "cla"
-        X, y, model = self._train_model(model_type)
+        model_type = RandomForestClassifier
+        X, y, model = self._train_model(model_type=model_type)
 
         self.distance_metric.calculate_terminals(estimator=model, X=X)
 
-        k, _, _, _ = self.optimizer.optimizeK(
+        results, best_k = self.optimizer.optimizeK(
             y=y,
             k_range=(2, 7),
             JI_bootstrap_iter=100,
@@ -116,15 +116,19 @@ class TestOptimizer(unittest.TestCase):
             verbose=self.verbose,
         )
 
-        self.assertEqual(k, 6, f"Expected k=6 for classification, got {k}")
+        self.assertEqual(
+            first=best_k,
+            second=6,
+            msg=f"Expected k=6 for classification, got {best_k}",
+        )
 
     def test_optimizeK_regression(self):
-        model_type = "reg"
-        X, y, model = self._train_model(model_type)
+        model_type = RandomForestRegressor
+        X, y, model = self._train_model(model_type=model_type)
 
         self.distance_metric.calculate_terminals(estimator=model, X=X)
 
-        k, _, _, _ = self.optimizer.optimizeK(
+        results, best_k = self.optimizer.optimizeK(
             y=y,
             k_range=(2, 7),
             JI_bootstrap_iter=100,
@@ -135,15 +139,17 @@ class TestOptimizer(unittest.TestCase):
             verbose=self.verbose,
         )
 
-        self.assertIn(k, [2, 3, 4], f"Expected k in [2, 3, 4] for regression, got {k}")
+        self.assertIn(
+            member=best_k, container=[2, 3, 4], msg=f"Expected k in [2, 3, 4] for regression, got {best_k}"
+        )
 
     def test_optimizeK_output_structure(self):
-        model_type = "cla"
-        X, y, model = self._train_model(model_type)
+        model_type = RandomForestClassifier
+        X, y, model = self._train_model(model_type=model_type)
 
-        self.distance_metric.calculate_terminals(model, X)
+        self.distance_metric.calculate_terminals(estimator=model, X=X)
 
-        output = self.optimizer.optimizeK(
+        results, best_k = self.optimizer.optimizeK(
             y=y,
             k_range=(2, 4),
             JI_bootstrap_iter=10,
@@ -154,11 +160,11 @@ class TestOptimizer(unittest.TestCase):
             verbose=self.verbose,
         )
 
-        self.assertEqual(len(output), 4)
-        self.assertIsInstance(output[0], int)
-        self.assertIsInstance(output[1], float)
-        self.assertIsInstance(output[2], dict)
-        self.assertIsInstance(output[3], np.ndarray)
+        self.assertEqual(first=len(results), second=3)  # k in {2, 3, 4}
+        self.assertIsInstance(obj=results, cls=list)
+        self.assertTrue(expr=all(isinstance(r, dict) and "k" in r and "Score" in r for r in results))
+        self.assertIsInstance(obj=best_k, cls=int)
+        self.assertIn(member=best_k, container=[2, 3, 4])
 
     def test_compute_JI_stable(self):
         k = 3
@@ -189,7 +195,7 @@ class TestOptimizer(unittest.TestCase):
         )
 
         for v in result.values():
-            self.assertEqual(v, 1.0, "Expected JI = 1.0 for perfectly stable clusters")
+            self.assertEqual(first=v, second=1.0, msg="Expected JI = 1.0 for perfectly stable clusters")
 
     def test_compute_JI_unstable(self):
         # k=2 is not aligned with actual clusters, should be less stable
@@ -220,7 +226,7 @@ class TestOptimizer(unittest.TestCase):
             cluster_labels_original=cluster_labels,
         )
 
-        self.assertTrue(min(result.values()) < 1.0, "Expected some instability for k=2")
+        self.assertTrue(expr=min(result.values()) < 1.0, msg="Expected some instability for k=2")
 
     def test_JI_single_bootstrap_stable(self):
         sample_size = 6
@@ -250,7 +256,11 @@ class TestOptimizer(unittest.TestCase):
         )
 
         for val in result.values():
-            self.assertEqual(val, 1.0, "Expected perfect Jaccard index of 1.0 for perfect cluster match")
+            self.assertEqual(
+                first=val,
+                second=1.0,
+                msg="Expected perfect Jaccard index of 1.0 for perfect cluster match",
+            )
 
     def test_JI_single_bootstrap_unstable(self):
         sample_size = 6
@@ -280,8 +290,15 @@ class TestOptimizer(unittest.TestCase):
             random_state_subsampling=123456789,
         )
 
-        self.assertTrue(all(0 <= v <= 1 for v in result.values()), "Jaccard indices must be in [0, 1]")
-        self.assertLess(max(result.values()), 1.0, "Expected imperfect match to result in JI < 1.0")
+        self.assertTrue(
+            expr=all(0 <= v <= 1 for v in result.values()),
+            msg="Jaccard indices must be in [0, 1]",
+        )
+        self.assertLess(
+            max(result.values()),
+            1.0,
+            "Expected imperfect match to result in JI < 1.0",
+        )
 
     def test_compute_balanced_average_impurity(self):
         # Perfect separation by class
@@ -290,10 +307,16 @@ class TestOptimizer(unittest.TestCase):
 
         optimizer = Optimizer(distance_metric=None, clustering_strategy=None, random_state=self.random_state)
 
-        score = optimizer._compute_balanced_average_impurity(categorical_values, cluster_labels)
+        score = optimizer._compute_balanced_average_impurity(
+            categorical_values=categorical_values, cluster_labels=cluster_labels
+        )
 
         # For perfect separation and balanced class size, Gini impurity should be 0
-        self.assertAlmostEqual(score, 0.0, msg="Expected 0.0 impurity for perfect class-cluster separation")
+        self.assertAlmostEqual(
+            first=score,
+            second=0.0,
+            msg="Expected 0.0 impurity for perfect class-cluster separation",
+        )
 
     def test_compute_total_within_cluster_variation(self):
         # Cluster 0: variance around 1, Cluster 1: variance around 10
@@ -302,44 +325,56 @@ class TestOptimizer(unittest.TestCase):
 
         optimizer = Optimizer(distance_metric=None, clustering_strategy=None, random_state=self.random_state)
 
-        score = optimizer._compute_total_within_cluster_variation(continuous_values, cluster_labels)
+        score = optimizer._compute_total_within_cluster_variation(
+            continuous_values=continuous_values, cluster_labels=cluster_labels
+        )
 
         # For perfect separation, variation should be around 0
         self.assertAlmostEqual(
-            score, 0.0, places=3, msg="Mismatch in total within-cluster variation computation"
+            first=score,
+            second=0.0,
+            places=3,
+            msg="Mismatch in total within-cluster variation computation",
         )
 
     def test_sort_clusters_classification_simple(self):
-        y = pd.Series(["B", "B", "A", "A"])
+        y = pd.Series(data=["B", "B", "A", "A"])
         cluster_labels = np.array([0, 0, 1, 1])
 
         optimizer = Optimizer(distance_metric=None, clustering_strategy=None, random_state=self.random_state)
-    
-        new_labels = optimizer._sort_clusters_by_target(y, cluster_labels, model_type="cla")
-        
+
+        mapping = optimizer._sort_clusters_by_target(
+            y=y, cluster_labels=cluster_labels, model_type=RandomForestClassifier
+        )
+        new_labels = pd.Series(cluster_labels).map(mapping).to_numpy(dtype=int)
+
         expected = np.array([2, 2, 1, 1])
         np.testing.assert_array_equal(new_labels, expected)
-    
-    
+
     def test_sort_clusters_regression_reshuffle(self):
-        y = pd.Series(           [50, 50, 10, 20, 25, 35])
-        cluster_labels = np.array([0,  0,  1,  1,  2,  2])
+        y = pd.Series(data=[50, 50, 10, 20, 25, 35])
+        cluster_labels = np.array([0, 0, 1, 1, 2, 2])
 
         optimizer = Optimizer(distance_metric=None, clustering_strategy=None, random_state=self.random_state)
-        
-        new_labels = optimizer._sort_clusters_by_target(y, cluster_labels, model_type="reg")
-        
+
+        mapping = optimizer._sort_clusters_by_target(
+            y=y, cluster_labels=cluster_labels, model_type=RandomForestRegressor
+        )
+        new_labels = pd.Series(cluster_labels).map(mapping).to_numpy(dtype=int)
+
         expected = np.array([3, 3, 1, 1, 2, 2])
         np.testing.assert_array_equal(new_labels, expected)
-    
-    
+
     def test_sort_clusters_regression_with_ties(self):
-        y = pd.Series(           [20, 40, 25, 35, 10, 20])
-        cluster_labels = np.array([0,  0,  1,  1,  2,  2])
+        y = pd.Series(data=[20, 40, 25, 35, 10, 20])
+        cluster_labels = np.array([0, 0, 1, 1, 2, 2])
 
         optimizer = Optimizer(distance_metric=None, clustering_strategy=None, random_state=self.random_state)
-        
-        new_labels = optimizer._sort_clusters_by_target(y, cluster_labels, model_type="reg")
-        
+
+        mapping = optimizer._sort_clusters_by_target(
+            y=y, cluster_labels=cluster_labels, model_type=RandomForestRegressor
+        )
+        new_labels = pd.Series(cluster_labels).map(mapping).to_numpy(dtype=int)
+
         expected = np.array([2, 2, 3, 3, 1, 1])
         np.testing.assert_array_equal(new_labels, expected)

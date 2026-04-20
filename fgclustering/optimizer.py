@@ -10,6 +10,8 @@ from tqdm import tqdm
 from joblib import Parallel, delayed
 from collections import defaultdict, Counter
 
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+
 from .utils import map_clusters_to_samples
 from .distance import DistanceRandomForestProximity
 from .clustering import ClusteringKMedoids, ClusteringClara
@@ -22,29 +24,28 @@ from .clustering import ClusteringKMedoids, ClusteringClara
 
 class Optimizer:
     """
-    This class determines the optimal number of clusters (`k`) by evaluating both the quality and stability of clustering solutions.
-    This approach balances robustness and interpretability, ensuring that the chosen `k` produces reliable and meaningful subgroupings in the data.
+    Determine the optimal number of clusters by jointly evaluating clustering quality and stability.
 
-    The optimization procedure involves the following steps:
+    For each candidate value of ``k``, clusters are generated using a Random Forest-based
+    distance metric and the chosen clustering strategy. Stability is estimated through
+    repeated subsampling and comparison to the original clustering using the Jaccard
+    Index. Cluster quality is evaluated with balanced impurity for classification tasks
+    or within-cluster variation for regression tasks. The selected solution is the
+    stable clustering with the best quality score.
 
-    - Clustering: For each candidate value of `k`, clusters are generated using a Random Forest-based distance metric and a specified clustering algorithm (e.g., KMedoids or CLARA).
-    - Stability Assessment: Clustering stability is estimated via bootstrapping. Repeated clustering on bootstrap samples is compared against the original clustering using the Jaccard Index.
-    - Quality Evaluation: Cluster quality is measured using balanced impurity scores (for classification tasks) or intra-cluster variance (for regression tasks).
-    - Selection Criterion: The optimal `k` is selected as the smallest value that yields a stable clustering with the lowest quality score.
-
-    :param distance_metric: An instance of DistanceRandomForestProximity.
+    :param distance_metric: Distance metric based on Random Forest proximity.
     :type distance_metric: DistanceRandomForestProximity
-    :param clustering_strategy: An instance of ClusteringKMedoids or ClusteringClara.
+    :param clustering_strategy: Clustering strategy used to generate cluster assignments.
     :type clustering_strategy: ClusteringKMedoids | ClusteringClara
-    :param random_state: Random seed for reproducibility.
-    :type random_state: int
+    :param random_state: Random seed used for reproducibility.
+    :type random_state: int | None
     """
 
     def __init__(
         self,
         distance_metric: DistanceRandomForestProximity,
         clustering_strategy: ClusteringKMedoids | ClusteringClara,
-        random_state: int,
+        random_state: int | None,
     ):
         """Constructor for the Optimizer class."""
         self.distance_metric = distance_metric
@@ -58,35 +59,40 @@ class Optimizer:
         JI_bootstrap_iter: int,
         JI_bootstrap_sample_size: int | float,
         JI_discart_value: float,
-        model_type: str,
+        model_type: type[RandomForestClassifier] | type[RandomForestRegressor],
         n_jobs: int,
         verbose: int,
-    ) -> tuple[int, float, dict, np.ndarray]:
+    ) -> tuple[list[dict], int | None]:
         """
-        Search for the optimal number of clusters within a specified range using clustering quality and stability metrics.
+        Search for the optimal number of clusters within a given range using quality and stability criteria.
 
-        This function evaluates the clustering for each candidate `k` in the given range. It selects the best k
-        based on a combination of cluster stability and low impurity (classification) or low variance (regression).
+        For each value of ``k`` in ``k_range``, clustering is performed on the full dataset,
+        cluster stability is estimated using repeated subsampling and Jaccard Index matching,
+        and a task-specific cluster quality score is computed. Classification tasks use
+        balanced average impurity, whereas regression tasks use normalized within-cluster
+        variation. The best solution is the stable clustering with the lowest score, or
+        ``None`` if no ``k`` meets the Jaccard stability threshold.
 
-        :param y: Target variable.
+        :param y: Target values aligned with the full dataset.
         :type y: pd.Series
-        :param k_range: Range of k values to be evaluated (min_k, max_k).
+        :param k_range: Inclusive range of cluster counts to evaluate, given as ``(min_k, max_k)``.
         :type k_range: tuple[int, int]
-        :param JI_bootstrap_iter: Number of bootstrap iterations for Jaccard Index evaluation.
+        :param JI_bootstrap_iter: Number of subsampling iterations used to estimate Jaccard stability.
         :type JI_bootstrap_iter: int
-        :param JI_bootstrap_sample_size: Number of samples to draw for each JI bootstrap.
+        :param JI_bootstrap_sample_size: Number or fraction of samples drawn in each stability iteration.
         :type JI_bootstrap_sample_size: int | float
-        :param JI_discart_value: Jaccard Index threshold to discard unstable clusters.
+        :param JI_discart_value: Minimum mean Jaccard Index required for a clustering to be considered stable.
         :type JI_discart_value: float
-        :param model_type: Type of model, either "cla" for classification or "reg" for regression.
-        :type model_type: str
-        :param n_jobs: Number of parallel jobs.
+        :param model_type: Estimator class used to determine whether classification or regression scoring is applied.
+        :type model_type: type[RandomForestClassifier] | type[RandomForestRegressor]
+        :param n_jobs: Number of parallel jobs used for the stability computation.
         :type n_jobs: int
-        :param verbose: Verbosity level (0 = silent, 1 = progress messages).
+        :param verbose: Verbosity level controlling progress output and printed summaries.
         :type verbose: int
 
-        :return: Tuple containing the best k, its corresponding score, Jaccard stability per cluster, and cluster labels.
-        :rtype: tuple[int, float, dict, np.ndarray]
+        :return: List of result dictionaries for all evaluated ``k`` values and the selected best ``k``,
+            or ``None`` when no clustering is stable under ``JI_discart_value``.
+        :rtype: tuple[list[dict], int | None]
         """
 
         self.n_samples_original = len(y)
@@ -95,10 +101,8 @@ class Optimizer:
         self.n_jobs = n_jobs
         self.verbose = verbose
 
-        k = 1
-        cluster_score = np.inf
-        cluster_stability = None
-        cluster_labels = None
+        best_k = None
+        best_score = np.inf
         results = []
 
         if self.verbose:
@@ -122,57 +126,57 @@ class Optimizer:
             )
             JI_k = round(np.mean([JI_per_cluster_k[cluster] for cluster in JI_per_cluster_k.keys()]), 3)
 
-            # only continue if jaccard indices are all larger than discart_value_JI (thus all clusters are stable)
-            if JI_k > JI_discart_value or (k_range[1] - k_range[0]) == 0:
-                if model_type == "cla":
-                    # compute balanced purities
-                    cluster_score_k = self._compute_balanced_average_impurity(y, cluster_labels_k)
-                elif model_type == "reg":
-                    # compute the total within cluster variation
-                    cluster_score_k = self._compute_total_within_cluster_variation(y, cluster_labels_k)
-                if cluster_score_k < cluster_score:
-                    k = k_optimizer
-                    cluster_score = cluster_score_k
-                    cluster_stability = JI_per_cluster_k
-                    cluster_labels = cluster_labels_k
-                if cluster_score_k == cluster_score:
-                    JI_opt = round(
-                        np.mean([cluster_stability[cluster] for cluster in cluster_stability.keys()]), 3
-                    )
-                    if JI_k > JI_opt:
-                        k = k_optimizer
-                        cluster_score = cluster_score_k
-                        cluster_stability = JI_per_cluster_k
-                        cluster_labels = cluster_labels_k
-
+            # compute cluster score
+            if issubclass(model_type, RandomForestClassifier):
+                # compute balanced purities
+                cluster_score_k = self._compute_balanced_average_impurity(y, cluster_labels_k)
+            elif issubclass(model_type, RandomForestRegressor):
+                # compute the total within cluster variation
+                cluster_score_k = self._compute_total_within_cluster_variation(y, cluster_labels_k)
             else:
-                cluster_score_k = None
+                raise ValueError(
+                    "model_type must be RandomForestClassifier or RandomForestRegressor (or a subclass thereof)."
+                )
 
+            # reorder cluster labels by target mean
+            cluster_mapping = self._sort_clusters_by_target(
+                y=y, cluster_labels=cluster_labels_k, model_type=model_type
+            )
+            reordered_cluster_labels = pd.Series(cluster_labels_k).map(cluster_mapping).to_numpy(dtype=int)
+            reordered_JI_per_cluster_k = {
+                cluster_mapping[cid]: JI_per_cluster_k[cid] for cid in JI_per_cluster_k.keys()
+            }
+
+            # store results
             results.append(
                 {
                     "k": k_optimizer,
                     "Stable": JI_k > JI_discart_value,
                     "Mean_JI": JI_k,
                     "Score": cluster_score_k,
-                    "Cluster_JI": dict(sorted(JI_per_cluster_k.items())),
+                    "Cluster_JI": dict(sorted(reordered_JI_per_cluster_k.items())),
+                    "Cluster_labels": reordered_cluster_labels,
                 }
             )
+
+            if JI_k > JI_discart_value and cluster_score_k < best_score:
+                best_k = k_optimizer
+                best_score = cluster_score_k
+
         if verbose:
-            if k == 1:
+            if best_k is None:
                 warnings.warn(f"No stable clusters were found for JI cutoff {JI_discart_value}!")
-            if k > 1 and not (k_range[1] - k_range[0]) == 0:
-                print(f"\nOptimal number of clusters k = {k}")
+            if best_k is not None and best_k > 1 and not (k_range[1] - k_range[0]) == 0:
+                print(f"\nOptimal number of clusters k = {best_k}")
 
-            results_df = pd.DataFrame(results)
             print("\nClustering Evaluation Summary:")
-            print(results_df[["k", "Score", "Stable", "Mean_JI", "Cluster_JI"]].to_string(index=False))
+            print(
+                pd.DataFrame(results)[["k", "Score", "Stable", "Mean_JI", "Cluster_JI"]].to_string(
+                    index=False
+                )
+            )
 
-        # reorder cluster labels by target mean
-        reordered_cluster_labels = self._sort_clusters_by_target(
-            y=y, cluster_labels=cluster_labels, model_type=model_type
-        )
-
-        return k, cluster_score, cluster_stability, reordered_cluster_labels
+        return results, best_k
 
     def _compute_JI(
         self,
@@ -180,14 +184,18 @@ class Optimizer:
         cluster_labels_original: np.ndarray,
     ) -> dict:
         """
-        Compute the average Jaccard Index for each cluster over multiple bootstrap samples.
+        Compute the average cluster-wise Jaccard Index over repeated subsampling runs.
 
-        :param k: Number of clusters.
+        For each subsampling iteration, a clustering is computed on the sampled observations
+        and matched to the original clustering. Jaccard scores are averaged across all
+        iterations for each original cluster.
+
+        :param k: Number of clusters used in the clustering solution.
         :type k: int
-        :param cluster_labels_original: Cluster labels of original clustering on full dataset.
+        :param cluster_labels_original: Cluster labels obtained from clustering the full dataset.
         :type cluster_labels_original: np.ndarray
 
-        :return: Dictionary of average Jaccard Index per cluster.
+        :return: Dictionary mapping each original cluster label to its average Jaccard Index.
         :rtype: dict
         """
         # generate distinct seeds for each iteration
@@ -223,16 +231,20 @@ class Optimizer:
         random_state_subsampling: int,
     ) -> dict:
         """
-        Compute the cluster-wise Jaccard Index for a single bootstrap sample by matching bootstraped and original clusters.
+        Compute cluster-wise Jaccard Index values for a single subsampling iteration.
 
-        :param k: Number of clusters.
+        A subset of samples is drawn without replacement, clustered independently, and then
+        matched to the original clustering using greedy assignment on the pairwise Jaccard
+        overlap matrix. Each original cluster is assigned the best available matching score.
+
+        :param k: Number of clusters used in the clustering solution.
         :type k: int
-        :param mapping_cluster_labels_to_samples_original: Mapping of original cluster labels to sample indices.
+        :param mapping_cluster_labels_to_samples_original: Mapping from original cluster labels to sample indices.
         :type mapping_cluster_labels_to_samples_original: dict
-        :param random_state_subsampling: Random seed for for subsampling reproducibility.
+        :param random_state_subsampling: Random seed controlling the sampled observations and clustering reproducibility.
         :type random_state_subsampling: int
 
-        :return: Dictionary of Jaccard Index per cluster.
+        :return: Dictionary mapping original cluster labels to Jaccard Index values for this iteration.
         :rtype: dict
         """
 
@@ -300,14 +312,19 @@ class Optimizer:
         cluster_labels: np.ndarray,
     ) -> float:
         """
-        Compute the balanced Gini impurity across clusters for classification tasks.
+        Compute the balanced average Gini impurity across clusters for classification tasks.
 
-        :param categorical_values: Target labels for each sample.
+        Class frequencies are reweighted by the inverse global class frequency so that rare
+        classes contribute proportionally more. For each cluster, a balanced class
+        distribution is computed and converted to Gini impurity. The final score is the mean
+        impurity across all clusters.
+
+        :param categorical_values: Categorical target values for each sample.
         :type categorical_values: pd.Series
-        :param cluster_labels: Cluster assignments for each sample.
+        :param cluster_labels: Cluster assignment for each sample.
         :type cluster_labels: np.ndarray
 
-        :return: Mean balanced Gini impurity across clusters.
+        :return: Mean balanced Gini impurity across all clusters.
         :rtype: float
         """
 
@@ -346,14 +363,18 @@ class Optimizer:
         cluster_labels: np.ndarray,
     ) -> float:
         """
-        Compute total within-cluster variation relative to the overall variance, used for regression evaluation.
+        Compute normalized within-cluster variation for regression tasks.
 
-        :param continuous_values: Target values for each sample.
+        The total within-cluster variance is computed as the sum of cluster-wise variances
+        weighted by cluster size and then normalized by the total variance of the full target
+        vector. Lower values indicate more homogeneous clusters with respect to the target.
+
+        :param continuous_values: Continuous target values for each sample.
         :type continuous_values: pd.Series
-        :param cluster_labels: Cluster assignments for each sample.
+        :param cluster_labels: Cluster assignment for each sample.
         :type cluster_labels: np.ndarray
 
-        :return: Normalized within-cluster variation score.
+        :return: Within-cluster variation normalized by the total variance.
         :rtype: float
         """
 
@@ -372,20 +393,25 @@ class Optimizer:
         self,
         y: pd.Series,
         cluster_labels: np.ndarray,
-        model_type: str,
-    ) -> np.ndarray:
+        model_type: type[RandomForestClassifier] | type[RandomForestRegressor],
+    ) -> dict[int, int]:
         """
-        Sorts clusters by the mean target value and reorders cluster labels accordingly.
+        Build a mapping from original cluster labels to new labels ranked by mean target.
 
-        :param y: Target values.
+        For classification tasks, target values are first converted to category codes. Cluster
+        means are then computed and used to rank clusters in ascending order. The returned
+        dictionary maps each original cluster id to a consecutive label starting at 1. Callers
+        should remap per-sample labels and Jaccard dictionaries with this mapping.
+
+        :param y: Target values aligned with the cluster labels.
         :type y: pd.Series
-        :param cluster_labels: Labels from forest-guided clustering.
+        :param cluster_labels: Cluster labels produced by forest-guided clustering.
         :type cluster_labels: np.ndarray
-        :param model_type: Type of model, either "cla" for classification or "reg" for regression.
-        :type model_type: str
+        :param model_type: Estimator class used to determine whether classification or regression handling is applied.
+        :type model_type: type[RandomForestClassifier] | type[RandomForestRegressor]
 
-        :return: New cluster labels, sorted by the target mean
-        :rtype: np.ndarray
+        :return: Mapping from each original cluster label to its rank label (1-based).
+        :rtype: dict[int, int]
         """
 
         # ensure y is a series
@@ -393,7 +419,7 @@ class Optimizer:
             y = pd.Series(y)
 
         # use category codes for classification
-        target = y.astype("category").cat.codes if model_type == "cla" else y
+        target = y.astype("category").cat.codes if issubclass(model_type, RandomForestClassifier) else y
 
         df = pd.DataFrame({"cluster": cluster_labels, "target": target})
 
@@ -408,7 +434,4 @@ class Optimizer:
             old_label: new_label for new_label, old_label in enumerate(sorted_clusters, start=1)
         }
 
-        # apply the re-labeling
-        new_labels = pd.Series(cluster_labels).map(cluster_mapping)
-
-        return new_labels.to_numpy()
+        return cluster_mapping

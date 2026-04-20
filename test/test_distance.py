@@ -41,7 +41,7 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
             n_redundant=1,
             random_state=self.random_state,
         )
-        X = pd.DataFrame(X, columns=[f"feature_{i}" for i in range(X.shape[1])])
+        X = pd.DataFrame(data=X, columns=[f"feature_{i}" for i in range(X.shape[1])])
         y = y
 
         model = RandomForestClassifier(
@@ -52,7 +52,7 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
             oob_score=True,
             random_state=self.random_state,
         )
-        model.fit(X, y)
+        model.fit(X=X, y=y)
 
         return X, y, model
 
@@ -64,29 +64,29 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
 
     def test_calculate_terminals(self):
         dist = DistanceRandomForestProximity()
-        dist.calculate_terminals(self.model, self.X)
-        self.assertIsNotNone(dist.terminals)
-        self.assertEqual(dist.terminals.shape[0], self.X.shape[0])
+        dist.calculate_terminals(estimator=self.model, X=self.X)
+        self.assertIsNotNone(obj=dist.terminals)
+        self.assertEqual(first=dist.terminals.shape[0], second=self.X.shape[0])
 
     def test_calculate_distance_matrix_non_memory_efficient(self):
         dist = DistanceRandomForestProximity(memory_efficient=False)
-        dist.calculate_terminals(self.model, self.X)
+        dist.calculate_terminals(estimator=self.model, X=self.X)
         matrix, file = dist.calculate_distance_matrix(sample_indices=None)
-        self.assertEqual(matrix.shape[0], matrix.shape[1])
-        self.assertEqual(matrix.shape[0], len(self.X))
-        self.assertTrue(np.allclose(matrix, matrix.T))
-        self.assertTrue(np.all(np.diag(matrix) == 0))
-        self.assertTrue(file == None)
+        self.assertEqual(first=matrix.shape[0], second=matrix.shape[1])
+        self.assertEqual(first=matrix.shape[0], second=len(self.X))
+        self.assertTrue(expr=np.allclose(a=matrix, b=matrix.T))
+        self.assertTrue(expr=np.all(a=np.diag(v=matrix) == 0))
+        self.assertTrue(expr=file == None)
 
     def test_calculate_distance_matrix_memory_efficient(self):
         dist = DistanceRandomForestProximity(memory_efficient=True, dir_distance_matrix=self.tmp_path)
-        dist.calculate_terminals(self.model, self.X)
+        dist.calculate_terminals(estimator=self.model, X=self.X)
         matrix, file = dist.calculate_distance_matrix(sample_indices=None)
         self.assertTrue(isinstance(matrix, np.memmap))
-        self.assertEqual(matrix.shape[0], matrix.shape[1])
-        self.assertTrue(np.allclose(matrix, matrix.T))
-        self.assertTrue(np.all(np.diag(matrix) == 0))
-        self.assertTrue(os.path.exists(file))
+        self.assertEqual(first=matrix.shape[0], second=matrix.shape[1])
+        self.assertTrue(expr=np.allclose(a=matrix, b=matrix.T))
+        self.assertTrue(expr=np.all(a=np.diag(v=matrix) == 0))
+        self.assertTrue(expr=os.path.exists(path=file))
 
     def test_calculate_distance_matrix_error_without_terminals(self):
         dist = DistanceRandomForestProximity()
@@ -99,10 +99,10 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
 
     def test_calculate_distance_matrix_with_sample_indices(self):
         dist = DistanceRandomForestProximity(memory_efficient=False)
-        dist.calculate_terminals(self.model, self.X)
-        sample_indices = np.random.choice(len(self.X), size=20, replace=False)
+        dist.calculate_terminals(estimator=self.model, X=self.X)
+        sample_indices = np.random.choice(a=len(self.X), size=20, replace=False)
         matrix, file = dist.calculate_distance_matrix(sample_indices=sample_indices)
-        self.assertEqual(matrix.shape, (20, 20))
+        self.assertEqual(first=matrix.shape, second=(20, 20))
 
 
 class TestDistanceWasserstein(unittest.TestCase):
@@ -113,34 +113,44 @@ class TestDistanceWasserstein(unittest.TestCase):
         bg = np.array([0, 1, 2, 3])
         cl = np.array([1, 2, 3, 4])
 
-        result = self.distance.calculate_distance_cluster_vs_background(bg, cl, is_categorical=False)
+        result = self.distance.calculate_distance_cluster_vs_background(
+            values_background=bg, values_cluster=cl, is_categorical=False
+        )
         self.assertGreaterEqual(result, 0.0)
 
     def test_calculate_distance_cluster_vs_background_continuous_identical_distributions(self):
-        dist = np.random.normal(size=100)
+        dist = np.random.normal(loc=0.0, scale=1.0, size=100)
 
-        result = self.distance.calculate_distance_cluster_vs_background(dist, dist, is_categorical=False)
+        result = self.distance.calculate_distance_cluster_vs_background(
+            values_background=dist, values_cluster=dist, is_categorical=False
+        )
         self.assertAlmostEqual(result, 0.0)
 
     def test_calculate_distance_cluster_vs_background_categorical(self):
-        bg = pd.Series(["A", "A", "B", "C", "C"])
-        cl = pd.Series(["A", "B", "B", "C"])
+        bg = pd.Series(data=["A", "A", "B", "C", "C"])
+        cl = pd.Series(data=["A", "B", "B", "C"])
 
-        result = self.distance.calculate_distance_cluster_vs_background(bg, cl, is_categorical=True)
+        result = self.distance.calculate_distance_cluster_vs_background(
+            values_background=bg, values_cluster=cl, is_categorical=True
+        )
         self.assertGreaterEqual(result, 0.0)
 
     def test_calculate_distance_cluster_vs_background_categorical_missing_category(self):
-        bg = pd.Series(["A", "B", "C", "D"])
-        cl = pd.Series(["A", "A", "B"])  # missing C and D
+        bg = pd.Series(data=["A", "B", "C", "D"])
+        cl = pd.Series(data=["A", "A", "B"])  # missing C and D
 
-        result = self.distance.calculate_distance_cluster_vs_background(bg, cl, is_categorical=True)
+        result = self.distance.calculate_distance_cluster_vs_background(
+            values_background=bg, values_cluster=cl, is_categorical=True
+        )
         self.assertGreaterEqual(result, 0.0)
 
     def test_calculate_distance_cluster_vs_background_categorical_identical_distributions(self):
-        bg = pd.Series(["X", "Y", "Z"] * 10)
-        cl = pd.Series(["X", "Y", "Z"] * 10)
+        bg = pd.Series(data=["X", "Y", "Z"] * 10)
+        cl = pd.Series(data=["X", "Y", "Z"] * 10)
 
-        result = self.distance.calculate_distance_cluster_vs_background(bg, cl, is_categorical=True)
+        result = self.distance.calculate_distance_cluster_vs_background(
+            values_background=bg, values_cluster=cl, is_categorical=True
+        )
         self.assertAlmostEqual(result, 0.0)
 
 
@@ -151,35 +161,45 @@ class TestDistanceJensenShannon(unittest.TestCase):
         np.random.seed(0)
 
     def test_calculate_distance_cluster_vs_background_continuous(self):
-        bg = pd.Series(np.random.normal(0, 1, 1000))
-        cl = pd.Series(np.random.normal(0, 1, 1000))
+        bg = pd.Series(data=np.random.normal(loc=0, scale=1, size=1000))
+        cl = pd.Series(data=np.random.normal(loc=0, scale=1, size=1000))
 
-        result = self.distance.calculate_distance_cluster_vs_background(bg, cl, is_categorical=False)
+        result = self.distance.calculate_distance_cluster_vs_background(
+            values_background=bg, values_cluster=cl, is_categorical=False
+        )
         self.assertGreaterEqual(result, 0.0)
 
     def test_calculate_distance_cluster_vs_background_continuous_identical_distributions(self):
-        dist = pd.Series(np.random.uniform(0, 1, 500))
+        dist = pd.Series(data=np.random.uniform(low=0, high=1, size=500))
 
-        result = self.distance.calculate_distance_cluster_vs_background(dist, dist, is_categorical=False)
+        result = self.distance.calculate_distance_cluster_vs_background(
+            values_background=dist, values_cluster=dist, is_categorical=False
+        )
         self.assertAlmostEqual(result, 0.0)
 
     def test_calculate_distance_cluster_vs_background_categorical(self):
-        bg = pd.Series(["A", "A", "B", "C", "C", "C"])
-        cl = pd.Series(["A", "B", "B", "C"])
+        bg = pd.Series(data=["A", "A", "B", "C", "C", "C"])
+        cl = pd.Series(data=["A", "B", "B", "C"])
 
-        result = self.distance.calculate_distance_cluster_vs_background(bg, cl, is_categorical=True)
+        result = self.distance.calculate_distance_cluster_vs_background(
+            values_background=bg, values_cluster=cl, is_categorical=True
+        )
         self.assertGreaterEqual(result, 0.0)
 
     def test_calculate_distance_cluster_vs_background_categorical_missing_category(self):
-        bg = pd.Series(["A", "B", "C", "D"])
-        cl = pd.Series(["A", "A", "B"])  # missing C and D
+        bg = pd.Series(data=["A", "B", "C", "D"])
+        cl = pd.Series(data=["A", "A", "B"])  # missing C and D
 
-        result = self.distance.calculate_distance_cluster_vs_background(bg, cl, is_categorical=True)
+        result = self.distance.calculate_distance_cluster_vs_background(
+            values_background=bg, values_cluster=cl, is_categorical=True
+        )
         self.assertGreaterEqual(result, 0.0)
 
     def test_calculate_distance_cluster_vs_background_categorical_identical_distributions(self):
-        bg = pd.Series(["X", "Y", "Z"] * 10)
-        cl = pd.Series(["X", "Y", "Z"] * 10)
+        bg = pd.Series(data=["X", "Y", "Z"] * 10)
+        cl = pd.Series(data=["X", "Y", "Z"] * 10)
 
-        result = self.distance.calculate_distance_cluster_vs_background(bg, cl, is_categorical=True)
+        result = self.distance.calculate_distance_cluster_vs_background(
+            values_background=bg, values_cluster=cl, is_categorical=True
+        )
         self.assertAlmostEqual(result, 0.0)

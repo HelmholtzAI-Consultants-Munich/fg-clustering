@@ -22,48 +22,69 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 
 def check_input_data(
-    X: pd.DataFrame,
-    y: str | pd.Series,
-) -> tuple[pd.DataFrame, pd.Series]:
+    X: pd.DataFrame | np.ndarray,
+    y: pd.Series | np.ndarray | str,
+    y_pred: pd.Series | np.ndarray | None = None,
+) -> tuple[pd.DataFrame, pd.Series, pd.Series | None]:
     """
-    Splits the input into features and target. If `y` is a string, it's interpreted as the name of the target column in `X`.
+    Normalize input data into aligned feature, target, and optional prediction objects.
 
-    :param X: Input features as a DataFrame or array-like object.
-    :type X: pd.DataFrame
-    :param y: Target values or name of the target column.
-    :type y: str | pd.Series
+    If ``y`` is given as a column name, that column is extracted from ``X`` as the target
+    and removed from the feature matrix. All returned objects have their index reset so
+    they align by position.
 
-    :return: Tuple of feature DataFrame and target Series.
-    :rtype: tuple[pd.DataFrame, pd.Series]
+    :param X: Input data containing features and, when ``y`` is a string, the target column.
+    :type X: pd.DataFrame | np.ndarray
+    :param y: Target column name in ``X``, or a target vector aligned with the rows of ``X``.
+    :type y: pd.Series | np.ndarray | str
+    :param y_pred: Optional prediction values aligned with the rows of ``X``.
+    :type y_pred: pd.Series | np.ndarray | None
+
+    :return: Tuple containing the feature matrix, target vector, and optional prediction vector.
+    :rtype: tuple[pd.DataFrame, pd.Series, pd.Series | None]
     """
     if isinstance(y, str):
-        y_data = pd.Series(X[y]).reset_index(drop=True)
-        X_data = pd.DataFrame(X.drop(columns=[y])).reset_index(drop=True)
+        if isinstance(X, pd.DataFrame) and y in X.columns:
+            y_data = pd.Series(X[y]).reset_index(drop=True)
+            X_data = pd.DataFrame(X.drop(columns=[y])).reset_index(drop=True)
+        else:
+            raise ValueError(
+                "X must be a pandas DataFrame and y must be a column name in X when y is a string."
+            )
     else:
         y_data = pd.Series(y).reset_index(drop=True)
         X_data = pd.DataFrame(X).reset_index(drop=True)
 
-    return X_data, y_data
+    y_pred_data = pd.Series(y_pred).reset_index(drop=True) if y_pred is not None else None
+
+    if len(y_data) != len(X_data):
+        raise ValueError("X and y must have the same number of rows.")
+    if y_pred_data is not None and len(y_data) != len(y_pred_data):
+        raise ValueError("X, y and y_pred must have the same number of rows.")
+    return X_data, y_data, y_pred_data
 
 
 def check_input_estimator(
     estimator: Any,
-) -> tuple[bool, str]:
+) -> type[RandomForestClassifier] | type[RandomForestRegressor] | None:
     """
-    Checks whether the given estimator is a supported RandomForest model and determines its type.
+    Check whether an estimator is a supported random forest model type.
 
-    :param estimator: Trained model to validate.
+    Accepts instances of :class:`sklearn.ensemble.RandomForestClassifier` and
+    :class:`sklearn.ensemble.RandomForestRegressor`, including subclasses, and returns
+    their concrete class. Any other estimator returns ``None``.
+
+    :param estimator: Estimator instance to validate.
     :type estimator: Any
 
-    :return: Tuple indicating whether the estimator is valid and its model type ('cla' or 'reg').
-    :rtype: tuple[bool, str]
+    :return: Estimator class if it is a supported random forest type, otherwise ``None``.
+    :rtype: type[RandomForestClassifier] | type[RandomForestRegressor] | None
     """
     if isinstance(estimator, RandomForestClassifier):
-        return True, "cla"
-    elif isinstance(estimator, RandomForestRegressor):
-        return True, "reg"
-    else:
-        return False, "invalid"
+        return type(estimator)
+    if isinstance(estimator, RandomForestRegressor):
+        return type(estimator)
+    return None
 
 
 def matplotlib_to_plotly(
@@ -71,14 +92,17 @@ def matplotlib_to_plotly(
     pl_entries: int = 255,
 ) -> list:
     """
-    Converts a matplotlib colormap to a Plotly-compatible colorscale.
+    Convert a Matplotlib colormap into a Plotly colorscale.
 
-    :param cmap_name: Name of the matplotlib colormap to convert.
+    The colormap is sampled uniformly over ``[0, 1]``, converted to hexadecimal RGB
+    values, and returned in the ``[[position, color], ...]`` format expected by Plotly.
+
+    :param cmap_name: Name of a registered Matplotlib colormap.
     :type cmap_name: str
-    :param pl_entries: Number of color entries to generate. Default: 255.
+    :param pl_entries: Number of evenly spaced samples taken from the colormap.
     :type pl_entries: int
 
-    :return: List of Plotly-compatible color mappings.
+    :return: Plotly colorscale as a list of normalized positions and hex colors.
     :rtype: list
     """
     if pl_entries < 2:
@@ -96,17 +120,18 @@ def save_figure(
     filename_extra: str = "",
 ) -> None:
     """
-    Saves the current Matplotlib figure to a file with a modified filename.
+    Save the current Matplotlib figure to disk with an optional filename suffix.
 
-    The function ensures that the output directory exists before saving,
-    and appends an extra string to the filename stem before the file extension.
+    The output path is built as ``{parent}/{stem}{filename_extra}{suffix}``. Parent
+    directories are created if needed, and the figure is saved with tight bounding box
+    and ``dpi=300``.
 
-    :param filename_base: Base file path as str, including desired extension.
+    :param filename_base: Output path including file extension.
     :type filename_base: str
-    :param filename_extra: String to append to the filename stem before the extension. Default: "".
+    :param filename_extra: Optional text inserted between the stem and suffix of the filename.
     :type filename_extra: str
 
-    :return: None
+    :return: ``None``
     :rtype: None
     """
     p = Path(filename_base)
@@ -123,14 +148,17 @@ def check_disk_space(
     required_bytes: int,
 ) -> bool:
     """
-    Checks whether the specified directory has sufficient free disk space.
+    Check whether the filesystem containing ``path`` has sufficient free space.
 
-    :param path: Directory to check for available space.
+    Uses :func:`shutil.disk_usage` to query the free space on the device that holds
+    ``path`` and compares it to ``required_bytes``.
+
+    :param path: Path on the target filesystem.
     :type path: str
-    :param required_bytes: Number of bytes required.
+    :param required_bytes: Minimum number of free bytes required.
     :type required_bytes: int
 
-    :return: True if sufficient space is available, False otherwise.
+    :return: ``True`` if the available free space is greater than ``required_bytes``, otherwise ``False``.
     :rtype: bool
     """
     total, used, free = shutil.disk_usage(path)
@@ -142,14 +170,18 @@ def map_clusters_to_samples(
     samples_mapping: np.ndarray | None = None,
 ) -> dict:
     """
-    Maps sample indices to their corresponding cluster labels.
+    Map cluster labels to the corresponding sample indices.
 
-    :param labels: Cluster label for each sample.
+    For each entry in ``labels``, assigns the row index to the cluster label. If
+    ``samples_mapping`` is provided, the mapped sample identifier is used instead of the
+    row position.
+
+    :param labels: Cluster label assigned to each sample.
     :type labels: np.ndarray
-    :param samples_mapping: Optional mapping of internal to external indices. Default: None.
+    :param samples_mapping: Optional mapping from row positions to external sample identifiers.
     :type samples_mapping: np.ndarray | None
 
-    :return: Dictionary mapping cluster labels to sets of sample indices.
+    :return: Dictionary mapping each cluster label to a set of sample indices or identifiers.
     :rtype: dict
     """
     index_vector = np.arange(len(labels))
@@ -166,12 +198,16 @@ def check_k_range(
     k: int | tuple[int, int] | None,
 ) -> tuple[int, int]:
     """
-    Validates and returns a standardized k range for clustering.
+    Normalize the cluster range specification to a ``(k_min, k_max)`` tuple.
 
-    :param k: Number of clusters or range of cluster values.
+    If ``k`` is ``None``, the default range ``(2, 6)`` is returned. If ``k`` is a single
+    integer, it is interpreted as a fixed number of clusters and returned as ``(k, k)``.
+    If ``k`` is a two-element tuple or list, it is converted to a tuple.
+
+    :param k: Cluster specification as a single integer, a two-element range, or ``None``.
     :type k: int | tuple[int, int] | None
 
-    :return: Tuple representing the range of k values.
+    :return: Minimum and maximum number of clusters.
     :rtype: tuple[int, int]
     """
     if k is None:
@@ -195,18 +231,23 @@ def check_sub_sample_size(
     verbose: int,
 ) -> int:
     """
-    Validates and computes the number of samples to use in a subsample.
+    Resolve and validate the subsample size to use for an application.
 
-    :param sub_sample_size: Fraction (float), fixed count (int), or None for auto.
+    If ``sub_sample_size`` is ``None``, an automatic fraction is chosen as
+    ``min(0.8, max(0.1, 1000 / n_samples))``. Float values are interpreted as fractions
+    of ``n_samples``, and integer values are interpreted as absolute sample counts. The
+    returned value is always capped at ``n_samples``.
+
+    :param sub_sample_size: Sample size as ``None``, fraction in ``(0, 1]``, or positive integer count.
     :type sub_sample_size: int | float | None
-    :param n_samples: Total number of samples available.
+    :param n_samples: Total number of available samples.
     :type n_samples: int
-    :param application: Name of the application for logging purposes.
+    :param application: Name of the calling application, used only in verbose output.
     :type application: str
-    :param verbose: Verbosity level (0 = silent, 1 = progress messages).
+    :param verbose: If non-zero, print the automatically selected sample fraction.
     :type verbose: int
 
-    :return: Validated and resolved integer subsample size.
+    :return: Number of samples to draw.
     :rtype: int
     """
     if sub_sample_size is None:
@@ -231,6 +272,19 @@ def check_sub_sample_size(
 
 
 def custom_round(x: float) -> int:
+    """
+    Round a float to the nearest integer using a custom tie-breaking rule.
+
+    Values with a fractional part greater than ``0.5`` are rounded up with ``ceil``.
+    Values with a fractional part less than or equal to ``0.5`` are rounded down with
+    ``floor``.
+
+    :param x: Value to round.
+    :type x: float
+
+    :return: Rounded integer value.
+    :rtype: int
+    """
     decimal = x - int(x)
     if decimal > 0.5:
         return int(np.ceil(x))
