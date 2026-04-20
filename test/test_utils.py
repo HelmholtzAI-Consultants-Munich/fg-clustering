@@ -70,6 +70,22 @@ class TestUtils(unittest.TestCase):
         np.testing.assert_array_equal(y_pred2.to_numpy(), pred_series.to_numpy())
         self.assertEqual(first=y_pred2.index.tolist(), second=[0, 1, 2])
 
+    def test_check_input_data_with_y_str_invalid(self):
+        with self.assertRaises(ValueError):
+            check_input_data(X=self.X_np, y="target")
+
+        with self.assertRaises(ValueError):
+            check_input_data(X=self.df, y="not_a_column")
+
+    def test_check_input_data_mismatched_lengths(self):
+        y_short = np.array([0, 1])
+        with self.assertRaises(ValueError):
+            check_input_data(X=self.X_np, y=y_short)
+
+        y_pred_short = np.array([0, 1])
+        with self.assertRaises(ValueError):
+            check_input_data(X=self.X_np, y=self.y_np, y_pred=y_pred_short)
+
     def test_check_input_estimator_classifier(self):
         model = RandomForestClassifier()
         mtype = check_input_estimator(estimator=model)
