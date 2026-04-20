@@ -139,9 +139,15 @@ class Optimizer:
                 )
 
             # reorder cluster labels by target mean
-            reordered_cluster_labels = self._sort_clusters_by_target(
+            cluster_mapping = self._sort_clusters_by_target(
                 y=y, cluster_labels=cluster_labels_k, model_type=model_type
             )
+
+            # apply the re-labeling
+            reordered_cluster_labels = pd.Series(cluster_labels_k).map(cluster_mapping)
+            reordered_JI_per_cluster_k = {
+                cluster_mapping[cid]: JI_per_cluster_k[cid] for cid in JI_per_cluster_k.keys()
+            }
 
             # store results
             results.append(
@@ -150,8 +156,8 @@ class Optimizer:
                     "Stable": JI_k > JI_discart_value,
                     "Mean_JI": JI_k,
                     "Score": cluster_score_k,
-                    "Cluster_JI": dict(sorted(JI_per_cluster_k.items())),
-                    "Cluster_labels": reordered_cluster_labels,
+                    "Cluster_JI": dict(sorted(reordered_JI_per_cluster_k.items())),
+                    "Cluster_labels": reordered_cluster_labels.to_numpy(),
                 }
             )
 
@@ -429,7 +435,4 @@ class Optimizer:
             old_label: new_label for new_label, old_label in enumerate(sorted_clusters, start=1)
         }
 
-        # apply the re-labeling
-        new_labels = pd.Series(cluster_labels).map(cluster_mapping)
-
-        return new_labels.to_numpy()
+        return cluster_mapping
