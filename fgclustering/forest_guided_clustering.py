@@ -341,9 +341,9 @@ def plot_forest_guided_decision_paths(
     save: str | None = None,
 ) -> (
     tuple[
-        tuple[Figure, list[Axes]] | bool | None,
-        tuple[Figure, list[Axes]] | go.Figure | bool | None,
-        tuple[Figure, Any] | bool | None,
+        tuple[Figure, list[Axes]] | None,
+        tuple[Figure, list[Axes]] | go.Figure | None,
+        tuple[Figure, Any] | None,
     ]
     | None
 ):
@@ -365,14 +365,14 @@ def plot_forest_guided_decision_paths(
     :type feature_importance_local: pd.DataFrame
     :param model_type: Estimator class used to choose the regression or classification heatmap variant.
     :type model_type: type[RandomForestClassifier] | type[RandomForestRegressor]
-    :param distributions: If ``True``, generate cluster-wise feature distribution plots.
-    :type distributions: bool
-    :param heatmap: If ``True``, generate a cluster-wise heatmap.
-    :type heatmap: bool
+    :param draw_distributions: If ``True``, generate cluster-wise feature distribution plots.
+    :type draw_distributions: bool
+    :param draw_dotplot: If ``True``, generate a dot plot summarizing local importance and direction of effect.
+    :type draw_dotplot: bool
+    :param draw_heatmap: If ``True``, generate a cluster-wise heatmap.
+    :type draw_heatmap: bool
     :param heatmap_type: Heatmap rendering mode, either ``"static"`` or ``"interactive"``.
     :type heatmap_type: str
-    :param dotplot: If ``True``, generate a dot plot summarizing local importance and direction of effect.
-    :type dotplot: bool
     :param top_n: Number of top-ranked features to include, or ``None`` to include all ranked features.
     :type top_n: int | None
     :param num_cols: Number of subplot columns used for the distribution plot layout.
@@ -385,7 +385,7 @@ def plot_forest_guided_decision_paths(
     :type save: str | None
 
     :return: Tuple containing the requested plot objects when ``show`` is ``False``; omitted plots are returned as ``None``.
-    :rtype: tuple[tuple[Figure, list[Axes]] | bool | None, tuple[Figure, list[Axes]] | go.Figure | bool | None, tuple[Figure, Any] | bool | None] | None
+    :rtype: tuple[tuple[Figure, list[Axes]] | None, tuple[Figure, list[Axes]] | go.Figure | None, tuple[Figure, Any] | None] | None
     """
     color_spec = {**DEFAULT_COLOR_SPEC, **(color_spec or {})}
 
