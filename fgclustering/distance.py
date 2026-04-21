@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from numba import njit, prange
+from typing import Callable
 
 from scipy.stats import wasserstein_distance
 from scipy.spatial.distance import jensenshannon
@@ -25,32 +26,48 @@ from .utils import check_disk_space
 
 class DistanceRandomForestProximity:
     """
-    Compute a proximity-based distance matrix from the terminal nodes of a trained Random Forest model.
+    Compute a proximity-based distance matrix from the terminal nodes of a trained Random Forest model,
+    or from a coarser inner-node projection when an ancestor-collapse criterion is provided.
 
-    Sample similarity is derived from how often two samples end in the same terminal node
-    across trees. Distances are defined as one minus this proximity. The distance matrix
-    can be computed fully in memory or stored in a disk-backed memmap array for
-    memory-efficient operation.
+    Sample similarity is derived from how often two samples fall into the same terminal node
+    across trees. Distances are defined as one minus this proximity. Optionally, leaves can be
+    collapsed to a coarser ancestor according to a structural criterion (``min_samples_in_node``),
+    which reduces proximity sparsity for deep regression forests. The distance matrix can be
+    computed fully in memory or stored in a disk-backed memmap array for memory-efficient operation.
 
     :param memory_efficient: Whether to store the distance matrix in a disk-backed memmap array.
     :type memory_efficient: bool
     :param dir_distance_matrix: Directory used to store the memmap distance matrix when ``memory_efficient=True``.
     :type dir_distance_matrix: str | None
+    :param min_samples_in_node: Minimum ``n_node_samples`` required for a node to be used as
+        an effective leaf. Each leaf is replaced by the nearest ancestor that has at least this
+        many training samples (falling back to the root if no ancestor satisfies the criterion).
+        Defaults to ``None``, which preserves standard terminal-node proximity.
+    :type min_samples_in_node: int | None
     """
 
     def __init__(
         self,
         memory_efficient: bool = False,
         dir_distance_matrix: str | None = None,
+        min_samples_in_node: int | None = None,
     ) -> None:
         """Constructor for the DistanceRandomForestProximity class."""
         if memory_efficient:
             if dir_distance_matrix is None:
-                raise ValueError("You must specify `dir_distance_matrix` when `memory_efficient=True`.")
+                raise ValueError(
+                    "You must specify `dir_distance_matrix` when `memory_efficient=True`."
+                )
 
-        self.terminals = None
+        if min_samples_in_node is not None and min_samples_in_node < 1:
+            raise ValueError("`min_samples_in_node` must be a positive integer.")
+
+        _validate_mutually_exclusive(min_samples_in_node=min_samples_in_node)
+
+        self.terminals: np.ndarray | None = None
         self.memory_efficient = memory_efficient
         self.dir_distance_matrix = dir_distance_matrix
+        self.min_samples_in_node = min_samples_in_node
         self.precomputed_distance_matrix = None
 
     def calculate_terminals(
@@ -59,10 +76,12 @@ class DistanceRandomForestProximity:
         X: pd.DataFrame,
     ) -> None:
         """
-        Compute and store the terminal node assignments of all samples across all trees.
+        Compute and store the terminal-node (or effective-ancestor) assignments of all samples across all trees.
 
-        The terminal node matrix is obtained by applying the trained Random Forest to ``X``.
-        Each row corresponds to a sample and each column to a tree.
+        Terminal node IDs are obtained by applying the trained Random Forest to ``X``. When an
+        ancestor-collapse criterion is configured on the class (e.g. ``min_samples_in_node``), each
+        terminal id is replaced by the id of the nearest ancestor that satisfies the criterion.
+        Each row of the stored matrix corresponds to a sample and each column to a tree.
 
         :param estimator: Trained Random Forest estimator.
         :type estimator: RandomForestClassifier | RandomForestRegressor
@@ -73,6 +92,51 @@ class DistanceRandomForestProximity:
         :rtype: None
         """
         self.terminals = estimator.apply(X).astype(np.int32)
+
+        if self.min_samples_in_node is not None:
+            min_samples = self.min_samples_in_node
+            self.terminals = self._collapse_terminals(
+                estimator=estimator,
+                predicate_factory=lambda tree: (
+                    lambda node: tree.n_node_samples[node] >= min_samples
+                ),
+            )
+
+    def _collapse_terminals(
+        self,
+        estimator: RandomForestClassifier | RandomForestRegressor,
+        predicate_factory: Callable,
+    ) -> np.ndarray:
+        """
+        Collapse terminal-node assignments to coarser ancestors using a per-tree predicate.
+
+        For each tree in the forest, a leaf-to-ancestor map is built with
+        :func:`_build_leaf_to_ancestor_map` using the predicate returned by ``predicate_factory``.
+        The stored terminal matrix is then remapped column by column. Requires
+        :meth:`calculate_terminals` to have been run first.
+
+        :param estimator: Trained Random Forest estimator whose ``estimators_`` are traversed.
+        :type estimator: RandomForestClassifier | RandomForestRegressor
+        :param predicate_factory: Callable ``tree -> (node_id -> bool)``.
+        :type predicate_factory: Callable
+
+        :return: Remapped terminal matrix of shape ``(n_samples, n_estimators)`` as ``int32``.
+        :rtype: np.ndarray
+        """
+        if self.terminals is None:
+            raise ValueError(
+                "No precomputed terminals available to collapse! Run `calculate_terminals()` first."
+            )
+
+        terminals = self.terminals
+        collapsed = np.empty_like(terminals)
+        for t, dt in enumerate(estimator.estimators_):
+            tree = dt.tree_
+            parent = _compute_parent_array(tree)
+            predicate = predicate_factory(tree)
+            leaf_map = _build_leaf_to_ancestor_map(tree, parent, predicate)
+            collapsed[:, t] = leaf_map[terminals[:, t]]
+        return collapsed
 
     def calculate_distance_matrix(
         self,
@@ -105,8 +169,13 @@ class DistanceRandomForestProximity:
             else:
                 terminals = self.terminals
             n, n_estimators = terminals.shape
+            distance_matrix: np.ndarray | np.memmap
 
             if self.memory_efficient:
+                if self.dir_distance_matrix is None:
+                    raise ValueError(
+                        "You must specify `dir_distance_matrix` when `memory_efficient=True`."
+                    )
                 buffer_factor = 1.2  # 20% safety buffer
                 required_bytes = int(n * n * 4 * buffer_factor)  # float32 = 4 bytes
                 if not check_disk_space(self.dir_distance_matrix, required_bytes):
@@ -114,14 +183,19 @@ class DistanceRandomForestProximity:
                         f"Not enough free space to allocate a {required_bytes / 1e9:.2f} GB memmap distance matrix (with 20% buffer)."
                     )
                 file_distance_matrix = os.path.join(
-                    self.dir_distance_matrix, f"distance_matrix_{uuid.uuid4().hex[:8]}.dat"
+                    self.dir_distance_matrix,
+                    f"distance_matrix_{uuid.uuid4().hex[:8]}.dat",
                 )
-                distance_matrix = np.memmap(file_distance_matrix, dtype=np.float32, mode="w+", shape=(n, n))
+                distance_matrix = np.memmap(
+                    file_distance_matrix, dtype=np.float32, mode="w+", shape=(n, n)
+                )
             else:
                 file_distance_matrix = None
                 distance_matrix = np.zeros((n, n), dtype=np.float32)
 
-            distance_matrix = _calculate_distances(terminals, n, n_estimators, distance_matrix)
+            distance_matrix = _calculate_distances(
+                terminals, n, n_estimators, distance_matrix
+            )
 
             return distance_matrix, file_distance_matrix
 
@@ -146,10 +220,11 @@ class DistanceRandomForestProximity:
         :return: ``None``
         :rtype: None
         """
-        try:
-            distance_matrix.flush()
-        except Exception:
-            pass  # Might not always be necessary, but safe to attempt
+        if isinstance(distance_matrix, np.memmap):
+            try:
+                distance_matrix.flush()
+            except Exception:
+                pass  # Might not always be necessary, but safe to attempt
 
         del distance_matrix
         gc.collect()
@@ -231,10 +306,13 @@ class DistanceWasserstein:
             # Create dummies and make sure that each category gets a column
             dummies_all = pd.get_dummies(values_background, drop_first=False)
             dummies_cluster = pd.get_dummies(values_cluster, drop_first=False)
-            dummies_all, dummies_cluster = dummies_all.align(dummies_cluster, join="outer", fill_value=0)
+            dummies_all, dummies_cluster = dummies_all.align(
+                dummies_cluster, join="outer", fill_value=0
+            )
 
             distances = [
-                wasserstein_distance(dummies_all[col], dummies_cluster[col]) for col in dummies_all.columns
+                wasserstein_distance(dummies_all[col], dummies_cluster[col])
+                for col in dummies_all.columns
             ]
             return np.nanmax(distances)
         else:
@@ -308,8 +386,12 @@ class DistanceJensenShannon:
         if is_categorical:
             # Extract the values for the two distributions and calculate the distance
             cats = values_background.unique()
-            p_ref = values_background.value_counts(normalize=True).reindex(cats, fill_value=0)
-            p_cluster = values_cluster.value_counts(normalize=True).reindex(cats, fill_value=0)
+            p_ref = values_background.value_counts(normalize=True).reindex(
+                cats, fill_value=0
+            )
+            p_cluster = values_cluster.value_counts(normalize=True).reindex(
+                cats, fill_value=0
+            )
             return jensenshannon(p_ref, p_cluster)
         else:
             # Compute number of bins using Freedman-Diaconis rule, enforcing sensible bounds
@@ -334,6 +416,103 @@ class DistanceJensenShannon:
             p_cluster = hist_cluster / np.sum(hist_cluster)
 
             return jensenshannon(p_ref, p_cluster)
+
+
+############################################
+# Tree helpers
+############################################
+
+
+def _compute_parent_array(tree) -> np.ndarray:
+    """
+    Compute the parent-node index for each node in a sklearn decision tree.
+
+    The root node has parent ``-1``. Entries for unreachable nodes (if any) remain
+    ``-1``. The array is built with a single pass over the ``children_left`` and
+    ``children_right`` arrays of the tree.
+
+    :param tree: Underlying sklearn ``Tree`` object (``estimator.estimators_[t].tree_``).
+    :type tree: sklearn.tree._tree.Tree
+
+    :return: Array of shape ``(n_nodes,)`` with the parent index of each node; root is ``-1``.
+    :rtype: np.ndarray
+    """
+    n_nodes = tree.node_count
+    parent = np.full(n_nodes, -1, dtype=np.int32)
+    children_left = tree.children_left
+    children_right = tree.children_right
+    for node in range(n_nodes):
+        left = children_left[node]
+        right = children_right[node]
+        if left != -1:
+            parent[left] = node
+        if right != -1:
+            parent[right] = node
+    return parent
+
+
+def _build_leaf_to_ancestor_map(tree, parent: np.ndarray, predicate) -> np.ndarray:
+    """
+    Build a node-id -> effective-ancestor-id map by walking each leaf up to the
+    nearest ancestor that satisfies ``predicate``.
+
+    For every leaf node in the tree, walk up the parent chain until ``predicate(node)``
+    returns ``True`` or the root is reached. The answer is memoized on intermediate
+    nodes during the walk, giving amortized linear cost over all leaves. The returned
+    array is indexed by original node id; only entries corresponding to actual leaves
+    are consumed downstream.
+
+    :param tree: Underlying sklearn ``Tree`` object.
+    :type tree: sklearn.tree._tree.Tree
+    :param parent: Parent-node array produced by :func:`_compute_parent_array`.
+    :type parent: np.ndarray
+    :param predicate: Callable ``node_id -> bool`` evaluated on internal and leaf nodes.
+    :type predicate: Callable[[int], bool]
+
+    :return: Array of shape ``(n_nodes,)`` mapping each leaf to its effective ancestor id.
+    :rtype: np.ndarray
+    """
+    n_nodes = tree.node_count
+    resolved = np.full(n_nodes, -1, dtype=np.int32)
+    children_left = tree.children_left
+
+    for node in range(n_nodes):
+        if children_left[node] != -1:
+            continue
+
+        path = []
+        cur = node
+        while resolved[cur] == -1 and not predicate(cur):
+            path.append(cur)
+            nxt = parent[cur]
+            if nxt == -1:
+                break
+            cur = nxt
+
+        ancestor = resolved[cur] if resolved[cur] != -1 else cur
+        for path_node in path:
+            resolved[path_node] = ancestor
+        resolved[cur] = ancestor
+
+    return resolved
+
+
+def _validate_mutually_exclusive(**named_params) -> None:
+    """
+    Raise ``ValueError`` if more than one of the passed parameters is not ``None``.
+
+    :param named_params: Keyword arguments to check for mutual exclusivity.
+
+    :raises ValueError: If two or more arguments are not ``None``.
+
+    :return: ``None``
+    :rtype: None
+    """
+    set_params = [name for name, value in named_params.items() if value is not None]
+    if len(set_params) > 1:
+        raise ValueError(
+            f"Parameters {set_params} are mutually exclusive; only one may be set."
+        )
 
 
 ############################################
