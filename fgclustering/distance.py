@@ -57,7 +57,11 @@ class DistanceRandomForestProximity:
             if dir_distance_matrix is None:
                 raise ValueError("You must specify `dir_distance_matrix` when `memory_efficient=True`.")
 
-        if min_samples_in_node is not None and min_samples_in_node < 1:
+        if min_samples_in_node is not None and (
+            isinstance(min_samples_in_node, bool)
+            or not isinstance(min_samples_in_node, int)
+            or min_samples_in_node < 1
+        ):
             raise ValueError("`min_samples_in_node` must be a positive integer.")
 
         _validate_mutually_exclusive(min_samples_in_node=min_samples_in_node)
