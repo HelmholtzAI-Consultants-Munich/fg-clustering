@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `DistanceRandomForestProximity.min_samples_in_node` parameter: collapses each leaf to
-  the nearest ancestor whose ``n_node_samples`` is at least the given threshold. Reduces
+  the nearest ancestor whose `n_node_samples` is at least the given threshold. Reduces
   proximity-matrix sparsity for deep regression forests and produces more balanced
   clusterings. Defaults to `None` (no collapse).
 - Internal helpers `_compute_parent_array`, `_build_leaf_to_ancestor_map`,
