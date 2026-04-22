@@ -42,7 +42,7 @@ class DistanceRandomForestProximity:
     :param min_samples_in_node: Minimum ``n_node_samples`` required for a node to be used as
         an effective leaf. Each leaf is replaced by the nearest ancestor that has at least this
         many training samples (falling back to the root if no ancestor satisfies the criterion).
-        Defaults to ``None``, which preserves standard terminal-node proximity.
+        Defaults to ``None``.
     :type min_samples_in_node: int | None
     """
 
@@ -55,9 +55,7 @@ class DistanceRandomForestProximity:
         """Constructor for the DistanceRandomForestProximity class."""
         if memory_efficient:
             if dir_distance_matrix is None:
-                raise ValueError(
-                    "You must specify `dir_distance_matrix` when `memory_efficient=True`."
-                )
+                raise ValueError("You must specify `dir_distance_matrix` when `memory_efficient=True`.")
 
         if min_samples_in_node is not None and min_samples_in_node < 1:
             raise ValueError("`min_samples_in_node` must be a positive integer.")
@@ -97,9 +95,7 @@ class DistanceRandomForestProximity:
             min_samples = self.min_samples_in_node
             self.terminals = self._collapse_terminals(
                 estimator=estimator,
-                predicate_factory=lambda tree: (
-                    lambda node: tree.n_node_samples[node] >= min_samples
-                ),
+                predicate_factory=lambda tree: (lambda node: tree.n_node_samples[node] >= min_samples),
             )
 
     def _collapse_terminals(
@@ -173,9 +169,7 @@ class DistanceRandomForestProximity:
 
             if self.memory_efficient:
                 if self.dir_distance_matrix is None:
-                    raise ValueError(
-                        "You must specify `dir_distance_matrix` when `memory_efficient=True`."
-                    )
+                    raise ValueError("You must specify `dir_distance_matrix` when `memory_efficient=True`.")
                 buffer_factor = 1.2  # 20% safety buffer
                 required_bytes = int(n * n * 4 * buffer_factor)  # float32 = 4 bytes
                 if not check_disk_space(self.dir_distance_matrix, required_bytes):
@@ -186,16 +180,12 @@ class DistanceRandomForestProximity:
                     self.dir_distance_matrix,
                     f"distance_matrix_{uuid.uuid4().hex[:8]}.dat",
                 )
-                distance_matrix = np.memmap(
-                    file_distance_matrix, dtype=np.float32, mode="w+", shape=(n, n)
-                )
+                distance_matrix = np.memmap(file_distance_matrix, dtype=np.float32, mode="w+", shape=(n, n))
             else:
                 file_distance_matrix = None
                 distance_matrix = np.zeros((n, n), dtype=np.float32)
 
-            distance_matrix = _calculate_distances(
-                terminals, n, n_estimators, distance_matrix
-            )
+            distance_matrix = _calculate_distances(terminals, n, n_estimators, distance_matrix)
 
             return distance_matrix, file_distance_matrix
 
@@ -306,13 +296,10 @@ class DistanceWasserstein:
             # Create dummies and make sure that each category gets a column
             dummies_all = pd.get_dummies(values_background, drop_first=False)
             dummies_cluster = pd.get_dummies(values_cluster, drop_first=False)
-            dummies_all, dummies_cluster = dummies_all.align(
-                dummies_cluster, join="outer", fill_value=0
-            )
+            dummies_all, dummies_cluster = dummies_all.align(dummies_cluster, join="outer", fill_value=0)
 
             distances = [
-                wasserstein_distance(dummies_all[col], dummies_cluster[col])
-                for col in dummies_all.columns
+                wasserstein_distance(dummies_all[col], dummies_cluster[col]) for col in dummies_all.columns
             ]
             return np.nanmax(distances)
         else:
@@ -386,12 +373,8 @@ class DistanceJensenShannon:
         if is_categorical:
             # Extract the values for the two distributions and calculate the distance
             cats = values_background.unique()
-            p_ref = values_background.value_counts(normalize=True).reindex(
-                cats, fill_value=0
-            )
-            p_cluster = values_cluster.value_counts(normalize=True).reindex(
-                cats, fill_value=0
-            )
+            p_ref = values_background.value_counts(normalize=True).reindex(cats, fill_value=0)
+            p_cluster = values_cluster.value_counts(normalize=True).reindex(cats, fill_value=0)
             return jensenshannon(p_ref, p_cluster)
         else:
             # Compute number of bins using Freedman-Diaconis rule, enforcing sensible bounds
@@ -510,9 +493,7 @@ def _validate_mutually_exclusive(**named_params) -> None:
     """
     set_params = [name for name, value in named_params.items() if value is not None]
     if len(set_params) > 1:
-        raise ValueError(
-            f"Parameters {set_params} are mutually exclusive; only one may be set."
-        )
+        raise ValueError(f"Parameters {set_params} are mutually exclusive; only one may be set.")
 
 
 ############################################

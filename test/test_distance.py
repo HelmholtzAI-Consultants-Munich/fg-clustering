@@ -83,9 +83,7 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         self.assertTrue(expr=file is None)
 
     def test_calculate_distance_matrix_memory_efficient(self):
-        dist = DistanceRandomForestProximity(
-            memory_efficient=True, dir_distance_matrix=self.tmp_path
-        )
+        dist = DistanceRandomForestProximity(memory_efficient=True, dir_distance_matrix=self.tmp_path)
         dist.calculate_terminals(estimator=self.model, X=self.X)
         matrix, file = dist.calculate_distance_matrix(sample_indices=None)
         self.assertTrue(isinstance(matrix, np.memmap))
@@ -114,9 +112,7 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         """Default behavior (min_samples_in_node=None) must match pre-feature output."""
         dist_baseline = DistanceRandomForestProximity()
         dist_baseline.calculate_terminals(estimator=self.model, X=self.X)
-        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(
-            sample_indices=None
-        )
+        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(sample_indices=None)
 
         dist_new = DistanceRandomForestProximity(min_samples_in_node=None)
         dist_new.calculate_terminals(estimator=self.model, X=self.X)
@@ -128,9 +124,7 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         """A threshold of 1 must be a no-op: every leaf already has >=1 sample."""
         dist_baseline = DistanceRandomForestProximity()
         dist_baseline.calculate_terminals(estimator=self.model, X=self.X)
-        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(
-            sample_indices=None
-        )
+        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(sample_indices=None)
 
         dist_new = DistanceRandomForestProximity(min_samples_in_node=1)
         dist_new.calculate_terminals(estimator=self.model, X=self.X)
