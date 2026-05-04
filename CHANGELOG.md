@@ -36,6 +36,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   matrix to effective-ancestor ids when `min_samples_in_node` is configured. When the
   parameter is `None` (default), behavior is byte-for-byte identical to previous
   releases.
+- `DistanceRandomForestLCA`: per-tree LCA similarity is now normalized by the **deeper**
+  of the two leaves (``max(leaf_depth_i, leaf_depth_j)``) instead of the shallower
+  (``min(...)``). Asymmetric path lengths now reduce similarity, which matches the
+  intended "divergence depth relative to the longer decision path" semantic and
+  prevents the prior behavior where a sample falling into a shallow leaf was treated
+  as identical to any sample sharing its short prefix. The numba kernel
+  ``_calculate_lca_distances`` and the ``DistanceRandomForestLCA`` class docstring
+  were updated; the class API surface, stored attributes, and stored shapes are
+  unchanged.
 - `fgclustering/__init__.py`: expanded the `from .distance import ...` statement to
   include `DistanceRandomForestLCA`, and added it to `__all__`. No removals.
 - Class and method docstrings in `fgclustering/distance.py` updated to describe the new

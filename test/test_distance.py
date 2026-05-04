@@ -318,6 +318,75 @@ class TestDistanceRandomForestLCA(unittest.TestCase):
         self.assertEqual(matrix.shape, (20, 20))
         self.assertTrue(np.allclose(matrix, matrix.T))
 
+    def test_lca_distance_when_one_path_strictly_contains_the_other(self):
+        """If sample i's path is a strict prefix of sample j's path, max-based normalization yields a similarity < 1."""
+        from fgclustering.distance import DistanceRandomForestLCA
+
+        dist = DistanceRandomForestLCA()
+        dist.calculate_terminals(estimator=self.model, X=self.X)
+
+        found = False
+        paths = dist.paths
+        path_lens = dist.path_lens
+        n, n_trees, _ = paths.shape
+        for i in range(n):
+            for j in range(i + 1, n):
+                for t in range(n_trees):
+                    path_len_i, path_len_j = path_lens[i, t], path_lens[j, t]
+                    if path_len_i == path_len_j:
+                        continue
+                    path_len_min = min(path_len_i, path_len_j)
+                    if (
+                        np.array_equal(
+                            paths[i, t, :path_len_min], paths[j, t, :path_len_min]
+                        )
+                        and path_len_min > 1
+                    ):
+                        path_len_max = max(path_len_i, path_len_j)
+                        expected_sim = (path_len_min - 1) / (path_len_max - 1)
+                        self.assertLess(expected_sim, 1.0)
+                        found = True
+                        break
+                if found:
+                    break
+            if found:
+                break
+        if not found:
+            self.skipTest("No prefix-containment pair found in this fixture.")
+
+    def test_lca_distance_decreases_when_deeper_path_is_shortened(self):
+        """Growing the deeper path lowers similarity under max-based normalization."""
+        from fgclustering.distance import _calculate_lca_distances
+
+        n_trees = 1
+
+        def run(paths_list, lens_list):
+            max_len = max(len(path) for path in paths_list)
+            paths_arr = np.full((2, n_trees, max_len), -1, dtype=np.int32)
+            for idx, path in enumerate(paths_list):
+                paths_arr[idx, 0, : len(path)] = path
+            lens_arr = np.array([[lens_list[0]], [lens_list[1]]], dtype=np.int32)
+            out = np.zeros((2, 2), dtype=np.float32)
+            return _calculate_lca_distances(paths_arr, lens_arr, 2, n_trees, out)
+
+        case_a = run([[0, 1], [0, 1, 2]], [2, 3])
+        case_b = run([[0, 1], [0, 1, 2, 3]], [2, 4])
+
+        self.assertAlmostEqual(float(case_a[0, 1]), 0.5, places=5)
+        self.assertAlmostEqual(float(case_b[0, 1]), 2 / 3, places=5)
+
+    def test_lca_distance_root_only_trees_are_treated_as_identical(self):
+        """Both samples at depth 0 fall back to similarity 1.0."""
+        from fgclustering.distance import _calculate_lca_distances
+
+        paths = np.full((2, 1, 1), -1, dtype=np.int32)
+        paths[0, 0, 0] = 0
+        paths[1, 0, 0] = 0
+        lens = np.ones((2, 1), dtype=np.int32)
+        out = np.zeros((2, 2), dtype=np.float32)
+        result = _calculate_lca_distances(paths, lens, 2, 1, out)
+        self.assertEqual(float(result[0, 1]), 0.0)
+
 
 class TestDistanceWasserstein(unittest.TestCase):
     def setUp(self):

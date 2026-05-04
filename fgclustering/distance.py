@@ -249,12 +249,15 @@ class DistanceRandomForestLCA:
     of samples along decision paths of a trained Random Forest model.
 
     For each pair of samples and each tree, similarity is defined as the depth of the
-    node at which their decision paths first diverge, normalized by the shallower
-    leaf's depth. The per-tree similarities are averaged across trees to yield the
-    overall proximity; distance is ``1 - proximity``. This provides a graded
-    similarity that stays informative even when two samples fall into different
-    leaves, unlike terminal-node proximity, which only counts exact matches and is
-    therefore very sparse for deep regression forests.
+    node at which their decision paths first diverge, normalized by the deeper leaf's
+    depth (the longer of the two root-to-leaf paths). The per-tree similarities are
+    averaged across trees to yield the overall proximity; distance is
+    ``1 - proximity``. Normalizing by the deeper leaf penalizes asymmetric path
+    lengths: two samples that share a short prefix and then diverge into a much
+    deeper subtree are treated as less similar than two samples whose paths agree
+    for most of their (equal) length. Compared with terminal-node proximity, this
+    metric stays informative even when two samples fall into different leaves,
+    addressing proximity sparsity for deep regression forests.
 
     The stored ``terminals`` attribute preserves the raw terminal-node-id matrix so
     that downstream consumers that read it (e.g. ``ClusteringKMedoids`` null checks
@@ -815,10 +818,11 @@ def _calculate_lca_distances(
 
     For each pair ``(i, j)`` and tree ``t``, the shared prefix of the root-to-leaf
     paths is measured; its length minus one is the LCA depth. The per-tree
-    similarity is normalized by ``min(path_len_i, path_len_j) - 1`` (the maximum
-    LCA depth achievable given the shallower leaf). Aggregated across trees, the
-    final distance is ``1 - mean_similarity``. The upper triangle is computed first
-    and mirrored to the lower triangle.
+    similarity is normalized by ``max(path_len_i, path_len_j) - 1`` (the maximum
+    LCA depth achievable given the deeper of the two leaves), so that asymmetric
+    leaf depths reduce per-tree similarity. Aggregated across trees, the final
+    distance is ``1 - mean_similarity``. The upper triangle is computed first and
+    mirrored to the lower triangle.
 
     :param paths: Root-to-leaf node-id paths of shape ``(n_samples, n_estimators, max_path_len)``, padded with ``-1``.
     :type paths: np.ndarray
@@ -840,11 +844,12 @@ def _calculate_lca_distances(
             for t in range(n_estimators):
                 path_len_i = path_lens[i, t]
                 path_len_j = path_lens[j, t]
-                path_len = path_len_i if path_len_i < path_len_j else path_len_j
+                path_len_min = path_len_i if path_len_i < path_len_j else path_len_j
+                path_len_max = path_len_i if path_len_i > path_len_j else path_len_j
                 depth = 0
-                while depth < path_len and paths[i, t, depth] == paths[j, t, depth]:
+                while depth < path_len_min and paths[i, t, depth] == paths[j, t, depth]:
                     depth += 1
-                denom = path_len - 1
+                denom = path_len_max - 1
                 if denom > 0:
                     sim_total += (depth - 1) / denom
                 else:
