@@ -284,7 +284,7 @@ class TestDistanceRandomForestLCA(unittest.TestCase):
         self.assertEqual(matrix.shape, (20, 20))
         self.assertTrue(np.allclose(matrix, matrix.T))
 
-    def test_lca_distance_decreases_when_deeper_path_is_shortened(self):
+    def test_lca_distance_increases_when_deeper_path_is_grown(self):
         """Growing the deeper path lowers similarity and increases distance under max-based normalization."""
         from fgclustering.distance import _calculate_lca_distances
 
