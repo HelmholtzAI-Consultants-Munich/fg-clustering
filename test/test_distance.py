@@ -170,6 +170,154 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         self.assertTrue(np.all(np.diag(matrix) == 0))
 
 
+class TestDistanceRandomForestLCA(unittest.TestCase):
+    def setUp(self):
+        self.tmp_path = os.path.join(os.getcwd(), "tmp_fgc_lca")
+        Path(self.tmp_path).mkdir(parents=True, exist_ok=True)
+
+        self.random_state = 42
+        self.X, self.y, self.model = self._train_regression_model()
+
+    def _train_regression_model(self):
+        from sklearn.datasets import make_regression
+        from sklearn.ensemble import RandomForestRegressor
+
+        X, y = make_regression(
+            n_samples=50,
+            n_features=5,
+            n_informative=3,
+            random_state=self.random_state,
+        )
+        X = pd.DataFrame(X, columns=[f"feature_{i}" for i in range(X.shape[1])])
+        model = RandomForestRegressor(
+            n_estimators=20,
+            max_depth=8,
+            random_state=self.random_state,
+        )
+        model.fit(X=X, y=y)
+        return X, y, model
+
+    def tearDown(self):
+        try:
+            shutil.rmtree(self.tmp_path)
+        except OSError:
+            pass
+
+    def test_calculate_terminals_populates_state(self):
+        from fgclustering.distance import DistanceRandomForestLCA, _compute_node_depths
+
+        dist = DistanceRandomForestLCA()
+        dist.calculate_terminals(estimator=self.model, X=self.X)
+        self.assertIsNotNone(dist.terminals)
+        self.assertIsNotNone(dist.paths)
+        self.assertIsNotNone(dist.path_lens)
+        self.assertEqual(dist.terminals.shape, (len(self.X), self.model.n_estimators))
+        self.assertEqual(dist.paths.shape[0], len(self.X))
+        self.assertEqual(dist.paths.shape[1], self.model.n_estimators)
+        self.assertEqual(dist.path_lens.shape, (len(self.X), self.model.n_estimators))
+        self.assertTrue(np.all(dist.paths[:, :, 0] == 0))
+        for t, dt in enumerate(self.model.estimators_):
+            tree = dt.tree_
+            depths = _compute_node_depths(tree)
+            expected_lens = depths[dist.terminals[:, t]] + 1
+            np.testing.assert_array_equal(dist.path_lens[:, t], expected_lens)
+
+    def test_calculate_distance_matrix_shape_symmetry_and_diagonal(self):
+        from fgclustering.distance import DistanceRandomForestLCA
+
+        dist = DistanceRandomForestLCA()
+        dist.calculate_terminals(estimator=self.model, X=self.X)
+        matrix, file = dist.calculate_distance_matrix(sample_indices=None)
+        self.assertEqual(matrix.shape, (len(self.X), len(self.X)))
+        self.assertTrue(np.allclose(matrix, matrix.T))
+        self.assertTrue(np.all(np.diag(matrix) == 0))
+        self.assertIsNone(file)
+
+    def test_same_leaf_samples_have_zero_distance(self):
+        """Samples that share the same leaf in every tree must have distance 0."""
+        from fgclustering.distance import DistanceRandomForestLCA
+
+        dist = DistanceRandomForestLCA()
+        dist.calculate_terminals(estimator=self.model, X=self.X)
+        same_terminals = (dist.terminals[:, None, :] == dist.terminals[None, :, :]).all(axis=2)
+        matrix, _ = dist.calculate_distance_matrix(sample_indices=None)
+        self.assertTrue(np.all(matrix[same_terminals] == 0.0))
+
+    def test_memory_efficient_memmap_path_matches_in_memory(self):
+        from fgclustering.distance import DistanceRandomForestLCA
+
+        d1 = DistanceRandomForestLCA(memory_efficient=False)
+        d1.calculate_terminals(estimator=self.model, X=self.X)
+        m1, _ = d1.calculate_distance_matrix(sample_indices=None)
+
+        d2 = DistanceRandomForestLCA(memory_efficient=True, dir_distance_matrix=self.tmp_path)
+        d2.calculate_terminals(estimator=self.model, X=self.X)
+        m2, f2 = d2.calculate_distance_matrix(sample_indices=None)
+
+        self.assertTrue(isinstance(m2, np.memmap))
+        self.assertTrue(os.path.exists(f2))
+        np.testing.assert_allclose(np.asarray(m1), np.asarray(m2), atol=1e-6)
+
+        d2.remove_distance_matrix(m2, f2)
+        self.assertFalse(os.path.exists(f2))
+
+    def test_calculate_distance_matrix_error_without_paths(self):
+        from fgclustering.distance import DistanceRandomForestLCA
+
+        dist = DistanceRandomForestLCA()
+        with self.assertRaises(ValueError):
+            dist.calculate_distance_matrix(sample_indices=None)
+
+    def test_init_missing_dir_in_memory_efficient_mode(self):
+        from fgclustering.distance import DistanceRandomForestLCA
+
+        with self.assertRaises(ValueError):
+            DistanceRandomForestLCA(memory_efficient=True)
+
+    def test_sample_indices_slicing(self):
+        from fgclustering.distance import DistanceRandomForestLCA
+
+        dist = DistanceRandomForestLCA()
+        dist.calculate_terminals(estimator=self.model, X=self.X)
+        idx = np.random.RandomState(0).choice(len(self.X), size=20, replace=False)
+        matrix, _ = dist.calculate_distance_matrix(sample_indices=idx)
+        self.assertEqual(matrix.shape, (20, 20))
+        self.assertTrue(np.allclose(matrix, matrix.T))
+
+    def test_lca_distance_increases_when_deeper_path_is_grown(self):
+        """Growing the deeper path lowers similarity and increases distance under max-based normalization."""
+        from fgclustering.distance import _calculate_lca_distances
+
+        n_trees = 1
+
+        def run(paths_list, lens_list):
+            max_len = max(len(path) for path in paths_list)
+            paths_arr = np.full((2, n_trees, max_len), -1, dtype=np.int32)
+            for idx, path in enumerate(paths_list):
+                paths_arr[idx, 0, : len(path)] = path
+            lens_arr = np.array([[lens_list[0]], [lens_list[1]]], dtype=np.int32)
+            out = np.zeros((2, 2), dtype=np.float32)
+            return _calculate_lca_distances(paths_arr, lens_arr, 2, n_trees, out)
+
+        case_a = run([[0, 1], [0, 1, 2]], [2, 3])
+        case_b = run([[0, 1], [0, 1, 2, 3]], [2, 4])
+
+        self.assertAlmostEqual(float(case_a[0, 1]), 0.5, places=5)
+        self.assertAlmostEqual(float(case_b[0, 1]), 2 / 3, places=5)
+
+    def test_lca_distance_root_only_trees_are_treated_as_identical(self):
+        """Both samples at depth 0 fall back to similarity 1.0."""
+        from fgclustering.distance import _calculate_lca_distances
+
+        paths = np.full((2, 1, 1), -1, dtype=np.int32)
+        paths[0, 0, 0] = 0
+        paths[1, 0, 0] = 0
+        lens = np.ones((2, 1), dtype=np.int32)
+        out = np.zeros((2, 2), dtype=np.float32)
+        result = _calculate_lca_distances(paths, lens, 2, 1, out)
+        self.assertEqual(float(result[0, 1]), 0.0)
+
+
 class TestDistanceWasserstein(unittest.TestCase):
     def setUp(self):
         self.distance = DistanceWasserstein(scale_features=False)

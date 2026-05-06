@@ -86,7 +86,7 @@ class TestForestGuidedClustering(unittest.TestCase):
     def tearDown(self):
         try:
             shutil.rmtree(self.tmp_path)
-        except:
+        except OSError:
             pass
 
     def test_forest_guided_clustering_basic_run(self):
@@ -141,6 +141,35 @@ class TestForestGuidedClustering(unittest.TestCase):
         )
         self.assertIsInstance(obj=result.best_k, cls=int)
 
+    def test_forest_guided_clustering_with_lca_distance_regression(self):
+        from sklearn.datasets import make_regression
+        from sklearn.ensemble import RandomForestRegressor
+
+        from fgclustering import forest_guided_clustering
+        from fgclustering.clustering import ClusteringKMedoids
+        from fgclustering.distance import DistanceRandomForestLCA
+
+        X, y = make_regression(n_samples=100, n_features=6, random_state=0)
+        X = pd.DataFrame(X, columns=[f"feature_{i}" for i in range(X.shape[1])])
+        model = RandomForestRegressor(n_estimators=20, max_depth=8, random_state=0).fit(
+            X, y
+        )
+
+        result = forest_guided_clustering(
+            estimator=model,
+            X=X,
+            y=pd.Series(y),
+            clustering_distance_metric=DistanceRandomForestLCA(),
+            clustering_strategy=ClusteringKMedoids(random_state=0),
+            k=(2, 4),
+            JI_bootstrap_iter=5,
+            JI_bootstrap_sample_size=0.8,
+            random_state=0,
+            verbose=0,
+        )
+        self.assertIn(result.best_k, [2, 3, 4] + [None])
+        self.assertEqual(set(result.cluster_labels.keys()), {2, 3, 4})
+
     def test_forest_guided_feature_importance_output(self):
 
         cluster_labels = np.random.randint(low=0, high=3, size=self.X.shape[0])
@@ -157,8 +186,12 @@ class TestForestGuidedClustering(unittest.TestCase):
         self.assertIn(member="data_clustering", container=result)
 
         # test shape of each output
-        self.assertEqual(first=result.feature_importance_local.shape[0], second=self.X.shape[1])
-        self.assertEqual(first=result.feature_importance_global.shape[0], second=self.X.shape[1])
+        self.assertEqual(
+            first=result.feature_importance_local.shape[0], second=self.X.shape[1]
+        )
+        self.assertEqual(
+            first=result.feature_importance_global.shape[0], second=self.X.shape[1]
+        )
         self.assertEqual(first=result.data_clustering.shape[0], second=self.X.shape[0])
 
     def test_forest_guided_feature_importance_with_y_pred(self):
@@ -176,7 +209,9 @@ class TestForestGuidedClustering(unittest.TestCase):
         df = result.data_clustering
 
         self.assertIn(member="predicted_target", container=df.columns)
-        self.assertEqual(first=list(df.columns[:3]), second=["cluster", "target", "predicted_target"])
+        self.assertEqual(
+            first=list(df.columns[:3]), second=["cluster", "target", "predicted_target"]
+        )
         # Returned frame is sort_values(...); sort_index() restores rows to original sample order.
         df_sorted = df.sort_index()
         np.testing.assert_array_equal(
@@ -228,8 +263,12 @@ class TestForestGuidedClustering(unittest.TestCase):
 
     def test_plot_forest_guided_feature_importance(self):
         k = 3
-        feature_importance_local = pd.DataFrame(data=np.random.rand(self.X.shape[1], k), index=self.X.columns)
-        feature_importance_global = pd.Series(data=np.random.rand(self.X.shape[1]), index=self.X.columns)
+        feature_importance_local = pd.DataFrame(
+            data=np.random.rand(self.X.shape[1], k), index=self.X.columns
+        )
+        feature_importance_global = pd.Series(
+            data=np.random.rand(self.X.shape[1]), index=self.X.columns
+        )
 
         save = os.path.join(self.tmp_path, "test_fgc")
 
@@ -250,13 +289,19 @@ class TestForestGuidedClustering(unittest.TestCase):
 
         data_clustering = self.X.copy()
         data_clustering["target"] = self.y
-        data_clustering["cluster"] = np.random.randint(low=0, high=3, size=self.X.shape[0])
+        data_clustering["cluster"] = np.random.randint(
+            low=0, high=3, size=self.X.shape[0]
+        )
         data_clustering = data_clustering[["target", "cluster"] + list(self.X.columns)]
 
         save = os.path.join(self.tmp_path, "test_fgc")
 
-        feature_importance_global = pd.Series(data=np.random.rand(self.X.shape[1]), index=self.X.columns)
-        feature_importance_local = pd.DataFrame(data=np.random.rand(self.X.shape[1], 3), index=self.X.columns)
+        feature_importance_global = pd.Series(
+            data=np.random.rand(self.X.shape[1]), index=self.X.columns
+        )
+        feature_importance_local = pd.DataFrame(
+            data=np.random.rand(self.X.shape[1], 3), index=self.X.columns
+        )
 
         plot_forest_guided_decision_paths(
             data_clustering=data_clustering,

@@ -12,7 +12,12 @@ from .forest_guided_clustering import (
 
 from .clustering import ClusteringKMedoids, ClusteringClara
 
-from .distance import DistanceRandomForestProximity, DistanceJensenShannon, DistanceWasserstein
+from .distance import (
+    DistanceRandomForestProximity,
+    DistanceRandomForestLCA,
+    DistanceJensenShannon,
+    DistanceWasserstein,
+)
 
 from .optimizer import Optimizer
 
@@ -28,6 +33,7 @@ __all__ = [
     "ClusteringKMedoids",
     "ClusteringClara",
     "DistanceRandomForestProximity",
+    "DistanceRandomForestLCA",
     "DistanceJensenShannon",
     "DistanceWasserstein",
     "Optimizer",

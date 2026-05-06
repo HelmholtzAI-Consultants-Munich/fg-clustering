@@ -233,6 +233,205 @@ class DistanceRandomForestProximity:
                     gc.collect()
 
 
+class DistanceRandomForestLCA:
+    """
+    Compute a proximity-based distance matrix from the Least Common Ancestor (LCA) depth
+    of samples along decision paths of a trained Random Forest model.
+
+    For each pair of samples and each tree, similarity is defined as the depth of their
+    least common ancestor (i.e., the deepest node shared by both decision paths before
+    they diverge), normalized by the depth of the deeper leaf (the longer of the two
+    root-to-leaf paths). The per-tree similarities are averaged across trees to yield
+    the overall proximity; distance is ``1 - proximity``.
+
+    Normalizing by the deeper leaf penalizes asymmetric path lengths: two samples that
+    share a short prefix and then diverge into a much deeper subtree are treated as less
+    similar than two samples whose paths agree for most of their (equal) length.
+    Compared with terminal-node proximity, this metric stays informative even when two
+    samples fall into different leaves, addressing proximity sparsity for deep regression
+    forests.
+
+    The stored ``terminals`` attribute preserves the raw terminal-node-id matrix so
+    that downstream consumers that read it (e.g. ``ClusteringKMedoids`` null checks
+    and ``ClusteringClara`` compatibility hooks) continue to work. Note, however, that
+    ``ClusteringClara`` is not fully consistent with this LCA metric: although its
+    subsample k-medoids fits may still use :meth:`calculate_distance_matrix`, CLARA also
+    uses ``self.terminals`` for inertia-related logic and for the final full-dataset
+    label assignment, both of which count terminal-node equality rather than LCA depth.
+    As a result, when used with this class, ``ClusteringClara`` returns labels based on
+    terminal-node proximity, not pure LCA distance. ``ClusteringKMedoids`` routes all
+    distance computations through :meth:`calculate_distance_matrix` and is fully
+    consistent with the LCA metric.
+
+    :param memory_efficient: Whether to store the distance matrix in a disk-backed memmap array.
+    :type memory_efficient: bool
+    :param dir_distance_matrix: Directory used to store the memmap distance matrix when ``memory_efficient=True``.
+    :type dir_distance_matrix: str | None
+    """
+
+    def __init__(
+        self,
+        memory_efficient: bool = False,
+        dir_distance_matrix: str | None = None,
+    ) -> None:
+        """Constructor for the DistanceRandomForestLCA class."""
+        if memory_efficient:
+            if dir_distance_matrix is None:
+                raise ValueError("You must specify `dir_distance_matrix` when `memory_efficient=True`.")
+
+        self.terminals: np.ndarray | None = None
+        self.paths: np.ndarray | None = None
+        self.path_lens: np.ndarray | None = None
+        self.memory_efficient = memory_efficient
+        self.dir_distance_matrix = dir_distance_matrix
+        self.precomputed_distance_matrix = None
+
+    def calculate_terminals(
+        self,
+        estimator: RandomForestClassifier | RandomForestRegressor,
+        X: pd.DataFrame,
+    ) -> None:
+        """
+        Compute and store the root-to-leaf decision paths of all samples across all trees.
+
+        Leaf assignments are obtained from ``estimator.apply(X)``. For each tree, the
+        parent array is built with :func:`_compute_parent_array` and node depths with
+        :func:`_compute_node_depths`. The root-to-leaf path of every sample is then
+        recovered by walking each leaf up to the root. Paths are stored padded with
+        ``-1`` in a dense int32 tensor of shape ``(n_samples, n_estimators, max_path_len)``,
+        alongside per-(sample, tree) effective path lengths. The raw terminal-node
+        matrix is also retained on ``self.terminals`` to preserve downstream
+        compatibility (see class docstring).
+
+        :param estimator: Trained Random Forest estimator.
+        :type estimator: RandomForestClassifier | RandomForestRegressor
+        :param X: Input feature matrix.
+        :type X: pd.DataFrame
+
+        :return: ``None``
+        :rtype: None
+        """
+        terminals = estimator.apply(X).astype(np.int32)
+        n_samples, n_estimators = terminals.shape
+
+        path_lens = np.empty((n_samples, n_estimators), dtype=np.int32)
+        for t, dt in enumerate(estimator.estimators_):
+            depth = _compute_node_depths(dt.tree_)
+            path_lens[:, t] = depth[terminals[:, t]] + 1
+        max_path_len = int(path_lens.max())
+
+        paths = np.full((n_samples, n_estimators, max_path_len), -1, dtype=np.int32)
+        for t, dt in enumerate(estimator.estimators_):
+            parent = _compute_parent_array(dt.tree_)
+            for i in range(n_samples):
+                cur = terminals[i, t]
+                length = path_lens[i, t]
+                pos = length - 1
+                while pos >= 0:
+                    paths[i, t, pos] = cur
+                    cur = parent[cur]
+                    pos -= 1
+
+        self.terminals = terminals
+        self.paths = paths
+        self.path_lens = path_lens
+
+    def calculate_distance_matrix(
+        self,
+        sample_indices: np.ndarray | None,
+    ) -> tuple[np.ndarray | np.memmap, str | None]:
+        """
+        Compute the pairwise distance matrix from Random Forest decision-path LCA depths.
+
+        The distance between two samples is defined as one minus the mean (over trees)
+        of their normalized LCA depth along the root-to-leaf paths. For each tree, the
+        LCA depth (i.e., the depth of the deepest shared node along both decision paths)
+        is normalized by the depth of the deeper leaf (the longer of the two paths), so
+        that similarity reflects the fraction of the longer decision path that is shared.
+
+        If ``memory_efficient=True``, the distance matrix is created as a disk-backed
+        memmap array after checking that sufficient disk space is available.
+
+        :param sample_indices: Indices of the samples for which the distance matrix is computed, or ``None`` to use all samples.
+        :type sample_indices: np.ndarray | None
+
+        :raises ValueError: If decision paths (self.paths and self.path_lens) have not been precomputed
+        :raises MemoryError: If insufficient disk space is available for the memmap distance matrix.
+
+        :return: Tuple containing the distance matrix and the memmap file path, or ``None`` as the path when computed fully in memory.
+        :rtype: tuple[np.ndarray | np.memmap, str | None]
+        """
+        if self.paths is None or self.path_lens is None:
+            raise ValueError(
+                "No precomputed decision paths available to compute distance matrix! Run `calculate_terminals()` first."
+            )
+        if sample_indices is not None:
+            paths = self.paths[sample_indices]
+            path_lens = self.path_lens[sample_indices]
+        else:
+            paths = self.paths
+            path_lens = self.path_lens
+        n, n_estimators, _ = paths.shape
+        distance_matrix: np.ndarray | np.memmap
+
+        if self.memory_efficient:
+            if self.dir_distance_matrix is None:
+                raise ValueError("You must specify `dir_distance_matrix` when `memory_efficient=True`.")
+            buffer_factor = 1.2
+            required_bytes = int(n * n * 4 * buffer_factor)
+            if not check_disk_space(self.dir_distance_matrix, required_bytes):
+                raise MemoryError(
+                    f"Not enough free space to allocate a {required_bytes / 1e9:.2f} GB memmap distance matrix (with 20% buffer)."
+                )
+            file_distance_matrix = os.path.join(
+                self.dir_distance_matrix, f"distance_matrix_{uuid.uuid4().hex[:8]}.dat"
+            )
+            distance_matrix = np.memmap(file_distance_matrix, dtype=np.float32, mode="w+", shape=(n, n))
+        else:
+            file_distance_matrix = None
+            distance_matrix = np.zeros((n, n), dtype=np.float32)
+
+        distance_matrix = _calculate_lca_distances(paths, path_lens, n, n_estimators, distance_matrix)
+
+        return distance_matrix, file_distance_matrix
+
+    def remove_distance_matrix(
+        self,
+        distance_matrix: np.ndarray | np.memmap,
+        file_distance_matrix: str | None,
+    ) -> None:
+        """
+        Remove a disk-backed distance matrix file and release associated resources.
+
+        Behavior mirrors :meth:`DistanceRandomForestProximity.remove_distance_matrix`.
+
+        :param distance_matrix: Distance matrix object to release.
+        :type distance_matrix: np.ndarray | np.memmap
+        :param file_distance_matrix: Path to the memmap file on disk, or ``None`` if no file was created.
+        :type file_distance_matrix: str | None
+
+        :return: ``None``
+        :rtype: None
+        """
+        if isinstance(distance_matrix, np.memmap):
+            try:
+                distance_matrix.flush()
+            except Exception:
+                pass
+
+        del distance_matrix
+        gc.collect()
+
+        if file_distance_matrix is not None and os.path.exists(file_distance_matrix):
+            for _ in range(3):
+                try:
+                    os.remove(file_distance_matrix)
+                    break
+                except PermissionError:
+                    time.sleep(0.5)
+                    gc.collect()
+
+
 class DistanceWasserstein:
     """
     Compute Wasserstein distance between a cluster-specific feature distribution and the background distribution.
@@ -484,6 +683,38 @@ def _build_leaf_to_ancestor_map(tree, parent: np.ndarray, predicate) -> np.ndarr
     return resolved
 
 
+def _compute_node_depths(tree) -> np.ndarray:
+    """
+    Compute the depth of each node in a sklearn decision tree.
+
+    The root has depth 0. Depths are computed via a single depth-first traversal
+    (DFS) starting at node 0 using an explicit stack and the ``children_left`` and
+    ``children_right`` arrays.
+
+    :param tree: Underlying sklearn ``Tree`` object (``estimator.estimators_[t].tree_``).
+    :type tree: sklearn.tree._tree.Tree
+
+    :return: Array of shape ``(n_nodes,)`` with the depth of each node; root is ``0``.
+    :rtype: np.ndarray
+    """
+    n_nodes = tree.node_count
+    depths = np.zeros(n_nodes, dtype=np.int32)
+    children_left = tree.children_left
+    children_right = tree.children_right
+    stack = [0]
+    while stack:
+        node = stack.pop()
+        left = children_left[node]
+        right = children_right[node]
+        if left != -1:
+            depths[left] = depths[node] + 1
+            stack.append(left)
+        if right != -1:
+            depths[right] = depths[node] + 1
+            stack.append(right)
+    return depths
+
+
 def _validate_mutually_exclusive(**named_params) -> None:
     """
     Raise ``ValueError`` if more than one of the passed parameters is not ``None``.
@@ -543,6 +774,66 @@ def _calculate_distances(
             distance_matrix[i, j] = distance
 
     # Fill lower triangle in a separate pass to ensure symmetry without race conditions (if done inside prange loop) and without allocating a full transpose.
+    for i in range(n):
+        for j in range(i + 1, n):
+            distance_matrix[j, i] = distance_matrix[i, j]
+
+    return distance_matrix
+
+
+@njit(parallel=True)
+def _calculate_lca_distances(
+    paths: np.ndarray,
+    path_lens: np.ndarray,
+    n: int,
+    n_estimators: int,
+    distance_matrix: np.ndarray | np.memmap,
+) -> np.ndarray | np.memmap:
+    """
+    Compute the symmetric pairwise distance matrix from Least Common Ancestor (LCA) depths.
+
+    For each pair ``(i, j)`` and tree ``t``, the shared prefix of the root-to-leaf
+    paths is measured; the number of shared nodes minus one corresponds to the LCA
+    depth. The per-tree similarity is normalized by ``max(path_len_i, path_len_j) - 1``,
+    i.e., the depth of the deeper leaf, so that similarity reflects the fraction of
+    the longer decision path that is shared. This penalizes asymmetric path lengths:
+    two samples that diverge early along a long path are considered less similar.
+
+    Aggregated across trees, the final distance is ``1 - mean_similarity``.
+    The upper triangle is computed first and mirrored to the lower triangle.
+
+    :param paths: Root-to-leaf node-id paths of shape ``(n_samples, n_estimators, max_path_len)``, padded with ``-1``.
+    :type paths: np.ndarray
+    :param path_lens: Effective path lengths of shape ``(n_samples, n_estimators)``.
+    :type path_lens: np.ndarray
+    :param n: Number of samples.
+    :type n: int
+    :param n_estimators: Number of trees in the Random Forest.
+    :type n_estimators: int
+    :param distance_matrix: Pre-allocated array in which the pairwise distances are stored.
+    :type distance_matrix: np.ndarray | np.memmap
+
+    :return: Symmetric pairwise distance matrix.
+    :rtype: np.ndarray | np.memmap
+    """
+    for i in prange(n):
+        for j in range(i + 1, n):
+            sim_total = 0.0
+            for t in range(n_estimators):
+                path_len_i = path_lens[i, t]
+                path_len_j = path_lens[j, t]
+                path_len_min = path_len_i if path_len_i < path_len_j else path_len_j
+                path_len_max = path_len_i if path_len_i > path_len_j else path_len_j
+                depth = 0
+                while depth < path_len_min and paths[i, t, depth] == paths[j, t, depth]:
+                    depth += 1
+                denom = path_len_max - 1
+                if denom > 0:
+                    sim_total += (depth - 1) / denom
+                else:
+                    sim_total += 1.0
+            distance_matrix[i, j] = 1.0 - sim_total / n_estimators
+
     for i in range(n):
         for j in range(i + 1, n):
             distance_matrix[j, i] = distance_matrix[i, j]
