@@ -253,11 +253,13 @@ class DistanceRandomForestLCA:
 
     The stored ``terminals`` attribute preserves the raw terminal-node-id matrix so
     that downstream consumers that read it (e.g. ``ClusteringKMedoids`` null checks
-    and ``ClusteringClara`` inertia/label kernels) continue to work. Note, however,
-    that ``ClusteringClara`` uses ``self.terminals`` to drive its internal inertia
-    and label-assignment kernels, which count terminal-node equality rather than LCA
-    depth. When used with this class, CLARA's subsample-selection step therefore runs
-    on terminal-node proximity as an approximation. ``ClusteringKMedoids`` routes all
+    and ``ClusteringClara`` compatibility hooks) continue to work. Note, however, that
+    ``ClusteringClara`` is not fully consistent with this LCA metric: although its
+    subsample k-medoids fits may still use :meth:`calculate_distance_matrix`, CLARA also
+    uses ``self.terminals`` for inertia-related logic and for the final full-dataset
+    label assignment, both of which count terminal-node equality rather than LCA depth.
+    As a result, when used with this class, ``ClusteringClara`` returns labels based on
+    terminal-node proximity, not pure LCA distance. ``ClusteringKMedoids`` routes all
     distance computations through :meth:`calculate_distance_matrix` and is fully
     consistent with the LCA metric.
 
