@@ -60,6 +60,26 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
 
         return X, y, model
 
+    def _train_regression_model(self, criterion="squared_error"):
+        from sklearn.datasets import make_regression
+        from sklearn.ensemble import RandomForestRegressor
+
+        X, y = make_regression(
+            n_samples=50,
+            n_features=5,
+            n_informative=3,
+            random_state=self.random_state,
+        )
+        X = pd.DataFrame(X, columns=[f"feature_{i}" for i in range(X.shape[1])])
+        model = RandomForestRegressor(
+            n_estimators=20,
+            max_depth=8,
+            criterion=criterion,
+            random_state=self.random_state,
+        )
+        model.fit(X=X, y=y)
+        return X, y, model
+
     def tearDown(self):
         try:
             shutil.rmtree(self.tmp_path)
@@ -235,6 +255,94 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
                 min_samples_in_node=5,
                 max_depth_for_proximity=3,
             )
+
+    def test_max_node_variance_none_matches_baseline(self):
+        """Default behavior (max_node_variance=None) on a regressor matches baseline."""
+        X_reg, _, model_reg = self._train_regression_model()
+        dist_baseline = DistanceRandomForestProximity()
+        dist_baseline.calculate_terminals(estimator=model_reg, X=X_reg)
+        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(sample_indices=None)
+
+        dist_new = DistanceRandomForestProximity(max_node_variance=None)
+        dist_new.calculate_terminals(estimator=model_reg, X=X_reg)
+        new_matrix, _ = dist_new.calculate_distance_matrix(sample_indices=None)
+
+        np.testing.assert_array_equal(baseline_matrix, new_matrix)
+
+    def test_max_node_variance_large_matches_baseline(self):
+        """A very large variance threshold leaves leaves untouched -> baseline."""
+        X_reg, _, model_reg = self._train_regression_model()
+
+        dist_baseline = DistanceRandomForestProximity()
+        dist_baseline.calculate_terminals(estimator=model_reg, X=X_reg)
+        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(sample_indices=None)
+
+        huge_threshold = 1e18
+        dist_new = DistanceRandomForestProximity(max_node_variance=huge_threshold)
+        dist_new.calculate_terminals(estimator=model_reg, X=X_reg)
+        new_matrix, _ = dist_new.calculate_distance_matrix(sample_indices=None)
+
+        np.testing.assert_array_equal(baseline_matrix, new_matrix)
+
+    def test_max_node_variance_zero_collapses_high_variance_leaves(self):
+        """Threshold 0 collapses any leaf with non-zero impurity to the root."""
+        X_reg, _, model_reg = self._train_regression_model()
+        dist = DistanceRandomForestProximity(max_node_variance=0.0)
+        dist.calculate_terminals(estimator=model_reg, X=X_reg)
+        matrix, _ = dist.calculate_distance_matrix(sample_indices=None)
+        self.assertEqual(matrix.shape, (len(X_reg), len(X_reg)))
+        self.assertTrue(np.allclose(matrix, matrix.T))
+        self.assertTrue(np.all(np.diag(matrix) == 0))
+        self.assertGreaterEqual(matrix.min(), 0.0 - 1e-6)
+        self.assertLessEqual(matrix.max(), 1.0 + 1e-6)
+
+    def test_max_node_variance_rejects_classifier(self):
+        """Using max_node_variance with a classifier raises ValueError at calculate_terminals."""
+        dist = DistanceRandomForestProximity(max_node_variance=1.0)
+        with self.assertRaises(ValueError) as ctx:
+            dist.calculate_terminals(estimator=self.model, X=self.X)
+        self.assertIn("RandomForestRegressor", str(ctx.exception))
+
+    def test_max_node_variance_rejects_non_squared_error_criterion(self):
+        """Using max_node_variance with criterion != 'squared_error' raises ValueError."""
+        X_reg, _, model_reg = self._train_regression_model(criterion="absolute_error")
+        dist = DistanceRandomForestProximity(max_node_variance=1.0)
+        with self.assertRaises(ValueError) as ctx:
+            dist.calculate_terminals(estimator=model_reg, X=X_reg)
+        self.assertIn("squared_error", str(ctx.exception))
+
+    def test_max_node_variance_invalid_raises(self):
+        """Negative thresholds are rejected at construction; 0 is allowed."""
+        with self.assertRaises(ValueError):
+            DistanceRandomForestProximity(max_node_variance=-0.5)
+        DistanceRandomForestProximity(max_node_variance=0.0)
+
+    def test_max_node_variance_mutually_exclusive_with_min_samples(self):
+        with self.assertRaises(ValueError):
+            DistanceRandomForestProximity(min_samples_in_node=5, max_node_variance=1.0)
+
+    def test_max_node_variance_mutually_exclusive_with_max_depth(self):
+        with self.assertRaises(ValueError):
+            DistanceRandomForestProximity(max_depth_for_proximity=3, max_node_variance=1.0)
+
+    def test_max_node_variance_all_three_mutually_exclusive(self):
+        """Setting any two of the three collapse params at once must raise."""
+        with self.assertRaises(ValueError):
+            DistanceRandomForestProximity(
+                min_samples_in_node=5,
+                max_depth_for_proximity=3,
+                max_node_variance=1.0,
+            )
+
+    def test_max_node_variance_preserves_shape_and_symmetry(self):
+        """Collapsed matrix keeps the symmetric / zero-diagonal contract on a regressor."""
+        X_reg, _, model_reg = self._train_regression_model()
+        dist = DistanceRandomForestProximity(max_node_variance=10.0)
+        dist.calculate_terminals(estimator=model_reg, X=X_reg)
+        matrix, _ = dist.calculate_distance_matrix(sample_indices=None)
+        self.assertEqual(matrix.shape, (len(X_reg), len(X_reg)))
+        self.assertTrue(np.allclose(matrix, matrix.T))
+        self.assertTrue(np.all(np.diag(matrix) == 0))
 
 
 class TestDistanceRandomForestLCA(unittest.TestCase):
