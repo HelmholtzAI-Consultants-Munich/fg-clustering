@@ -28,6 +28,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Numba kernel `_calculate_lca_distances` for the LCA distance computation.
 - `fgclustering` package now exports `DistanceRandomForestLCA` (added to `__all__`).
 - `CHANGELOG.md` (this file).
+- `DistanceRandomForestProximity.max_depth_for_proximity` parameter: collapses each
+  leaf to the nearest ancestor whose tree depth is at most the given threshold,
+  capping the granularity of the proximity-induced partition. `0` collapses every
+  sample to the root; large values asymptote to standard terminal-node proximity.
+  Defaults to `None`.
+- Cross-PR infrastructure note: this parameter reuses `_compute_node_depths`
+  introduced in PR 2 and `_compute_parent_array` / `_build_leaf_to_ancestor_map` /
+  `DistanceRandomForestProximity._collapse_terminals` /
+  `_validate_mutually_exclusive` introduced in PR 1.
 
 ### Changed
 - `DistanceRandomForestProximity.__init__` now accepts `min_samples_in_node` and
@@ -49,6 +58,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   include `DistanceRandomForestLCA`, and added it to `__all__`. No removals.
 - Class and method docstrings in `fgclustering/distance.py` updated to describe the new
   effective-ancestor semantics.
+- `DistanceRandomForestProximity.__init__` now accepts `max_depth_for_proximity` and
+  validates it (must be a non-negative integer when not `None`). The
+  `_validate_mutually_exclusive` call is extended to cover both
+  `min_samples_in_node` and `max_depth_for_proximity`; setting both at once raises
+  `ValueError`.
+- `DistanceRandomForestProximity.calculate_terminals` dispatches to a second
+  ancestor-collapse branch when `max_depth_for_proximity` is configured. Behavior
+  with both new parameters set to `None` (default) is byte-for-byte identical to
+  previous releases.
+- `DistanceRandomForestProximity` class docstring updated to enumerate both supported
+  ancestor-collapse criteria and document their mutual exclusivity.
 
 ### Known limitations
 - `DistanceRandomForestLCA` paired with `ClusteringClara` is not fully LCA-consistent
