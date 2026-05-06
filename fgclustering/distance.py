@@ -31,9 +31,17 @@ class DistanceRandomForestProximity:
 
     Sample similarity is derived from how often two samples fall into the same terminal node
     across trees. Distances are defined as one minus this proximity. Optionally, leaves can be
-    collapsed to a coarser ancestor according to a structural criterion (``min_samples_in_node``),
-    which reduces proximity sparsity for deep regression forests. The distance matrix can be
-    computed fully in memory or stored in a disk-backed memmap array for memory-efficient operation.
+    collapsed to a coarser ancestor according to one of the supported structural criteria,
+    which reduces proximity sparsity for deep regression forests:
+
+    * ``min_samples_in_node`` - collapse to the nearest ancestor whose ``n_node_samples`` is at
+      least the given threshold.
+    * ``max_depth_for_proximity`` - collapse to the nearest ancestor whose depth in the tree is
+      at most the given threshold (``0`` collapses every leaf to the root).
+
+    The two ancestor-collapse parameters are mutually exclusive. The distance matrix can be
+    computed fully in memory or stored in a disk-backed memmap array for memory-efficient
+    operation.
 
     :param memory_efficient: Whether to store the distance matrix in a disk-backed memmap array.
     :type memory_efficient: bool
@@ -42,8 +50,16 @@ class DistanceRandomForestProximity:
     :param min_samples_in_node: Minimum ``n_node_samples`` required for a node to be used as
         an effective leaf. Each leaf is replaced by the nearest ancestor that has at least this
         many training samples (falling back to the root if no ancestor satisfies the criterion).
-        Defaults to ``None``.
+        Defaults to ``None``, which preserves standard terminal-node proximity. Mutually
+        exclusive with ``max_depth_for_proximity``.
     :type min_samples_in_node: int | None
+    :param max_depth_for_proximity: Maximum tree depth at which a node is eligible to act as
+        an effective leaf. Each leaf is replaced by the nearest ancestor whose depth is less
+        than or equal to this threshold; if the leaf itself is already at depth at most the
+        threshold, it is kept. ``0`` collapses every sample to the root. Defaults to ``None``,
+        which preserves standard terminal-node proximity. Mutually exclusive with
+        ``min_samples_in_node``.
+    :type max_depth_for_proximity: int | None
     """
 
     def __init__(
@@ -51,25 +67,29 @@ class DistanceRandomForestProximity:
         memory_efficient: bool = False,
         dir_distance_matrix: str | None = None,
         min_samples_in_node: int | None = None,
+        max_depth_for_proximity: int | None = None,
     ) -> None:
         """Constructor for the DistanceRandomForestProximity class."""
         if memory_efficient:
             if dir_distance_matrix is None:
                 raise ValueError("You must specify `dir_distance_matrix` when `memory_efficient=True`.")
 
-        if min_samples_in_node is not None and (
-            isinstance(min_samples_in_node, bool)
-            or not isinstance(min_samples_in_node, int)
-            or min_samples_in_node < 1
-        ):
+        if min_samples_in_node is not None and min_samples_in_node < 1:
             raise ValueError("`min_samples_in_node` must be a positive integer.")
 
-        _validate_mutually_exclusive(min_samples_in_node=min_samples_in_node)
+        if max_depth_for_proximity is not None and max_depth_for_proximity < 0:
+            raise ValueError("`max_depth_for_proximity` must be a non-negative integer.")
+
+        _validate_mutually_exclusive(
+            min_samples_in_node=min_samples_in_node,
+            max_depth_for_proximity=max_depth_for_proximity,
+        )
 
         self.terminals: np.ndarray | None = None
         self.memory_efficient = memory_efficient
         self.dir_distance_matrix = dir_distance_matrix
         self.min_samples_in_node = min_samples_in_node
+        self.max_depth_for_proximity = max_depth_for_proximity
         self.precomputed_distance_matrix = None
 
     def calculate_terminals(
@@ -81,9 +101,11 @@ class DistanceRandomForestProximity:
         Compute and store the terminal-node (or effective-ancestor) assignments of all samples across all trees.
 
         Terminal node IDs are obtained by applying the trained Random Forest to ``X``. When an
-        ancestor-collapse criterion is configured on the class (e.g. ``min_samples_in_node``), each
-        terminal id is replaced by the id of the nearest ancestor that satisfies the criterion.
-        Each row of the stored matrix corresponds to a sample and each column to a tree.
+        ancestor-collapse criterion is configured on the class (``min_samples_in_node`` or
+        ``max_depth_for_proximity``), each terminal id is replaced by the id of the nearest
+        ancestor that satisfies the criterion. The two criteria are mutually exclusive (validated
+        at construction time). Each row of the stored matrix corresponds to a sample and each
+        column to a tree.
 
         :param estimator: Trained Random Forest estimator.
         :type estimator: RandomForestClassifier | RandomForestRegressor
@@ -100,6 +122,14 @@ class DistanceRandomForestProximity:
             self.terminals = self._collapse_terminals(
                 estimator=estimator,
                 predicate_factory=lambda tree: (lambda node: tree.n_node_samples[node] >= min_samples),
+            )
+        elif self.max_depth_for_proximity is not None:
+            max_depth = self.max_depth_for_proximity
+            self.terminals = self._collapse_terminals(
+                estimator=estimator,
+                predicate_factory=lambda tree: (
+                    lambda node, _depths=_compute_node_depths(tree): _depths[node] <= max_depth
+                ),
             )
 
     def _collapse_terminals(

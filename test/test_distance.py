@@ -169,6 +169,73 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         self.assertTrue(np.allclose(matrix, matrix.T))
         self.assertTrue(np.all(np.diag(matrix) == 0))
 
+    def test_max_depth_for_proximity_none_matches_baseline(self):
+        """Default behavior (max_depth_for_proximity=None) must match pre-feature output."""
+        dist_baseline = DistanceRandomForestProximity()
+        dist_baseline.calculate_terminals(estimator=self.model, X=self.X)
+        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(sample_indices=None)
+
+        dist_new = DistanceRandomForestProximity(max_depth_for_proximity=None)
+        dist_new.calculate_terminals(estimator=self.model, X=self.X)
+        new_matrix, _ = dist_new.calculate_distance_matrix(sample_indices=None)
+
+        np.testing.assert_array_equal(baseline_matrix, new_matrix)
+
+    def test_max_depth_for_proximity_zero_collapses_to_root(self):
+        """A threshold of 0 forces every leaf to the root -> distance matrix is all zeros."""
+        dist = DistanceRandomForestProximity(max_depth_for_proximity=0)
+        dist.calculate_terminals(estimator=self.model, X=self.X)
+        matrix, _ = dist.calculate_distance_matrix(sample_indices=None)
+        self.assertTrue(np.all(matrix == 0.0))
+
+    def test_max_depth_for_proximity_large_matches_baseline(self):
+        """A very large threshold leaves every leaf untouched -> identical to baseline."""
+        dist_baseline = DistanceRandomForestProximity()
+        dist_baseline.calculate_terminals(estimator=self.model, X=self.X)
+        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(sample_indices=None)
+
+        dist_new = DistanceRandomForestProximity(max_depth_for_proximity=10_000)
+        dist_new.calculate_terminals(estimator=self.model, X=self.X)
+        new_matrix, _ = dist_new.calculate_distance_matrix(sample_indices=None)
+
+        np.testing.assert_array_equal(baseline_matrix, new_matrix)
+
+    def test_max_depth_for_proximity_monotonicity(self):
+        """Mean off-diagonal distance is non-decreasing as the depth threshold grows."""
+        means = []
+        for threshold in [0, 1, 2, 3, 5, 10, 100]:
+            dist = DistanceRandomForestProximity(max_depth_for_proximity=threshold)
+            dist.calculate_terminals(estimator=self.model, X=self.X)
+            matrix, _ = dist.calculate_distance_matrix(sample_indices=None)
+            n = matrix.shape[0]
+            off_diag = matrix[~np.eye(n, dtype=bool)]
+            means.append(float(off_diag.mean()))
+        for a, b in zip(means, means[1:]):
+            self.assertGreaterEqual(b, a - 1e-8)
+
+    def test_max_depth_for_proximity_invalid_raises(self):
+        """Negative thresholds are rejected at construction; 0 is allowed."""
+        with self.assertRaises(ValueError):
+            DistanceRandomForestProximity(max_depth_for_proximity=-1)
+        DistanceRandomForestProximity(max_depth_for_proximity=0)
+
+    def test_max_depth_for_proximity_preserves_shape_and_symmetry(self):
+        """Collapsed matrix keeps the symmetric / zero-diagonal contract."""
+        dist = DistanceRandomForestProximity(max_depth_for_proximity=3)
+        dist.calculate_terminals(estimator=self.model, X=self.X)
+        matrix, _ = dist.calculate_distance_matrix(sample_indices=None)
+        self.assertEqual(matrix.shape, (len(self.X), len(self.X)))
+        self.assertTrue(np.allclose(matrix, matrix.T))
+        self.assertTrue(np.all(np.diag(matrix) == 0))
+
+    def test_min_samples_and_max_depth_mutually_exclusive(self):
+        """Setting both ancestor-collapse parameters at once must raise ValueError."""
+        with self.assertRaises(ValueError):
+            DistanceRandomForestProximity(
+                min_samples_in_node=5,
+                max_depth_for_proximity=3,
+            )
+
 
 class TestDistanceRandomForestLCA(unittest.TestCase):
     def setUp(self):
