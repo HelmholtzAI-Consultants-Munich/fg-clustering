@@ -51,10 +51,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   effective-ancestor semantics.
 
 ### Known limitations
-- `DistanceRandomForestLCA` paired with `ClusteringClara` uses LCA distances for the
-  actual clustering step (via `calculate_distance_matrix`), but CLARA's internal
-  subsample-selection kernels (`_calculate_inertia`, `_asign_labels` in
-  `fgclustering/clustering.py`) read `self.terminals` directly and therefore evaluate
-  candidate medoid sets using terminal-node proximity. `ClusteringKMedoids` is fully
-  consistent with the LCA metric. Abstracting those kernels onto the distance class is
-  tracked as a follow-up.
+- `DistanceRandomForestLCA` paired with `ClusteringClara` is not fully LCA-consistent
+  end-to-end. While CLARA uses `calculate_distance_matrix` during medoid search,
+  internal kernels in `fgclustering/clustering.py` still read `self.terminals`
+  directly, including candidate evaluation/subsample-selection
+  (`_calculate_inertia`) and final label assignment (`_asign_labels`). As a result,
+  candidate medoid scoring and the final output labels are still influenced by
+  terminal-node proximity rather than the LCA metric alone. `ClusteringKMedoids` is
+  fully consistent with the LCA metric. Abstracting those kernels onto the distance
+  class is tracked as a follow-up.
