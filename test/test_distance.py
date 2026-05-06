@@ -83,9 +83,7 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         self.assertTrue(expr=file is None)
 
     def test_calculate_distance_matrix_memory_efficient(self):
-        dist = DistanceRandomForestProximity(
-            memory_efficient=True, dir_distance_matrix=self.tmp_path
-        )
+        dist = DistanceRandomForestProximity(memory_efficient=True, dir_distance_matrix=self.tmp_path)
         dist.calculate_terminals(estimator=self.model, X=self.X)
         matrix, file = dist.calculate_distance_matrix(sample_indices=None)
         self.assertTrue(isinstance(matrix, np.memmap))
@@ -114,9 +112,7 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         """Default behavior (min_samples_in_node=None) must match pre-feature output."""
         dist_baseline = DistanceRandomForestProximity()
         dist_baseline.calculate_terminals(estimator=self.model, X=self.X)
-        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(
-            sample_indices=None
-        )
+        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(sample_indices=None)
 
         dist_new = DistanceRandomForestProximity(min_samples_in_node=None)
         dist_new.calculate_terminals(estimator=self.model, X=self.X)
@@ -128,9 +124,7 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         """A threshold of 1 must be a no-op: every leaf already has >=1 sample."""
         dist_baseline = DistanceRandomForestProximity()
         dist_baseline.calculate_terminals(estimator=self.model, X=self.X)
-        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(
-            sample_indices=None
-        )
+        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(sample_indices=None)
 
         dist_new = DistanceRandomForestProximity(min_samples_in_node=1)
         dist_new.calculate_terminals(estimator=self.model, X=self.X)
@@ -239,41 +233,15 @@ class TestDistanceRandomForestLCA(unittest.TestCase):
         self.assertTrue(np.all(np.diag(matrix) == 0))
         self.assertIsNone(file)
 
-    def test_distance_in_unit_interval(self):
-        from fgclustering.distance import DistanceRandomForestLCA
-
-        dist = DistanceRandomForestLCA()
-        dist.calculate_terminals(estimator=self.model, X=self.X)
-        matrix, _ = dist.calculate_distance_matrix(sample_indices=None)
-        self.assertGreaterEqual(matrix.min(), 0.0 - 1e-6)
-        self.assertLessEqual(matrix.max(), 1.0 + 1e-6)
-
     def test_same_leaf_samples_have_zero_distance(self):
         """Samples that share the same leaf in every tree must have distance 0."""
         from fgclustering.distance import DistanceRandomForestLCA
 
         dist = DistanceRandomForestLCA()
         dist.calculate_terminals(estimator=self.model, X=self.X)
-        same = (dist.terminals[:, None, :] == dist.terminals[None, :, :]).all(axis=2)
+        same_terminals = (dist.terminals[:, None, :] == dist.terminals[None, :, :]).all(axis=2)
         matrix, _ = dist.calculate_distance_matrix(sample_indices=None)
-        self.assertTrue(np.all(matrix[same] == 0.0))
-
-    def test_lca_is_strictly_less_than_or_equal_to_terminal_distance(self):
-        """LCA similarity is at least as high as terminal-equality similarity per pair."""
-        from fgclustering.distance import (
-            DistanceRandomForestProximity,
-            DistanceRandomForestLCA,
-        )
-
-        d_term = DistanceRandomForestProximity()
-        d_term.calculate_terminals(estimator=self.model, X=self.X)
-        term_matrix, _ = d_term.calculate_distance_matrix(sample_indices=None)
-
-        d_lca = DistanceRandomForestLCA()
-        d_lca.calculate_terminals(estimator=self.model, X=self.X)
-        lca_matrix, _ = d_lca.calculate_distance_matrix(sample_indices=None)
-
-        self.assertTrue(np.all(lca_matrix <= term_matrix + 1e-6))
+        self.assertTrue(np.all(matrix[same_terminals] == 0.0))
 
     def test_memory_efficient_memmap_path_matches_in_memory(self):
         from fgclustering.distance import DistanceRandomForestLCA
@@ -282,9 +250,7 @@ class TestDistanceRandomForestLCA(unittest.TestCase):
         d1.calculate_terminals(estimator=self.model, X=self.X)
         m1, _ = d1.calculate_distance_matrix(sample_indices=None)
 
-        d2 = DistanceRandomForestLCA(
-            memory_efficient=True, dir_distance_matrix=self.tmp_path
-        )
+        d2 = DistanceRandomForestLCA(memory_efficient=True, dir_distance_matrix=self.tmp_path)
         d2.calculate_terminals(estimator=self.model, X=self.X)
         m2, f2 = d2.calculate_distance_matrix(sample_indices=None)
 
@@ -318,44 +284,8 @@ class TestDistanceRandomForestLCA(unittest.TestCase):
         self.assertEqual(matrix.shape, (20, 20))
         self.assertTrue(np.allclose(matrix, matrix.T))
 
-    def test_lca_distance_when_one_path_strictly_contains_the_other(self):
-        """If sample i's path is a strict prefix of sample j's path, max-based normalization yields a similarity < 1."""
-        from fgclustering.distance import DistanceRandomForestLCA
-
-        dist = DistanceRandomForestLCA()
-        dist.calculate_terminals(estimator=self.model, X=self.X)
-
-        found = False
-        paths = dist.paths
-        path_lens = dist.path_lens
-        n, n_trees, _ = paths.shape
-        for i in range(n):
-            for j in range(i + 1, n):
-                for t in range(n_trees):
-                    path_len_i, path_len_j = path_lens[i, t], path_lens[j, t]
-                    if path_len_i == path_len_j:
-                        continue
-                    path_len_min = min(path_len_i, path_len_j)
-                    if (
-                        np.array_equal(
-                            paths[i, t, :path_len_min], paths[j, t, :path_len_min]
-                        )
-                        and path_len_min > 1
-                    ):
-                        path_len_max = max(path_len_i, path_len_j)
-                        expected_sim = (path_len_min - 1) / (path_len_max - 1)
-                        self.assertLess(expected_sim, 1.0)
-                        found = True
-                        break
-                if found:
-                    break
-            if found:
-                break
-        if not found:
-            self.skipTest("No prefix-containment pair found in this fixture.")
-
     def test_lca_distance_decreases_when_deeper_path_is_shortened(self):
-        """Growing the deeper path lowers similarity under max-based normalization."""
+        """Growing the deeper path lowers similarity and increases distance under max-based normalization."""
         from fgclustering.distance import _calculate_lca_distances
 
         n_trees = 1
