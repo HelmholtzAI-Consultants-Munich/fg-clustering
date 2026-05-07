@@ -270,24 +270,23 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         np.testing.assert_array_equal(baseline_matrix, new_matrix)
 
     def test_max_node_variance_large_matches_baseline(self):
-        """A very large variance threshold leaves leaves untouched -> baseline."""
+        """A very small variance threshold leaves leaves untouched -> baseline."""
         X_reg, _, model_reg = self._train_regression_model()
 
         dist_baseline = DistanceRandomForestProximity()
         dist_baseline.calculate_terminals(estimator=model_reg, X=X_reg)
         baseline_matrix, _ = dist_baseline.calculate_distance_matrix(sample_indices=None)
 
-        huge_threshold = 1e18
-        dist_new = DistanceRandomForestProximity(max_node_variance=huge_threshold)
+        dist_new = DistanceRandomForestProximity(max_node_variance=0.0)
         dist_new.calculate_terminals(estimator=model_reg, X=X_reg)
         new_matrix, _ = dist_new.calculate_distance_matrix(sample_indices=None)
 
         np.testing.assert_array_equal(baseline_matrix, new_matrix)
 
     def test_max_node_variance_zero_collapses_high_variance_leaves(self):
-        """Threshold 0 collapses any leaf with non-zero impurity to the root."""
+        """A very large variance threshold collapses any leaf to the root."""
         X_reg, _, model_reg = self._train_regression_model()
-        dist = DistanceRandomForestProximity(max_node_variance=0.0)
+        dist = DistanceRandomForestProximity(max_node_variance=10_000.0)
         dist.calculate_terminals(estimator=model_reg, X=X_reg)
         matrix, _ = dist.calculate_distance_matrix(sample_indices=None)
         self.assertEqual(matrix.shape, (len(X_reg), len(X_reg)))
@@ -304,7 +303,7 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         self.assertIn("RandomForestRegressor", str(ctx.exception))
 
     def test_max_node_variance_rejects_non_squared_error_criterion(self):
-        """Using max_node_variance with criterion != 'squared_error' raises ValueError."""
+        """Using max_node_variance with criterion 'absolute_error' raises ValueError."""
         X_reg, _, model_reg = self._train_regression_model(criterion="absolute_error")
         dist = DistanceRandomForestProximity(max_node_variance=1.0)
         with self.assertRaises(ValueError) as ctx:
@@ -337,7 +336,7 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
     def test_max_node_variance_preserves_shape_and_symmetry(self):
         """Collapsed matrix keeps the symmetric / zero-diagonal contract on a regressor."""
         X_reg, _, model_reg = self._train_regression_model()
-        dist = DistanceRandomForestProximity(max_node_variance=10.0)
+        dist = DistanceRandomForestProximity(max_node_variance=0.5)
         dist.calculate_terminals(estimator=model_reg, X=X_reg)
         matrix, _ = dist.calculate_distance_matrix(sample_indices=None)
         self.assertEqual(matrix.shape, (len(X_reg), len(X_reg)))

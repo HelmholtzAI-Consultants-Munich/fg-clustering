@@ -6,6 +6,7 @@ import os
 import gc
 import time
 import uuid
+import warnings
 import numpy as np
 import pandas as pd
 
@@ -39,8 +40,12 @@ class DistanceRandomForestProximity:
     * ``max_depth_for_proximity`` - collapse to the nearest ancestor whose depth in the tree is
       at most the given threshold (``0`` collapses every leaf to the root).
     * ``max_node_variance`` - regression-only; collapse to the nearest ancestor whose target
-      variance (``tree_.impurity`` under ``criterion="squared_error"``) is at most the given
-      threshold.
+      variance (``tree_.impurity`` under ``criterion="squared_error"`` or ``"friedman_mse"``)
+      remains greater than or equal to the given threshold, effectively pruning regions where
+      the variance has already fallen below it. When used with ``criterion="squared_error"``,
+      this corresponds exactly to variance-based pruning. For ``criterion="friedman_mse"``,
+      the behavior is an approximation, as splits are chosen using Friedman's improvement
+      score rather than pure variance reduction.
 
     The three ancestor-collapse parameters are mutually exclusive. The distance matrix can be
     computed fully in memory or stored in a disk-backed memmap array for memory-efficient
@@ -63,14 +68,17 @@ class DistanceRandomForestProximity:
         which preserves standard terminal-node proximity. Mutually exclusive with
         ``min_samples_in_node`` and ``max_node_variance``.
     :type max_depth_for_proximity: int | None
-    :param max_node_variance: Maximum allowed target variance for a node to act as an
-        effective leaf. Requires a ``RandomForestRegressor`` trained with
-        ``criterion="squared_error"`` (validated at ``calculate_terminals`` time, not at
-        construction). Each leaf is replaced by the nearest ancestor whose
-        ``tree_.impurity`` value is at most this threshold; if no ancestor qualifies, the
-        leaf collapses to the root. Defaults to ``None``, which preserves standard
-        terminal-node proximity. Mutually exclusive with ``min_samples_in_node`` and
-        ``max_depth_for_proximity``.
+    :param max_node_variance: Variance threshold used to collapse terminal nodes to
+        coarser ancestors. Each leaf is replaced by the nearest ancestor (walking
+        upward) whose ``tree_.impurity`` is greater than or equal to this threshold.
+        This effectively prunes fine-grained splits: once the variance along a path
+        drops below the threshold, all deeper descendants are collapsed to the last
+        node whose variance still exceeds it. If no ancestor satisfies the threshold,
+        the leaf collapses to the root. Requires a ``RandomForestRegressor`` trained with
+        ``criterion="squared_error"`` or ``"friedman_mse"`` (validated at
+        ``calculate_terminals`` time, not at construction). Defaults to ``None``,
+        which preserves standard terminal-node proximity. Mutually exclusive with
+        ``min_samples_in_node`` and ``max_depth_for_proximity``.
     :type max_node_variance: float | None
     """
 
@@ -123,8 +131,8 @@ class DistanceRandomForestProximity:
         ``max_depth_for_proximity``, or ``max_node_variance``), each terminal id is replaced by
         the id of the nearest ancestor that satisfies the criterion. The three criteria are
         mutually exclusive (validated at construction time). When ``max_node_variance`` is set,
-        the estimator must be a ``RandomForestRegressor`` trained with
-        ``criterion="squared_error"``. Each row of the stored matrix corresponds to a sample and
+        the estimator must be a ``RandomForestRegressor`` trained with ``criterion="squared_error"``
+        or ``"friedman_mse"``. Each row of the stored matrix corresponds to a sample and
         each column to a tree.
 
         :param estimator: Trained Random Forest estimator.
@@ -132,7 +140,7 @@ class DistanceRandomForestProximity:
         :param X: Input feature matrix.
         :type X: pd.DataFrame
         :raises ValueError: If ``max_node_variance`` is set and the estimator is not a
-            ``RandomForestRegressor`` trained with ``criterion="squared_error"``.
+            ``RandomForestRegressor`` trained with ``criterion="squared_error"`` or ``"friedman_mse"``.
 
         :return: ``None``
         :rtype: None
@@ -143,11 +151,22 @@ class DistanceRandomForestProximity:
                     "`max_node_variance` requires a `RandomForestRegressor`; "
                     f"received {type(estimator).__name__}."
                 )
-            if getattr(estimator, "criterion", None) != "squared_error":
+            criterion = getattr(estimator, "criterion", None)
+
+            if criterion not in {"squared_error", "friedman_mse"}:
                 raise ValueError(
                     "`max_node_variance` requires the regressor to be trained with "
-                    f"`criterion=\"squared_error\"` so that `tree_.impurity` equals the "
-                    f"target variance; received criterion={getattr(estimator, 'criterion', None)!r}."
+                    '`criterion="squared_error"` or `criterion="friedman_mse"`; '
+                    f"received criterion={criterion!r}."
+                )
+
+            if criterion == "friedman_mse":
+                warnings.warn(
+                    "`max_node_variance` with `criterion='friedman_mse'` is treated as an "
+                    "approximation: `tree_.impurity` is MSE-like but the split criterion uses "
+                    "Friedman's improvement score rather than pure variance reduction.",
+                    UserWarning,
+                    stacklevel=2,
                 )
 
         self.terminals = estimator.apply(X).astype(np.int32)
@@ -170,7 +189,7 @@ class DistanceRandomForestProximity:
             max_var = self.max_node_variance
             self.terminals = self._collapse_terminals(
                 estimator=estimator,
-                predicate_factory=lambda tree: (lambda node: tree.impurity[node] <= max_var),
+                predicate_factory=lambda tree: (lambda node: tree.impurity[node] >= max_var),
             )
 
     def _collapse_terminals(
