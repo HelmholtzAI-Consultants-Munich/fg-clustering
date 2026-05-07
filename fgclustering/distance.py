@@ -39,7 +39,7 @@ class DistanceRandomForestProximity:
       least the given threshold.
     * ``max_depth_for_proximity`` - collapse to the nearest ancestor whose depth in the tree is
       at most the given threshold (``0`` collapses every leaf to the root).
-    * ``max_node_variance`` - regression-only; collapse to the nearest ancestor whose target
+    * ``min_node_variance`` - regression-only; collapse to the nearest ancestor whose target
       variance (``tree_.impurity`` under ``criterion="squared_error"`` or ``"friedman_mse"``)
       remains greater than or equal to the given threshold, effectively pruning regions where
       the variance has already fallen below it. When used with ``criterion="squared_error"``,
@@ -59,16 +59,16 @@ class DistanceRandomForestProximity:
         an effective leaf. Each leaf is replaced by the nearest ancestor that has at least this
         many training samples (falling back to the root if no ancestor satisfies the criterion).
         Defaults to ``None``, which preserves standard terminal-node proximity. Mutually
-        exclusive with ``max_depth_for_proximity`` and ``max_node_variance``.
+        exclusive with ``max_depth_for_proximity`` and ``min_node_variance``.
     :type min_samples_in_node: int | None
     :param max_depth_for_proximity: Maximum tree depth at which a node is eligible to act as
         an effective leaf. Each leaf is replaced by the nearest ancestor whose depth is less
         than or equal to this threshold; if the leaf itself is already at depth at most the
         threshold, it is kept. ``0`` collapses every sample to the root. Defaults to ``None``,
         which preserves standard terminal-node proximity. Mutually exclusive with
-        ``min_samples_in_node`` and ``max_node_variance``.
+        ``min_samples_in_node`` and ``min_node_variance``.
     :type max_depth_for_proximity: int | None
-    :param max_node_variance: Variance threshold used to collapse terminal nodes to
+    :param min_node_variance: Variance threshold used to collapse terminal nodes to
         coarser ancestors. Each leaf is replaced by the nearest ancestor (walking
         upward) whose ``tree_.impurity`` is greater than or equal to this threshold.
         This effectively prunes fine-grained splits: once the variance along a path
@@ -79,7 +79,7 @@ class DistanceRandomForestProximity:
         ``calculate_terminals`` time, not at construction). Defaults to ``None``,
         which preserves standard terminal-node proximity. Mutually exclusive with
         ``min_samples_in_node`` and ``max_depth_for_proximity``.
-    :type max_node_variance: float | None
+    :type min_node_variance: float | None
     """
 
     def __init__(
@@ -88,7 +88,7 @@ class DistanceRandomForestProximity:
         dir_distance_matrix: str | None = None,
         min_samples_in_node: int | None = None,
         max_depth_for_proximity: int | None = None,
-        max_node_variance: float | None = None,
+        min_node_variance: float | None = None,
     ) -> None:
         """Constructor for the DistanceRandomForestProximity class."""
         if memory_efficient:
@@ -101,13 +101,13 @@ class DistanceRandomForestProximity:
         if max_depth_for_proximity is not None and max_depth_for_proximity < 0:
             raise ValueError("`max_depth_for_proximity` must be a non-negative integer.")
 
-        if max_node_variance is not None and max_node_variance < 0:
+        if min_node_variance is not None and min_node_variance < 0:
             raise ValueError("`max_node_variance` must be a non-negative number.")
 
         _validate_mutually_exclusive(
             min_samples_in_node=min_samples_in_node,
             max_depth_for_proximity=max_depth_for_proximity,
-            max_node_variance=max_node_variance,
+            min_node_variance=min_node_variance,
         )
 
         self.terminals: np.ndarray | None = None
@@ -115,7 +115,7 @@ class DistanceRandomForestProximity:
         self.dir_distance_matrix = dir_distance_matrix
         self.min_samples_in_node = min_samples_in_node
         self.max_depth_for_proximity = max_depth_for_proximity
-        self.max_node_variance = max_node_variance
+        self.min_node_variance = min_node_variance
         self.precomputed_distance_matrix = None
 
     def calculate_terminals(
@@ -128,9 +128,9 @@ class DistanceRandomForestProximity:
 
         Terminal node IDs are obtained by applying the trained Random Forest to ``X``. When an
         ancestor-collapse criterion is configured on the class (``min_samples_in_node``,
-        ``max_depth_for_proximity``, or ``max_node_variance``), each terminal id is replaced by
+        ``max_depth_for_proximity``, or ``min_node_variance``), each terminal id is replaced by
         the id of the nearest ancestor that satisfies the criterion. The three criteria are
-        mutually exclusive (validated at construction time). When ``max_node_variance`` is set,
+        mutually exclusive (validated at construction time). When ``min_node_variance`` is set,
         the estimator must be a ``RandomForestRegressor`` trained with ``criterion="squared_error"``
         or ``"friedman_mse"``. Each row of the stored matrix corresponds to a sample and
         each column to a tree.
@@ -139,30 +139,30 @@ class DistanceRandomForestProximity:
         :type estimator: RandomForestClassifier | RandomForestRegressor
         :param X: Input feature matrix.
         :type X: pd.DataFrame
-        :raises ValueError: If ``max_node_variance`` is set and the estimator is not a
+        :raises ValueError: If ``min_node_variance`` is set and the estimator is not a
             ``RandomForestRegressor`` trained with ``criterion="squared_error"`` or ``"friedman_mse"``.
 
         :return: ``None``
         :rtype: None
         """
-        if self.max_node_variance is not None:
+        if self.min_node_variance is not None:
             if not isinstance(estimator, RandomForestRegressor):
                 raise ValueError(
-                    "`max_node_variance` requires a `RandomForestRegressor`; "
+                    "`min_node_variance` requires a `RandomForestRegressor`; "
                     f"received {type(estimator).__name__}."
                 )
             criterion = getattr(estimator, "criterion", None)
 
             if criterion not in {"squared_error", "friedman_mse"}:
                 raise ValueError(
-                    "`max_node_variance` requires the regressor to be trained with "
+                    "`min_node_variance` requires the regressor to be trained with "
                     '`criterion="squared_error"` or `criterion="friedman_mse"`; '
                     f"received criterion={criterion!r}."
                 )
 
             if criterion == "friedman_mse":
                 warnings.warn(
-                    "`max_node_variance` with `criterion='friedman_mse'` is treated as an "
+                    "`min_node_variance` with `criterion='friedman_mse'` is treated as an "
                     "approximation: `tree_.impurity` is MSE-like but the split criterion uses "
                     "Friedman's improvement score rather than pure variance reduction.",
                     UserWarning,
@@ -185,11 +185,11 @@ class DistanceRandomForestProximity:
                     lambda node, _depths=_compute_node_depths(tree): _depths[node] <= max_depth
                 ),
             )
-        elif self.max_node_variance is not None:
-            max_var = self.max_node_variance
+        elif self.min_node_variance is not None:
+            min_var = self.min_node_variance
             self.terminals = self._collapse_terminals(
                 estimator=estimator,
-                predicate_factory=lambda tree: (lambda node: tree.impurity[node] >= max_var),
+                predicate_factory=lambda tree: (lambda node: tree.impurity[node] >= min_var),
             )
 
     def _collapse_terminals(
