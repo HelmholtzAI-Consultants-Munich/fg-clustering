@@ -39,10 +39,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `_validate_mutually_exclusive` introduced in PR 1.
 - `DistanceRandomForestProximity.max_node_variance` parameter: collapses each leaf to
   the nearest ancestor whose target variance (``tree_.impurity`` under
-  ``criterion="squared_error"``) is at most the given threshold. Regression-only;
-  requires a ``RandomForestRegressor`` trained with ``criterion="squared_error"`` and
-  raises ``ValueError`` at ``calculate_terminals`` time otherwise. Defaults to
-  ``None``.
+  ``criterion="squared_error"`` or ``"friedman_mse"``) remains greater than or equal
+  to the given threshold. This effectively prunes regions where the variance has
+  already fallen below the threshold. For ``criterion="squared_error"``, this
+  corresponds exactly to variance-based pruning; for ``criterion="friedman_mse"``,
+  the behavior is an approximation, as splits are selected using Friedman's
+  improvement score rather than pure variance reduction. Regression-only; requires
+  a ``RandomForestRegressor`` and raises ``ValueError`` at ``calculate_terminals``
+  time otherwise. Defaults to ``None``.
+
 
 ### Changed
 - `DistanceRandomForestProximity.__init__` now accepts `min_samples_in_node` and
@@ -82,10 +87,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ``max_depth_for_proximity``, ``max_node_variance``); setting any two at once
   raises ``ValueError``.
 - `DistanceRandomForestProximity.calculate_terminals` now performs an
-  estimator-type and criterion guard at the start when ``max_node_variance`` is
-  configured, and dispatches to a third ancestor-collapse branch. Behavior with
-  all three new parameters set to ``None`` (default) is byte-for-byte identical
-  to previous releases.
+  estimator-type guard and allows both ``criterion="squared_error"`` and
+  ``criterion="friedman_mse"`` when ``max_node_variance`` is configured. A
+  ``UserWarning`` is issued for ``friedman_mse`` to indicate that variance-based
+  pruning is approximate in this case. Behavior with all three new parameters set
+  to ``None`` (default) is byte-for-byte identical to previous releases.
 - `DistanceRandomForestProximity` class docstring updated to enumerate all three
   supported ancestor-collapse criteria and document their mutual exclusivity and
   the regression-only restriction of ``max_node_variance``.
