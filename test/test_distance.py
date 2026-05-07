@@ -10,18 +10,46 @@ import pandas as pd
 
 from pathlib import Path
 
-from sklearn.datasets import make_classification
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.datasets import make_classification, make_regression
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 from fgclustering.distance import (
+    DistanceRandomForestLCA,
     DistanceRandomForestProximity,
     DistanceWasserstein,
     DistanceJensenShannon,
+    _build_leaf_to_ancestor_map,
+    _calculate_lca_distances,
+    _compute_node_depths,
+    _compute_parent_array,
+    _validate_mutually_exclusive,
 )
 
 ############################################
 # Tests
 ############################################
+
+
+def _build_regression_forest(
+    random_state=42,
+    criterion="squared_error",
+    n_estimators=20,
+    max_depth=8,
+):
+    X, y = make_regression(
+        n_samples=50,
+        n_features=5,
+        n_informative=3,
+        random_state=random_state,
+    )
+    X = pd.DataFrame(X, columns=[f"feature_{i}" for i in range(X.shape[1])])
+    model = RandomForestRegressor(
+        n_estimators=n_estimators,
+        max_depth=max_depth,
+        criterion=criterion,
+        random_state=random_state,
+    ).fit(X, y)
+    return X, y, model
 
 
 class TestDistanceRandomForestProximity(unittest.TestCase):
@@ -61,24 +89,10 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         return X, y, model
 
     def _train_regression_model(self, criterion="squared_error"):
-        from sklearn.datasets import make_regression
-        from sklearn.ensemble import RandomForestRegressor
-
-        X, y = make_regression(
-            n_samples=50,
-            n_features=5,
-            n_informative=3,
+        return _build_regression_forest(
             random_state=self.random_state,
-        )
-        X = pd.DataFrame(X, columns=[f"feature_{i}" for i in range(X.shape[1])])
-        model = RandomForestRegressor(
-            n_estimators=20,
-            max_depth=8,
             criterion=criterion,
-            random_state=self.random_state,
         )
-        model.fit(X=X, y=y)
-        return X, y, model
 
     def tearDown(self):
         try:
@@ -89,28 +103,28 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
     def test_calculate_terminals(self):
         dist = DistanceRandomForestProximity()
         dist.calculate_terminals(estimator=self.model, X=self.X)
-        self.assertIsNotNone(obj=dist.terminals)
-        self.assertEqual(first=dist.terminals.shape[0], second=self.X.shape[0])
+        self.assertIsNotNone(dist.terminals)
+        self.assertEqual(dist.terminals.shape[0], self.X.shape[0])
 
     def test_calculate_distance_matrix_non_memory_efficient(self):
         dist = DistanceRandomForestProximity(memory_efficient=False)
         dist.calculate_terminals(estimator=self.model, X=self.X)
         matrix, file = dist.calculate_distance_matrix(sample_indices=None)
-        self.assertEqual(first=matrix.shape[0], second=matrix.shape[1])
-        self.assertEqual(first=matrix.shape[0], second=len(self.X))
-        self.assertTrue(expr=np.allclose(a=matrix, b=matrix.T))
-        self.assertTrue(expr=np.all(a=np.diag(v=matrix) == 0))
-        self.assertTrue(expr=file is None)
+        self.assertEqual(matrix.shape[0], matrix.shape[1])
+        self.assertEqual(matrix.shape[0], len(self.X))
+        self.assertTrue(np.allclose(matrix, matrix.T))
+        self.assertTrue(np.all(np.diag(matrix) == 0))
+        self.assertTrue(file is None)
 
     def test_calculate_distance_matrix_memory_efficient(self):
         dist = DistanceRandomForestProximity(memory_efficient=True, dir_distance_matrix=self.tmp_path)
         dist.calculate_terminals(estimator=self.model, X=self.X)
         matrix, file = dist.calculate_distance_matrix(sample_indices=None)
         self.assertTrue(isinstance(matrix, np.memmap))
-        self.assertEqual(first=matrix.shape[0], second=matrix.shape[1])
-        self.assertTrue(expr=np.allclose(a=matrix, b=matrix.T))
-        self.assertTrue(expr=np.all(a=np.diag(v=matrix) == 0))
-        self.assertTrue(expr=os.path.exists(path=file))
+        self.assertEqual(matrix.shape[0], matrix.shape[1])
+        self.assertTrue(np.allclose(matrix, matrix.T))
+        self.assertTrue(np.all(np.diag(matrix) == 0))
+        self.assertTrue(os.path.exists(file))
 
     def test_calculate_distance_matrix_error_without_terminals(self):
         dist = DistanceRandomForestProximity()
@@ -124,9 +138,9 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
     def test_calculate_distance_matrix_with_sample_indices(self):
         dist = DistanceRandomForestProximity(memory_efficient=False)
         dist.calculate_terminals(estimator=self.model, X=self.X)
-        sample_indices = np.random.choice(a=len(self.X), size=20, replace=False)
+        sample_indices = np.random.choice(len(self.X), size=20, replace=False)
         matrix, file = dist.calculate_distance_matrix(sample_indices=sample_indices)
-        self.assertEqual(first=matrix.shape, second=(20, 20))
+        self.assertEqual(matrix.shape, (20, 20))
 
     def test_min_samples_in_node_none_matches_baseline(self):
         """Default behavior (min_samples_in_node=None) must match pre-feature output."""
@@ -151,6 +165,16 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         new_matrix, _ = dist_new.calculate_distance_matrix(sample_indices=None)
 
         np.testing.assert_array_equal(baseline_matrix, new_matrix)
+
+    def test_min_samples_in_node_baseline_on_regressor(self):
+        X_reg, _, model_reg = _build_regression_forest()
+        baseline = DistanceRandomForestProximity()
+        baseline.calculate_terminals(estimator=model_reg, X=X_reg)
+        bm, _ = baseline.calculate_distance_matrix(sample_indices=None)
+        new = DistanceRandomForestProximity(min_samples_in_node=1)
+        new.calculate_terminals(estimator=model_reg, X=X_reg)
+        nm, _ = new.calculate_distance_matrix(sample_indices=None)
+        np.testing.assert_array_equal(bm, nm)
 
     def test_min_samples_in_node_large_collapses_to_root(self):
         """A threshold larger than any node forces every leaf to the root -> all zeros."""
@@ -219,6 +243,16 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         new_matrix, _ = dist_new.calculate_distance_matrix(sample_indices=None)
 
         np.testing.assert_array_equal(baseline_matrix, new_matrix)
+
+    def test_max_depth_for_proximity_baseline_on_regressor(self):
+        X_reg, _, model_reg = _build_regression_forest()
+        baseline = DistanceRandomForestProximity()
+        baseline.calculate_terminals(estimator=model_reg, X=X_reg)
+        bm, _ = baseline.calculate_distance_matrix(sample_indices=None)
+        new = DistanceRandomForestProximity(max_depth_for_proximity=10_000)
+        new.calculate_terminals(estimator=model_reg, X=X_reg)
+        nm, _ = new.calculate_distance_matrix(sample_indices=None)
+        np.testing.assert_array_equal(bm, nm)
 
     def test_max_depth_for_proximity_monotonicity(self):
         """Mean off-diagonal distance is non-decreasing as the depth threshold grows."""
@@ -376,22 +410,9 @@ class TestDistanceRandomForestLCA(unittest.TestCase):
         self.X, self.y, self.model = self._train_regression_model()
 
     def _train_regression_model(self):
-        from sklearn.datasets import make_regression
-        from sklearn.ensemble import RandomForestRegressor
-
-        X, y = make_regression(
-            n_samples=50,
-            n_features=5,
-            n_informative=3,
+        X, y, model = _build_regression_forest(
             random_state=self.random_state,
         )
-        X = pd.DataFrame(X, columns=[f"feature_{i}" for i in range(X.shape[1])])
-        model = RandomForestRegressor(
-            n_estimators=20,
-            max_depth=8,
-            random_state=self.random_state,
-        )
-        model.fit(X=X, y=y)
         return X, y, model
 
     def tearDown(self):
@@ -401,8 +422,6 @@ class TestDistanceRandomForestLCA(unittest.TestCase):
             pass
 
     def test_calculate_terminals_populates_state(self):
-        from fgclustering.distance import DistanceRandomForestLCA, _compute_node_depths
-
         dist = DistanceRandomForestLCA()
         dist.calculate_terminals(estimator=self.model, X=self.X)
         self.assertIsNotNone(dist.terminals)
@@ -420,8 +439,6 @@ class TestDistanceRandomForestLCA(unittest.TestCase):
             np.testing.assert_array_equal(dist.path_lens[:, t], expected_lens)
 
     def test_calculate_distance_matrix_shape_symmetry_and_diagonal(self):
-        from fgclustering.distance import DistanceRandomForestLCA
-
         dist = DistanceRandomForestLCA()
         dist.calculate_terminals(estimator=self.model, X=self.X)
         matrix, file = dist.calculate_distance_matrix(sample_indices=None)
@@ -432,8 +449,6 @@ class TestDistanceRandomForestLCA(unittest.TestCase):
 
     def test_same_leaf_samples_have_zero_distance(self):
         """Samples that share the same leaf in every tree must have distance 0."""
-        from fgclustering.distance import DistanceRandomForestLCA
-
         dist = DistanceRandomForestLCA()
         dist.calculate_terminals(estimator=self.model, X=self.X)
         same_terminals = (dist.terminals[:, None, :] == dist.terminals[None, :, :]).all(axis=2)
@@ -441,8 +456,6 @@ class TestDistanceRandomForestLCA(unittest.TestCase):
         self.assertTrue(np.all(matrix[same_terminals] == 0.0))
 
     def test_memory_efficient_memmap_path_matches_in_memory(self):
-        from fgclustering.distance import DistanceRandomForestLCA
-
         d1 = DistanceRandomForestLCA(memory_efficient=False)
         d1.calculate_terminals(estimator=self.model, X=self.X)
         m1, _ = d1.calculate_distance_matrix(sample_indices=None)
@@ -459,21 +472,15 @@ class TestDistanceRandomForestLCA(unittest.TestCase):
         self.assertFalse(os.path.exists(f2))
 
     def test_calculate_distance_matrix_error_without_paths(self):
-        from fgclustering.distance import DistanceRandomForestLCA
-
         dist = DistanceRandomForestLCA()
         with self.assertRaises(ValueError):
             dist.calculate_distance_matrix(sample_indices=None)
 
     def test_init_missing_dir_in_memory_efficient_mode(self):
-        from fgclustering.distance import DistanceRandomForestLCA
-
         with self.assertRaises(ValueError):
             DistanceRandomForestLCA(memory_efficient=True)
 
     def test_sample_indices_slicing(self):
-        from fgclustering.distance import DistanceRandomForestLCA
-
         dist = DistanceRandomForestLCA()
         dist.calculate_terminals(estimator=self.model, X=self.X)
         idx = np.random.RandomState(0).choice(len(self.X), size=20, replace=False)
@@ -483,8 +490,6 @@ class TestDistanceRandomForestLCA(unittest.TestCase):
 
     def test_lca_distance_increases_when_deeper_path_is_grown(self):
         """Growing the deeper path lowers similarity and increases distance under max-based normalization."""
-        from fgclustering.distance import _calculate_lca_distances
-
         n_trees = 1
 
         def run(paths_list, lens_list):
@@ -504,8 +509,6 @@ class TestDistanceRandomForestLCA(unittest.TestCase):
 
     def test_lca_distance_root_only_trees_are_treated_as_identical(self):
         """Both samples at depth 0 fall back to similarity 1.0."""
-        from fgclustering.distance import _calculate_lca_distances
-
         paths = np.full((2, 1, 1), -1, dtype=np.int32)
         paths[0, 0, 0] = 0
         paths[1, 0, 0] = 0
@@ -513,6 +516,73 @@ class TestDistanceRandomForestLCA(unittest.TestCase):
         out = np.zeros((2, 2), dtype=np.float32)
         result = _calculate_lca_distances(paths, lens, 2, 1, out)
         self.assertEqual(float(result[0, 1]), 0.0)
+
+    def test_lca_distance_le_terminal_distance(self):
+        """Per-pair invariant: LCA distance ≤ terminal-node distance."""
+        proximity = DistanceRandomForestProximity()
+        proximity.calculate_terminals(estimator=self.model, X=self.X)
+        pm, _ = proximity.calculate_distance_matrix(sample_indices=None)
+
+        lca = DistanceRandomForestLCA()
+        lca.calculate_terminals(estimator=self.model, X=self.X)
+        lm, _ = lca.calculate_distance_matrix(sample_indices=None)
+
+        self.assertTrue(np.all(np.asarray(lm) <= np.asarray(pm) + 1e-6))
+
+
+class TestTreeHelpers(unittest.TestCase):
+    """Direct unit tests for the tree-walking helpers."""
+
+    def setUp(self):
+        X, y = make_classification(n_samples=30, n_features=4, random_state=0)
+        self.tree = (
+            RandomForestClassifier(n_estimators=1, max_depth=3, random_state=0)
+            .fit(X, y)
+            .estimators_[0]
+            .tree_
+        )
+
+    def test_compute_parent_array_root_is_minus_one(self):
+        parent = _compute_parent_array(self.tree)
+        self.assertEqual(parent[0], -1)
+
+    def test_compute_parent_array_each_non_root_has_a_parent(self):
+        parent = _compute_parent_array(self.tree)
+        for n in range(1, self.tree.node_count):
+            self.assertGreaterEqual(parent[n], 0)
+            self.assertLess(parent[n], self.tree.node_count)
+
+    def test_compute_node_depths_root_is_zero_and_increases(self):
+        depths = _compute_node_depths(self.tree)
+        self.assertEqual(depths[0], 0)
+        for n in range(self.tree.node_count):
+            left = self.tree.children_left[n]
+            right = self.tree.children_right[n]
+            if left != -1:
+                self.assertEqual(depths[left], depths[n] + 1)
+            if right != -1:
+                self.assertEqual(depths[right], depths[n] + 1)
+
+    def test_build_leaf_to_ancestor_map_predicate_always_true(self):
+        parent = _compute_parent_array(self.tree)
+        leaf_map = _build_leaf_to_ancestor_map(self.tree, parent, lambda _: True)
+        for n in range(self.tree.node_count):
+            if self.tree.children_left[n] == -1:
+                self.assertEqual(leaf_map[n], n)
+
+    def test_build_leaf_to_ancestor_map_predicate_always_false(self):
+        parent = _compute_parent_array(self.tree)
+        leaf_map = _build_leaf_to_ancestor_map(self.tree, parent, lambda _: False)
+        for n in range(self.tree.node_count):
+            if self.tree.children_left[n] == -1:
+                self.assertEqual(leaf_map[n], 0)
+
+    def test_validate_mutually_exclusive_single_ok(self):
+        _validate_mutually_exclusive(a=1, b=None, c=None)
+
+    def test_validate_mutually_exclusive_two_raises(self):
+        with self.assertRaises(ValueError):
+            _validate_mutually_exclusive(a=1, b=2, c=None)
 
 
 class TestDistanceWasserstein(unittest.TestCase):

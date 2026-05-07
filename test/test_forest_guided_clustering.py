@@ -170,6 +170,31 @@ class TestForestGuidedClustering(unittest.TestCase):
         self.assertIn(result.best_k, [2, 3, 4] + [None])
         self.assertEqual(set(result.cluster_labels.keys()), {2, 3, 4})
 
+    def test_forest_guided_clustering_with_lca_regressor(self):
+        from sklearn.datasets import make_regression
+        from sklearn.ensemble import RandomForestRegressor
+        from fgclustering.distance import DistanceRandomForestLCA
+        from fgclustering.clustering import ClusteringKMedoids
+        from fgclustering import forest_guided_clustering
+
+        X, y = make_regression(n_samples=80, n_features=6, random_state=0)
+        X = pd.DataFrame(X, columns=[f"feature_{i}" for i in range(X.shape[1])])
+        model = RandomForestRegressor(n_estimators=15, max_depth=6, random_state=0).fit(X, y)
+
+        result = forest_guided_clustering(
+            estimator=model,
+            X=X,
+            y=pd.Series(y),
+            clustering_distance_metric=DistanceRandomForestLCA(),
+            clustering_strategy=ClusteringKMedoids(random_state=0),
+            k=(2, 3),
+            JI_bootstrap_iter=3,
+            JI_bootstrap_sample_size=0.8,
+            random_state=0,
+            verbose=0,
+        )
+        self.assertEqual(set(result.cluster_labels.keys()), {2, 3})
+
     def test_forest_guided_feature_importance_output(self):
 
         cluster_labels = np.random.randint(low=0, high=3, size=self.X.shape[0])

@@ -17,7 +17,7 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 from .utils import check_input_data, check_input_estimator, check_sub_sample_size, check_k_range
 from .clustering import ClusteringKMedoids, ClusteringClara
-from .distance import DistanceWasserstein, DistanceJensenShannon, DistanceRandomForestProximity
+from .distance import DistanceWasserstein, DistanceJensenShannon, DistanceRandomForestBase
 from .optimizer import Optimizer
 from .statistics import FeatureImportance
 from .plotting import (
@@ -50,7 +50,7 @@ def forest_guided_clustering(
     estimator: RandomForestClassifier | RandomForestRegressor,
     X: pd.DataFrame,
     y: str | pd.Series,
-    clustering_distance_metric: DistanceRandomForestProximity,
+    clustering_distance_metric: DistanceRandomForestBase,
     clustering_strategy: ClusteringKMedoids | ClusteringClara,
     k: int | tuple[int, int] | None = None,
     JI_bootstrap_iter: int = 100,
@@ -78,7 +78,7 @@ def forest_guided_clustering(
     :param y: Target variable, given either as target values or as the name of the target column in ``X``.
     :type y: str | pd.Series
     :param clustering_distance_metric: Distance metric based on Random Forest terminal-node proximity.
-    :type clustering_distance_metric: DistanceRandomForestProximity
+    :type clustering_distance_metric: DistanceRandomForestBase
     :param clustering_strategy: Clustering strategy used to group samples from the distance matrix.
     :type clustering_strategy: ClusteringKMedoids | ClusteringClara
     :param k: Number of clusters if given as an integer, optimization range if given as ``(min_k, max_k)``, or ``None`` to use the default range ``(2, 6)``.

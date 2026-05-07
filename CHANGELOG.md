@@ -118,6 +118,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reflect the bottom-up pruning semantics (every node has variance ≥ 0, so
   nothing is pruned at θ=0).
 
+### Added (PR-B)
+- `DistanceRandomForestBase`: shared base class for `DistanceRandomForestProximity`
+  and `DistanceRandomForestLCA`. Holds the memmap configuration, the `terminals`
+  attribute, the `_allocate_distance_matrix` helper, and the
+  `remove_distance_matrix` cleanup logic. Exported from the `fgclustering`
+  package for external type hints. Both existing distance classes now inherit
+  from it.
+- Targeted unit tests for `_compute_parent_array`, `_compute_node_depths`,
+  `_build_leaf_to_ancestor_map`, and `_validate_mutually_exclusive` in a new
+  `TestTreeHelpers` class.
+- Per-pair invariant test `test_lca_distance_le_terminal_distance` proving LCA
+  distance ≤ terminal-node distance for any pair.
+- Baseline-on-regressor smoke tests for `min_samples_in_node` and
+  `max_depth_for_proximity`.
+- Integration test `test_forest_guided_clustering_with_lca_regressor` driving
+  `forest_guided_clustering()` through `DistanceRandomForestLCA` end to end.
+
+### Changed (PR-B)
+- Type hints on `distance_metric` parameters in `ClusteringKMedoids.run_clustering`,
+  `ClusteringClara.run_clustering`, `Optimizer.__init__`, and
+  `forest_guided_clustering()` now reference `DistanceRandomForestBase`
+  instead of `DistanceRandomForestProximity` so that `DistanceRandomForestLCA`
+  is correctly advertised as supported.
+- `DistanceRandomForestProximity.remove_distance_matrix` and
+  `DistanceRandomForestLCA.remove_distance_matrix` deleted; both classes now
+  inherit the implementation from `DistanceRandomForestBase`.
+- `DistanceRandomForestProximity.calculate_distance_matrix` and
+  `DistanceRandomForestLCA.calculate_distance_matrix` use the inherited
+  `_allocate_distance_matrix` helper, removing ~30 LOC of duplicated memmap
+  bookkeeping per class.
+- `test/test_distance.py` cleanup: imports moved to module level, keyword-style
+  assertion arguments (`first=`, `second=`, `expr=`, `obj=`, `a=`, `v=`)
+  replaced with positional form to match the rest of the test suite, and
+  `_train_regression_model` consolidated into a module-level
+  `_build_regression_forest` helper shared across test classes. No semantic
+  test changes.
+
 ### Known limitations
 - `DistanceRandomForestLCA` paired with `ClusteringClara` is not fully LCA-consistent
   end-to-end. While CLARA uses `calculate_distance_matrix` during medoid search,

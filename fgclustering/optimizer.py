@@ -13,7 +13,7 @@ from collections import defaultdict, Counter
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 from .utils import map_clusters_to_samples
-from .distance import DistanceRandomForestProximity
+from .distance import DistanceRandomForestBase
 from .clustering import ClusteringKMedoids, ClusteringClara
 
 
@@ -34,7 +34,7 @@ class Optimizer:
     stable clustering with the best quality score.
 
     :param distance_metric: Distance metric based on Random Forest proximity.
-    :type distance_metric: DistanceRandomForestProximity
+    :type distance_metric: DistanceRandomForestBase
     :param clustering_strategy: Clustering strategy used to generate cluster assignments.
     :type clustering_strategy: ClusteringKMedoids | ClusteringClara
     :param random_state: Random seed used for reproducibility.
@@ -43,7 +43,7 @@ class Optimizer:
 
     def __init__(
         self,
-        distance_metric: DistanceRandomForestProximity,
+        distance_metric: DistanceRandomForestBase,
         clustering_strategy: ClusteringKMedoids | ClusteringClara,
         random_state: int | None,
     ):

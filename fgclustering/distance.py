@@ -25,7 +25,93 @@ from .utils import check_disk_space
 ############################################
 
 
-class DistanceRandomForestProximity:
+class DistanceRandomForestBase:
+    """
+    Base class shared by Random-Forest-based proximity distance metrics.
+
+    Holds the memory-efficient memmap configuration, the ``terminals`` attribute,
+    the on-disk allocation helper, and the cleanup logic. Subclasses
+    (``DistanceRandomForestProximity``, ``DistanceRandomForestLCA``) implement
+    :meth:`calculate_terminals` and :meth:`calculate_distance_matrix` with their
+    own state and numba kernels. This class is not intended for direct
+    instantiation; consumers should construct one of the concrete subclasses.
+
+    :param memory_efficient: Whether to store the distance matrix in a disk-backed memmap array.
+    :type memory_efficient: bool
+    :param dir_distance_matrix: Directory used to store the memmap distance matrix when ``memory_efficient=True``.
+    :type dir_distance_matrix: str | None
+    """
+
+    def __init__(
+        self,
+        memory_efficient: bool = False,
+        dir_distance_matrix: str | None = None,
+    ) -> None:
+        if memory_efficient and dir_distance_matrix is None:
+            raise ValueError(
+                "You must specify `dir_distance_matrix` when `memory_efficient=True`."
+            )
+        self.terminals: np.ndarray | None = None
+        self.memory_efficient = memory_efficient
+        self.dir_distance_matrix = dir_distance_matrix
+        self.precomputed_distance_matrix = None
+
+    def _allocate_distance_matrix(
+        self, n: int
+    ) -> tuple[np.ndarray | np.memmap, str | None]:
+        """Allocate an in-memory or memmap-backed (n, n) float32 distance matrix."""
+        if self.memory_efficient:
+            if self.dir_distance_matrix is None:
+                raise ValueError(
+                    "You must specify `dir_distance_matrix` when `memory_efficient=True`."
+                )
+            buffer_factor = 1.2
+            required_bytes = int(n * n * 4 * buffer_factor)
+            if not check_disk_space(self.dir_distance_matrix, required_bytes):
+                raise MemoryError(
+                    f"Not enough free space to allocate a {required_bytes / 1e9:.2f} GB "
+                    "memmap distance matrix (with 20% buffer)."
+                )
+            file_distance_matrix = os.path.join(
+                self.dir_distance_matrix,
+                f"distance_matrix_{uuid.uuid4().hex[:8]}.dat",
+            )
+            return (
+                np.memmap(
+                    file_distance_matrix,
+                    dtype=np.float32,
+                    mode="w+",
+                    shape=(n, n),
+                ),
+                file_distance_matrix,
+            )
+        return np.zeros((n, n), dtype=np.float32), None
+
+    def remove_distance_matrix(
+        self,
+        distance_matrix: np.ndarray | np.memmap,
+        file_distance_matrix: str | None,
+    ) -> None:
+        """Flush, release, and delete a (possibly memmap) distance matrix."""
+        if isinstance(distance_matrix, np.memmap):
+            try:
+                distance_matrix.flush()
+            except Exception:
+                pass
+        del distance_matrix
+        gc.collect()
+
+        if file_distance_matrix is not None and os.path.exists(file_distance_matrix):
+            for _ in range(3):
+                try:
+                    os.remove(file_distance_matrix)
+                    break
+                except PermissionError:
+                    time.sleep(0.5)
+                    gc.collect()
+
+
+class DistanceRandomForestProximity(DistanceRandomForestBase):
     """
     Compute a proximity-based distance matrix from the terminal nodes of a trained Random Forest model,
     or from a coarser inner-node projection when an ancestor-collapse criterion is provided.
@@ -91,9 +177,10 @@ class DistanceRandomForestProximity:
         min_node_variance: float | None = None,
     ) -> None:
         """Constructor for the DistanceRandomForestProximity class."""
-        if memory_efficient:
-            if dir_distance_matrix is None:
-                raise ValueError("You must specify `dir_distance_matrix` when `memory_efficient=True`.")
+        super().__init__(
+            memory_efficient=memory_efficient,
+            dir_distance_matrix=dir_distance_matrix,
+        )
 
         if min_samples_in_node is not None and min_samples_in_node < 1:
             raise ValueError("`min_samples_in_node` must be a positive integer.")
@@ -110,13 +197,9 @@ class DistanceRandomForestProximity:
             min_node_variance=min_node_variance,
         )
 
-        self.terminals: np.ndarray | None = None
-        self.memory_efficient = memory_efficient
-        self.dir_distance_matrix = dir_distance_matrix
         self.min_samples_in_node = min_samples_in_node
         self.max_depth_for_proximity = max_depth_for_proximity
         self.min_node_variance = min_node_variance
-        self.precomputed_distance_matrix = None
 
     def calculate_terminals(
         self,
@@ -251,79 +334,17 @@ class DistanceRandomForestProximity:
         """
         if self.terminals is None:
             raise ValueError(
-                "No precomputed terminals available to compute distance matrix! Run `calculate_terminals()` first."
+                "No precomputed terminals available to compute distance matrix! "
+                "Run `calculate_terminals()` first."
             )
-        else:
-            if sample_indices is not None:
-                terminals = self.terminals[sample_indices]
-            else:
-                terminals = self.terminals
-            n, n_estimators = terminals.shape
-            distance_matrix: np.ndarray | np.memmap
-
-            if self.memory_efficient:
-                if self.dir_distance_matrix is None:
-                    raise ValueError("You must specify `dir_distance_matrix` when `memory_efficient=True`.")
-                buffer_factor = 1.2  # 20% safety buffer
-                required_bytes = int(n * n * 4 * buffer_factor)  # float32 = 4 bytes
-                if not check_disk_space(self.dir_distance_matrix, required_bytes):
-                    raise MemoryError(
-                        f"Not enough free space to allocate a {required_bytes / 1e9:.2f} GB memmap distance matrix (with 20% buffer)."
-                    )
-                file_distance_matrix = os.path.join(
-                    self.dir_distance_matrix,
-                    f"distance_matrix_{uuid.uuid4().hex[:8]}.dat",
-                )
-                distance_matrix = np.memmap(file_distance_matrix, dtype=np.float32, mode="w+", shape=(n, n))
-            else:
-                file_distance_matrix = None
-                distance_matrix = np.zeros((n, n), dtype=np.float32)
-
-            distance_matrix = _calculate_distances(terminals, n, n_estimators, distance_matrix)
-
-            return distance_matrix, file_distance_matrix
-
-    def remove_distance_matrix(
-        self,
-        distance_matrix: np.ndarray | np.memmap,
-        file_distance_matrix: str | None,
-    ) -> None:
-        """
-        Remove a disk-backed distance matrix file and release associated resources.
-
-        If the distance matrix was created as a memmap array, this method attempts to flush
-        pending writes, delete the array object, trigger garbage collection, and remove the
-        backing file from disk. Repeated removal attempts are made to avoid file-locking
-        issues on some systems.
-
-        :param distance_matrix: Distance matrix object to release.
-        :type distance_matrix: np.ndarray | np.memmap
-        :param file_distance_matrix: Path to the memmap file on disk, or ``None`` if no file was created.
-        :type file_distance_matrix: str | None
-
-        :return: ``None``
-        :rtype: None
-        """
-        if isinstance(distance_matrix, np.memmap):
-            try:
-                distance_matrix.flush()
-            except Exception:
-                pass  # Might not always be necessary, but safe to attempt
-
-        del distance_matrix
-        gc.collect()
-
-        if file_distance_matrix is not None and os.path.exists(file_distance_matrix):
-            for _ in range(3):
-                try:
-                    os.remove(file_distance_matrix)
-                    break
-                except PermissionError:
-                    time.sleep(0.5)  # Give OS time to release the file
-                    gc.collect()
+        terminals = self.terminals if sample_indices is None else self.terminals[sample_indices]
+        n, n_estimators = terminals.shape
+        distance_matrix, file_distance_matrix = self._allocate_distance_matrix(n)
+        distance_matrix = _calculate_distances(terminals, n, n_estimators, distance_matrix)
+        return distance_matrix, file_distance_matrix
 
 
-class DistanceRandomForestLCA:
+class DistanceRandomForestLCA(DistanceRandomForestBase):
     """
     Compute a proximity-based distance matrix from the Least Common Ancestor (LCA) depth
     of samples along decision paths of a trained Random Forest model.
@@ -365,16 +386,12 @@ class DistanceRandomForestLCA:
         dir_distance_matrix: str | None = None,
     ) -> None:
         """Constructor for the DistanceRandomForestLCA class."""
-        if memory_efficient:
-            if dir_distance_matrix is None:
-                raise ValueError("You must specify `dir_distance_matrix` when `memory_efficient=True`.")
-
-        self.terminals: np.ndarray | None = None
+        super().__init__(
+            memory_efficient=memory_efficient,
+            dir_distance_matrix=dir_distance_matrix,
+        )
         self.paths: np.ndarray | None = None
         self.path_lens: np.ndarray | None = None
-        self.memory_efficient = memory_efficient
-        self.dir_distance_matrix = dir_distance_matrix
-        self.precomputed_distance_matrix = None
 
     def calculate_terminals(
         self,
@@ -462,64 +479,9 @@ class DistanceRandomForestLCA:
             paths = self.paths
             path_lens = self.path_lens
         n, n_estimators, _ = paths.shape
-        distance_matrix: np.ndarray | np.memmap
-
-        if self.memory_efficient:
-            if self.dir_distance_matrix is None:
-                raise ValueError("You must specify `dir_distance_matrix` when `memory_efficient=True`.")
-            buffer_factor = 1.2
-            required_bytes = int(n * n * 4 * buffer_factor)
-            if not check_disk_space(self.dir_distance_matrix, required_bytes):
-                raise MemoryError(
-                    f"Not enough free space to allocate a {required_bytes / 1e9:.2f} GB memmap distance matrix (with 20% buffer)."
-                )
-            file_distance_matrix = os.path.join(
-                self.dir_distance_matrix, f"distance_matrix_{uuid.uuid4().hex[:8]}.dat"
-            )
-            distance_matrix = np.memmap(file_distance_matrix, dtype=np.float32, mode="w+", shape=(n, n))
-        else:
-            file_distance_matrix = None
-            distance_matrix = np.zeros((n, n), dtype=np.float32)
-
+        distance_matrix, file_distance_matrix = self._allocate_distance_matrix(n)
         distance_matrix = _calculate_lca_distances(paths, path_lens, n, n_estimators, distance_matrix)
-
         return distance_matrix, file_distance_matrix
-
-    def remove_distance_matrix(
-        self,
-        distance_matrix: np.ndarray | np.memmap,
-        file_distance_matrix: str | None,
-    ) -> None:
-        """
-        Remove a disk-backed distance matrix file and release associated resources.
-
-        Behavior mirrors :meth:`DistanceRandomForestProximity.remove_distance_matrix`.
-
-        :param distance_matrix: Distance matrix object to release.
-        :type distance_matrix: np.ndarray | np.memmap
-        :param file_distance_matrix: Path to the memmap file on disk, or ``None`` if no file was created.
-        :type file_distance_matrix: str | None
-
-        :return: ``None``
-        :rtype: None
-        """
-        if isinstance(distance_matrix, np.memmap):
-            try:
-                distance_matrix.flush()
-            except Exception:
-                pass
-
-        del distance_matrix
-        gc.collect()
-
-        if file_distance_matrix is not None and os.path.exists(file_distance_matrix):
-            for _ in range(3):
-                try:
-                    os.remove(file_distance_matrix)
-                    break
-                except PermissionError:
-                    time.sleep(0.5)
-                    gc.collect()
 
 
 class DistanceWasserstein:
