@@ -80,21 +80,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   previous releases.
 - `DistanceRandomForestProximity` class docstring updated to enumerate both supported
   ancestor-collapse criteria and document their mutual exclusivity.
-- `DistanceRandomForestProximity.__init__` now accepts `max_node_variance` and
+- `DistanceRandomForestProximity.__init__` now accepts `min_node_variance` and
   validates its value range (must be >= 0 when not ``None``). The
   ``_validate_mutually_exclusive`` call is extended to cover all three
   ancestor-collapse parameters (``min_samples_in_node``,
-  ``max_depth_for_proximity``, ``max_node_variance``); setting any two at once
+  ``max_depth_for_proximity``, ``min_node_variance``); setting any two at once
   raises ``ValueError``.
 - `DistanceRandomForestProximity.calculate_terminals` now performs an
   estimator-type guard and allows both ``criterion="squared_error"`` and
-  ``criterion="friedman_mse"`` when ``max_node_variance`` is configured. A
+  ``criterion="friedman_mse"`` when ``min_node_variance`` is configured. A
   ``UserWarning`` is issued for ``friedman_mse`` to indicate that variance-based
   pruning is approximate in this case. Behavior with all three new parameters set
   to ``None`` (default) is byte-for-byte identical to previous releases.
 - `DistanceRandomForestProximity` class docstring updated to enumerate all three
   supported ancestor-collapse criteria and document their mutual exclusivity and
-  the regression-only restriction of ``max_node_variance``.
+  the regression-only restriction of ``min_node_variance``.
+
+### Fixed
+- Error message in `DistanceRandomForestProximity.__init__` for negative
+  `min_node_variance` values now correctly references `min_node_variance` (it
+  had still used the pre-rename parameter name after the rename).
+- CHANGELOG `[Unreleased]` "Changed" block consistency: stale references to
+  the pre-rename parameter name replaced with the post-rename name
+  `min_node_variance`.
+
+### Added (PR-A hygiene)
+- `test_min_node_variance_friedman_mse_emits_warning_and_proceeds` — regression
+  test that `criterion="friedman_mse"` is accepted with a `UserWarning` and that
+  `calculate_terminals` completes normally afterwards.
+
+### Changed (PR-A hygiene)
+- `test_min_node_variance_rejects_absolute_error_criterion` now asserts the
+  error message names both supported criteria (`squared_error`, `friedman_mse`)
+  to give users an actionable hint, mirroring the existing
+  `test_min_node_variance_rejects_classifier` style.
+- Docstring of `test_min_node_variance_zero_matches_baseline` clarified to
+  reflect the bottom-up pruning semantics (every node has variance ≥ 0, so
+  nothing is pruned at θ=0).
 
 ### Known limitations
 - `DistanceRandomForestLCA` paired with `ClusteringClara` is not fully LCA-consistent

@@ -93,16 +93,20 @@ class DistanceRandomForestProximity:
         """Constructor for the DistanceRandomForestProximity class."""
         if memory_efficient:
             if dir_distance_matrix is None:
-                raise ValueError("You must specify `dir_distance_matrix` when `memory_efficient=True`.")
+                raise ValueError(
+                    "You must specify `dir_distance_matrix` when `memory_efficient=True`."
+                )
 
         if min_samples_in_node is not None and min_samples_in_node < 1:
             raise ValueError("`min_samples_in_node` must be a positive integer.")
 
         if max_depth_for_proximity is not None and max_depth_for_proximity < 0:
-            raise ValueError("`max_depth_for_proximity` must be a non-negative integer.")
+            raise ValueError(
+                "`max_depth_for_proximity` must be a non-negative integer."
+            )
 
         if min_node_variance is not None and min_node_variance < 0:
-            raise ValueError("`max_node_variance` must be a non-negative number.")
+            raise ValueError("`min_node_variance` must be a non-negative number.")
 
         _validate_mutually_exclusive(
             min_samples_in_node=min_samples_in_node,
@@ -175,21 +179,26 @@ class DistanceRandomForestProximity:
             min_samples = self.min_samples_in_node
             self.terminals = self._collapse_terminals(
                 estimator=estimator,
-                predicate_factory=lambda tree: (lambda node: tree.n_node_samples[node] >= min_samples),
+                predicate_factory=lambda tree: (
+                    lambda node: tree.n_node_samples[node] >= min_samples
+                ),
             )
         elif self.max_depth_for_proximity is not None:
             max_depth = self.max_depth_for_proximity
             self.terminals = self._collapse_terminals(
                 estimator=estimator,
                 predicate_factory=lambda tree: (
-                    lambda node, _depths=_compute_node_depths(tree): _depths[node] <= max_depth
+                    lambda node, _depths=_compute_node_depths(tree): _depths[node]
+                    <= max_depth
                 ),
             )
         elif self.min_node_variance is not None:
             min_var = self.min_node_variance
             self.terminals = self._collapse_terminals(
                 estimator=estimator,
-                predicate_factory=lambda tree: (lambda node: tree.impurity[node] >= min_var),
+                predicate_factory=lambda tree: (
+                    lambda node: tree.impurity[node] >= min_var
+                ),
             )
 
     def _collapse_terminals(
@@ -263,7 +272,9 @@ class DistanceRandomForestProximity:
 
             if self.memory_efficient:
                 if self.dir_distance_matrix is None:
-                    raise ValueError("You must specify `dir_distance_matrix` when `memory_efficient=True`.")
+                    raise ValueError(
+                        "You must specify `dir_distance_matrix` when `memory_efficient=True`."
+                    )
                 buffer_factor = 1.2  # 20% safety buffer
                 required_bytes = int(n * n * 4 * buffer_factor)  # float32 = 4 bytes
                 if not check_disk_space(self.dir_distance_matrix, required_bytes):
@@ -274,12 +285,16 @@ class DistanceRandomForestProximity:
                     self.dir_distance_matrix,
                     f"distance_matrix_{uuid.uuid4().hex[:8]}.dat",
                 )
-                distance_matrix = np.memmap(file_distance_matrix, dtype=np.float32, mode="w+", shape=(n, n))
+                distance_matrix = np.memmap(
+                    file_distance_matrix, dtype=np.float32, mode="w+", shape=(n, n)
+                )
             else:
                 file_distance_matrix = None
                 distance_matrix = np.zeros((n, n), dtype=np.float32)
 
-            distance_matrix = _calculate_distances(terminals, n, n_estimators, distance_matrix)
+            distance_matrix = _calculate_distances(
+                terminals, n, n_estimators, distance_matrix
+            )
 
             return distance_matrix, file_distance_matrix
 
@@ -367,7 +382,9 @@ class DistanceRandomForestLCA:
         """Constructor for the DistanceRandomForestLCA class."""
         if memory_efficient:
             if dir_distance_matrix is None:
-                raise ValueError("You must specify `dir_distance_matrix` when `memory_efficient=True`.")
+                raise ValueError(
+                    "You must specify `dir_distance_matrix` when `memory_efficient=True`."
+                )
 
         self.terminals: np.ndarray | None = None
         self.paths: np.ndarray | None = None
@@ -466,7 +483,9 @@ class DistanceRandomForestLCA:
 
         if self.memory_efficient:
             if self.dir_distance_matrix is None:
-                raise ValueError("You must specify `dir_distance_matrix` when `memory_efficient=True`.")
+                raise ValueError(
+                    "You must specify `dir_distance_matrix` when `memory_efficient=True`."
+                )
             buffer_factor = 1.2
             required_bytes = int(n * n * 4 * buffer_factor)
             if not check_disk_space(self.dir_distance_matrix, required_bytes):
@@ -476,12 +495,16 @@ class DistanceRandomForestLCA:
             file_distance_matrix = os.path.join(
                 self.dir_distance_matrix, f"distance_matrix_{uuid.uuid4().hex[:8]}.dat"
             )
-            distance_matrix = np.memmap(file_distance_matrix, dtype=np.float32, mode="w+", shape=(n, n))
+            distance_matrix = np.memmap(
+                file_distance_matrix, dtype=np.float32, mode="w+", shape=(n, n)
+            )
         else:
             file_distance_matrix = None
             distance_matrix = np.zeros((n, n), dtype=np.float32)
 
-        distance_matrix = _calculate_lca_distances(paths, path_lens, n, n_estimators, distance_matrix)
+        distance_matrix = _calculate_lca_distances(
+            paths, path_lens, n, n_estimators, distance_matrix
+        )
 
         return distance_matrix, file_distance_matrix
 
@@ -589,10 +612,13 @@ class DistanceWasserstein:
             # Create dummies and make sure that each category gets a column
             dummies_all = pd.get_dummies(values_background, drop_first=False)
             dummies_cluster = pd.get_dummies(values_cluster, drop_first=False)
-            dummies_all, dummies_cluster = dummies_all.align(dummies_cluster, join="outer", fill_value=0)
+            dummies_all, dummies_cluster = dummies_all.align(
+                dummies_cluster, join="outer", fill_value=0
+            )
 
             distances = [
-                wasserstein_distance(dummies_all[col], dummies_cluster[col]) for col in dummies_all.columns
+                wasserstein_distance(dummies_all[col], dummies_cluster[col])
+                for col in dummies_all.columns
             ]
             return np.nanmax(distances)
         else:
@@ -666,8 +692,12 @@ class DistanceJensenShannon:
         if is_categorical:
             # Extract the values for the two distributions and calculate the distance
             cats = values_background.unique()
-            p_ref = values_background.value_counts(normalize=True).reindex(cats, fill_value=0)
-            p_cluster = values_cluster.value_counts(normalize=True).reindex(cats, fill_value=0)
+            p_ref = values_background.value_counts(normalize=True).reindex(
+                cats, fill_value=0
+            )
+            p_cluster = values_cluster.value_counts(normalize=True).reindex(
+                cats, fill_value=0
+            )
             return jensenshannon(p_ref, p_cluster)
         else:
             # Compute number of bins using Freedman-Diaconis rule, enforcing sensible bounds
@@ -818,7 +848,9 @@ def _validate_mutually_exclusive(**named_params) -> None:
     """
     set_params = [name for name, value in named_params.items() if value is not None]
     if len(set_params) > 1:
-        raise ValueError(f"Parameters {set_params} are mutually exclusive; only one may be set.")
+        raise ValueError(
+            f"Parameters {set_params} are mutually exclusive; only one may be set."
+        )
 
 
 ############################################

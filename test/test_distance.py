@@ -103,7 +103,9 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         self.assertTrue(expr=file is None)
 
     def test_calculate_distance_matrix_memory_efficient(self):
-        dist = DistanceRandomForestProximity(memory_efficient=True, dir_distance_matrix=self.tmp_path)
+        dist = DistanceRandomForestProximity(
+            memory_efficient=True, dir_distance_matrix=self.tmp_path
+        )
         dist.calculate_terminals(estimator=self.model, X=self.X)
         matrix, file = dist.calculate_distance_matrix(sample_indices=None)
         self.assertTrue(isinstance(matrix, np.memmap))
@@ -132,7 +134,9 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         """Default behavior (min_samples_in_node=None) must match pre-feature output."""
         dist_baseline = DistanceRandomForestProximity()
         dist_baseline.calculate_terminals(estimator=self.model, X=self.X)
-        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(sample_indices=None)
+        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(
+            sample_indices=None
+        )
 
         dist_new = DistanceRandomForestProximity(min_samples_in_node=None)
         dist_new.calculate_terminals(estimator=self.model, X=self.X)
@@ -144,7 +148,9 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         """A threshold of 1 must be a no-op: every leaf already has >=1 sample."""
         dist_baseline = DistanceRandomForestProximity()
         dist_baseline.calculate_terminals(estimator=self.model, X=self.X)
-        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(sample_indices=None)
+        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(
+            sample_indices=None
+        )
 
         dist_new = DistanceRandomForestProximity(min_samples_in_node=1)
         dist_new.calculate_terminals(estimator=self.model, X=self.X)
@@ -193,7 +199,9 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         """Default behavior (max_depth_for_proximity=None) must match pre-feature output."""
         dist_baseline = DistanceRandomForestProximity()
         dist_baseline.calculate_terminals(estimator=self.model, X=self.X)
-        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(sample_indices=None)
+        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(
+            sample_indices=None
+        )
 
         dist_new = DistanceRandomForestProximity(max_depth_for_proximity=None)
         dist_new.calculate_terminals(estimator=self.model, X=self.X)
@@ -212,7 +220,9 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         """A very large threshold leaves every leaf untouched -> identical to baseline."""
         dist_baseline = DistanceRandomForestProximity()
         dist_baseline.calculate_terminals(estimator=self.model, X=self.X)
-        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(sample_indices=None)
+        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(
+            sample_indices=None
+        )
 
         dist_new = DistanceRandomForestProximity(max_depth_for_proximity=10_000)
         dist_new.calculate_terminals(estimator=self.model, X=self.X)
@@ -261,7 +271,9 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         X_reg, _, model_reg = self._train_regression_model()
         dist_baseline = DistanceRandomForestProximity()
         dist_baseline.calculate_terminals(estimator=model_reg, X=X_reg)
-        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(sample_indices=None)
+        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(
+            sample_indices=None
+        )
 
         dist_new = DistanceRandomForestProximity(min_node_variance=None)
         dist_new.calculate_terminals(estimator=model_reg, X=X_reg)
@@ -270,12 +282,14 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         np.testing.assert_array_equal(baseline_matrix, new_matrix)
 
     def test_min_node_variance_zero_matches_baseline(self):
-        """A variance threshold of 0 leaves any leaf untouched -> baseline."""
+        """`min_node_variance=0` prunes nothing (every node has impurity >= 0) -> baseline."""
         X_reg, _, model_reg = self._train_regression_model()
 
         dist_baseline = DistanceRandomForestProximity()
         dist_baseline.calculate_terminals(estimator=model_reg, X=X_reg)
-        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(sample_indices=None)
+        baseline_matrix, _ = dist_baseline.calculate_distance_matrix(
+            sample_indices=None
+        )
 
         dist_new = DistanceRandomForestProximity(min_node_variance=0.0)
         dist_new.calculate_terminals(estimator=model_reg, X=X_reg)
@@ -308,6 +322,8 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         dist = DistanceRandomForestProximity(min_node_variance=1.0)
         with self.assertRaises(ValueError) as ctx:
             dist.calculate_terminals(estimator=model_reg, X=X_reg)
+        self.assertIn("squared_error", str(ctx.exception))
+        self.assertIn("friedman_mse", str(ctx.exception))
 
     def test_min_node_variance_invalid_raises(self):
         """Negative thresholds are rejected at construction; 0 is allowed."""
@@ -321,7 +337,9 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
 
     def test_min_node_variance_mutually_exclusive_with_max_depth(self):
         with self.assertRaises(ValueError):
-            DistanceRandomForestProximity(max_depth_for_proximity=3, min_node_variance=1.0)
+            DistanceRandomForestProximity(
+                max_depth_for_proximity=3, min_node_variance=1.0
+            )
 
     def test_min_node_variance_all_three_mutually_exclusive(self):
         """Setting any two of the three collapse params at once must raise."""
@@ -341,6 +359,30 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         self.assertEqual(matrix.shape, (len(X_reg), len(X_reg)))
         self.assertTrue(np.allclose(matrix, matrix.T))
         self.assertTrue(np.all(np.diag(matrix) == 0))
+
+    def test_min_node_variance_friedman_mse_emits_warning_and_proceeds(self):
+        """Using min_node_variance with criterion='friedman_mse' must warn and complete."""
+        import warnings
+
+        X_reg, _, model_reg = self._train_regression_model(criterion="friedman_mse")
+        dist = DistanceRandomForestProximity(min_node_variance=1.0)
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            dist.calculate_terminals(estimator=model_reg, X=X_reg)
+
+        matched = [
+            w
+            for w in caught
+            if issubclass(w.category, UserWarning) and "friedman_mse" in str(w.message)
+        ]
+        self.assertEqual(
+            len(matched),
+            1,
+            msg=f"Expected exactly one friedman_mse UserWarning, got {len(matched)}",
+        )
+        self.assertIsNotNone(dist.terminals)
+        self.assertEqual(dist.terminals.shape, (len(X_reg), model_reg.n_estimators))
 
 
 class TestDistanceRandomForestLCA(unittest.TestCase):
@@ -412,7 +454,9 @@ class TestDistanceRandomForestLCA(unittest.TestCase):
 
         dist = DistanceRandomForestLCA()
         dist.calculate_terminals(estimator=self.model, X=self.X)
-        same_terminals = (dist.terminals[:, None, :] == dist.terminals[None, :, :]).all(axis=2)
+        same_terminals = (dist.terminals[:, None, :] == dist.terminals[None, :, :]).all(
+            axis=2
+        )
         matrix, _ = dist.calculate_distance_matrix(sample_indices=None)
         self.assertTrue(np.all(matrix[same_terminals] == 0.0))
 
@@ -423,7 +467,9 @@ class TestDistanceRandomForestLCA(unittest.TestCase):
         d1.calculate_terminals(estimator=self.model, X=self.X)
         m1, _ = d1.calculate_distance_matrix(sample_indices=None)
 
-        d2 = DistanceRandomForestLCA(memory_efficient=True, dir_distance_matrix=self.tmp_path)
+        d2 = DistanceRandomForestLCA(
+            memory_efficient=True, dir_distance_matrix=self.tmp_path
+        )
         d2.calculate_terminals(estimator=self.model, X=self.X)
         m2, f2 = d2.calculate_distance_matrix(sample_indices=None)
 
