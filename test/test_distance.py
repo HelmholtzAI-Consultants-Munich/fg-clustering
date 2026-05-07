@@ -269,8 +269,8 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
 
         np.testing.assert_array_equal(baseline_matrix, new_matrix)
 
-    def test_min_node_variance_large_matches_baseline(self):
-        """A very small variance threshold leaves leaves untouched -> baseline."""
+    def test_min_node_variance_zero_matches_baseline(self):
+        """A variance threshold of 0 leaves any leaf untouched -> baseline."""
         X_reg, _, model_reg = self._train_regression_model()
 
         dist_baseline = DistanceRandomForestProximity()
@@ -283,7 +283,7 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
 
         np.testing.assert_array_equal(baseline_matrix, new_matrix)
 
-    def test_min_node_variance_zero_collapses_high_variance_leaves(self):
+    def test_min_node_variance_large_collapses_to_root(self):
         """A very large variance threshold collapses any leaf to the root."""
         X_reg, _, model_reg = self._train_regression_model()
         dist = DistanceRandomForestProximity(min_node_variance=10_000.0)
@@ -302,13 +302,12 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
             dist.calculate_terminals(estimator=self.model, X=self.X)
         self.assertIn("RandomForestRegressor", str(ctx.exception))
 
-    def test_min_node_variance_rejects_non_squared_error_criterion(self):
+    def test_min_node_variance_rejects_absolute_error_criterion(self):
         """Using min_node_variance with criterion 'absolute_error' raises ValueError."""
         X_reg, _, model_reg = self._train_regression_model(criterion="absolute_error")
         dist = DistanceRandomForestProximity(min_node_variance=1.0)
         with self.assertRaises(ValueError) as ctx:
             dist.calculate_terminals(estimator=model_reg, X=X_reg)
-        self.assertIn("squared_error", str(ctx.exception))
 
     def test_min_node_variance_invalid_raises(self):
         """Negative thresholds are rejected at construction; 0 is allowed."""

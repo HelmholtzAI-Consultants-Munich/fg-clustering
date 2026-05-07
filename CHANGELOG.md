@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   introduced in PR 2 and `_compute_parent_array` / `_build_leaf_to_ancestor_map` /
   `DistanceRandomForestProximity._collapse_terminals` /
   `_validate_mutually_exclusive` introduced in PR 1.
-- `DistanceRandomForestProximity.max_node_variance` parameter: collapses each leaf to
+- `DistanceRandomForestProximity.min_node_variance` parameter: collapses each leaf to
   the nearest ancestor whose target variance (``tree_.impurity`` under
   ``criterion="squared_error"`` or ``"friedman_mse"``) remains greater than or equal
   to the given threshold. This effectively prunes regions where the variance has
