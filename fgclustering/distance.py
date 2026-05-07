@@ -102,7 +102,7 @@ class DistanceRandomForestProximity:
             raise ValueError("`max_depth_for_proximity` must be a non-negative integer.")
 
         if min_node_variance is not None and min_node_variance < 0:
-            raise ValueError("`max_node_variance` must be a non-negative number.")
+            raise ValueError("`min_node_variance` must be a non-negative number.")
 
         _validate_mutually_exclusive(
             min_samples_in_node=min_samples_in_node,

@@ -270,7 +270,7 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         np.testing.assert_array_equal(baseline_matrix, new_matrix)
 
     def test_min_node_variance_zero_matches_baseline(self):
-        """A variance threshold of 0 leaves any leaf untouched -> baseline."""
+        """`min_node_variance=0` prunes nothing (every node has impurity >= 0) -> baseline."""
         X_reg, _, model_reg = self._train_regression_model()
 
         dist_baseline = DistanceRandomForestProximity()
@@ -308,6 +308,8 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         dist = DistanceRandomForestProximity(min_node_variance=1.0)
         with self.assertRaises(ValueError) as ctx:
             dist.calculate_terminals(estimator=model_reg, X=X_reg)
+        self.assertIn("squared_error", str(ctx.exception))
+        self.assertIn("friedman_mse", str(ctx.exception))
 
     def test_min_node_variance_invalid_raises(self):
         """Negative thresholds are rejected at construction; 0 is allowed."""
@@ -341,6 +343,28 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         self.assertEqual(matrix.shape, (len(X_reg), len(X_reg)))
         self.assertTrue(np.allclose(matrix, matrix.T))
         self.assertTrue(np.all(np.diag(matrix) == 0))
+
+    def test_min_node_variance_friedman_mse_emits_warning_and_proceeds(self):
+        """Using min_node_variance with criterion='friedman_mse' must warn and complete."""
+        import warnings
+
+        X_reg, _, model_reg = self._train_regression_model(criterion="friedman_mse")
+        dist = DistanceRandomForestProximity(min_node_variance=1.0)
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            dist.calculate_terminals(estimator=model_reg, X=X_reg)
+
+        matched = [
+            w for w in caught if issubclass(w.category, UserWarning) and "friedman_mse" in str(w.message)
+        ]
+        self.assertEqual(
+            len(matched),
+            1,
+            msg=f"Expected exactly one friedman_mse UserWarning, got {len(matched)}",
+        )
+        self.assertIsNotNone(dist.terminals)
+        self.assertEqual(dist.terminals.shape, (len(X_reg), model_reg.n_estimators))
 
 
 class TestDistanceRandomForestLCA(unittest.TestCase):
