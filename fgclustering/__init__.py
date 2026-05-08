@@ -13,6 +13,7 @@ from .forest_guided_clustering import (
 from .clustering import ClusteringKMedoids, ClusteringClara
 
 from .distance import (
+    DistanceRandomForestBase,
     DistanceRandomForestProximity,
     DistanceRandomForestLCA,
     DistanceJensenShannon,
@@ -32,6 +33,7 @@ __all__ = [
     "plot_forest_guided_decision_paths",
     "ClusteringKMedoids",
     "ClusteringClara",
+    "DistanceRandomForestBase",
     "DistanceRandomForestProximity",
     "DistanceRandomForestLCA",
     "DistanceJensenShannon",

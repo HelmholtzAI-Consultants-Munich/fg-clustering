@@ -118,6 +118,98 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reflect the bottom-up pruning semantics (every node has variance ≥ 0, so
   nothing is pruned at θ=0).
 
+### Added (PR-B)
+- `DistanceRandomForestBase`: shared **abstract** base class (`abc.ABC`) for
+  `DistanceRandomForestProximity` and `DistanceRandomForestLCA`. Holds the
+  memmap configuration, the `terminals` attribute, the
+  `_allocate_distance_matrix` helper, and the `remove_distance_matrix`
+  cleanup logic, and declares `calculate_terminals` and
+  `calculate_distance_matrix` as `@abstractmethod` so that the public
+  `DistanceRandomForestBase` type used in `clustering_distance_metric` /
+  `distance_metric` parameters is type-safe (static type checkers see the
+  full proximity interface) and direct instantiation raises `TypeError`.
+  Exported from the `fgclustering` package. Both existing distance classes
+  now inherit from it.
+- `TestDistanceRandomForestBase`: contract tests covering the new
+  ABC behavior (direct instantiation raises `TypeError`, both methods are
+  marked `__isabstractmethod__`, concrete subclasses still instantiate).
+- Targeted unit tests for `_compute_parent_array`, `_compute_node_depths`,
+  `_build_leaf_to_ancestor_map`, and `_validate_mutually_exclusive` in a new
+  `TestTreeHelpers` class.
+- Per-pair invariant test `test_lca_distance_le_terminal_distance` proving LCA
+  distance ≤ terminal-node distance for any pair.
+- Baseline-on-regressor smoke tests for `min_samples_in_node` and
+  `max_depth_for_proximity`.
+- Integration test `test_forest_guided_clustering_with_lca_regressor` driving
+  `forest_guided_clustering()` through `DistanceRandomForestLCA` end to end.
+
+### Changed (PR-B)
+- Type hints on `distance_metric` parameters in `ClusteringKMedoids.run_clustering`,
+  `ClusteringClara.run_clustering`, `Optimizer.__init__`, and
+  `forest_guided_clustering()` now reference `DistanceRandomForestBase`
+  instead of `DistanceRandomForestProximity` so that `DistanceRandomForestLCA`
+  is correctly advertised as supported.
+- `DistanceRandomForestProximity.remove_distance_matrix` and
+  `DistanceRandomForestLCA.remove_distance_matrix` deleted; both classes now
+  inherit the implementation from `DistanceRandomForestBase`.
+- `DistanceRandomForestProximity.calculate_distance_matrix` and
+  `DistanceRandomForestLCA.calculate_distance_matrix` use the inherited
+  `_allocate_distance_matrix` helper, removing ~30 LOC of duplicated memmap
+  bookkeeping per class.
+- `test/test_distance.py` cleanup: imports moved to module level, keyword-style
+  assertion arguments (`first=`, `second=`, `expr=`, `obj=`, `a=`, `v=`)
+  replaced with positional form to match the rest of the test suite, and
+  `_train_regression_model` consolidated into a module-level
+  `_build_regression_forest` helper shared across test classes. No semantic
+  test changes.
+
+### Fixed (PR-B, test unification)
+- `test/test_forest_guided_clustering.py` import error: `DistanceRandomForestProximity`
+  is now imported from `fgclustering.distance` instead of
+  `fgclustering.forest_guided_clustering`. The latter only re-exports
+  `DistanceRandomForestBase` after the PR-B refactor, so the previous import
+  raised `ImportError` at collection time.
+
+### Changed (PR-B, test unification)
+- `test/test_distance.py` and `test/test_forest_guided_clustering.py`: shared
+  fixtures consolidated. `setUp` now builds the classification forest and
+  three regression forests (`squared_error`, `friedman_mse`,
+  `absolute_error`) once via the module-level
+  `_build_classification_forest` / `_build_regression_forest` helpers, and
+  every test reuses these via `self.model_clas` / `self.X_clas` /
+  `self.model_reg_squared` / `self.model_reg_friedman` /
+  `self.model_reg_absolute` (and `self.model_reg` in
+  `test_forest_guided_clustering.py`). All inline `make_classification` /
+  `make_regression` / `RandomForestRegressor` setup inside individual tests
+  removed.
+- `test/test_distance.py`:
+  - Per-attribute renames `self.X → self.X_clas`, `self.y → self.y_clas`,
+    `self.model → self.model_clas` for clarity now that classification and
+    regression fixtures coexist.
+  - `test_min_samples_in_node_one_matches_baseline` and
+    `test_max_depth_for_proximity_large_matches_baseline` now also assert
+    baseline parity on a regressor, absorbing the old standalone
+    `*_baseline_on_regressor` tests.
+  - Dropped the `*_monotonicity` tests for `min_samples_in_node` and
+    `max_depth_for_proximity`; off-diagonal mean monotonicity is not a
+    contracted invariant of bottom-up ancestor collapse and the tests were
+    flaky on small synthetic forests. Direction-of-effect is still covered
+    by the `*_collapses_to_root` and `*_large_matches_baseline` tests.
+  - Pairwise mutual-exclusivity tests renamed to a uniform
+    `test_<param_a>_mutually_exclusive_with_<param_b>` scheme and grouped
+    together with `test_all_three_mutually_exclusive`.
+- `test/test_forest_guided_clustering.py`:
+  - Removed the duplicated `test_forest_guided_clustering_with_lca_regressor`;
+    its coverage is fully subsumed by
+    `test_forest_guided_clustering_with_lca_distance_regression`, which now
+    uses the shared `self.model_reg` fixture.
+  - Module-level `_build_classification_forest` / `_build_regression_forest`
+    helpers added (regressor configurable via `criterion`, `n_estimators`,
+    `max_depth`).
+- `fgclustering/distance.py`: minor docstring/formatting polish in
+  `DistanceRandomForestBase` (wording "consumers" → "users"; a few short
+  one-liners no longer artificially line-wrapped). No behavior change.
+
 ### Known limitations
 - `DistanceRandomForestLCA` paired with `ClusteringClara` is not fully LCA-consistent
   end-to-end. While CLARA uses `calculate_distance_matrix` during medoid search,

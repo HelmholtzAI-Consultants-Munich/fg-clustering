@@ -11,7 +11,7 @@ from numba import njit, prange
 
 from imblearn.under_sampling import RandomUnderSampler
 
-from .distance import DistanceRandomForestProximity
+from .distance import DistanceRandomForestBase
 from .utils import check_sub_sample_size, custom_round
 
 ############################################
@@ -55,7 +55,7 @@ class ClusteringKMedoids:
     def run_clustering(
         self,
         k: int,
-        distance_metric: DistanceRandomForestProximity,
+        distance_metric: DistanceRandomForestBase,
         sample_indices: np.ndarray,
         random_state_subsampling: int | None,
         verbose: int,
@@ -70,7 +70,7 @@ class ClusteringKMedoids:
         :param k: Number of clusters.
         :type k: int
         :param distance_metric: Distance metric object with precomputed Random Forest terminal nodes.
-        :type distance_metric: DistanceRandomForestProximity
+        :type distance_metric: DistanceRandomForestBase
         :param sample_indices: Indices of the samples to cluster.
         :type sample_indices: np.ndarray
         :param random_state_subsampling: Optional subsampling seed. Not used in this implementation.
@@ -156,7 +156,7 @@ class ClusteringClara:
     def run_clustering(
         self,
         k: int,
-        distance_metric: DistanceRandomForestProximity,
+        distance_metric: DistanceRandomForestBase,
         sample_indices: np.ndarray,
         random_state_subsampling: int | None,
         verbose: int,
@@ -172,7 +172,7 @@ class ClusteringClara:
         :param k: Number of clusters.
         :type k: int
         :param distance_metric: Distance metric object with precomputed Random Forest terminal nodes.
-        :type distance_metric: DistanceRandomForestProximity
+        :type distance_metric: DistanceRandomForestBase
         :param sample_indices: Indices of the samples to cluster.
         :type sample_indices: np.ndarray
         :param random_state_subsampling: Optional random seed controlling CLARA subsampling; if ``None``, the instance-level ``random_state`` is used.
