@@ -77,7 +77,7 @@ def forest_guided_clustering(
     :type X: pd.DataFrame
     :param y: Target variable, given either as target values or as the name of the target column in ``X``.
     :type y: str | pd.Series
-    :param clustering_distance_metric: Distance metric based on Random Forest terminal-node proximity.
+    :param clustering_distance_metric: Random-Forest-based distance metric used to compute pairwise sample distances, such as terminal-node proximity or other supported forest-derived distances.
     :type clustering_distance_metric: DistanceRandomForestBase
     :param clustering_strategy: Clustering strategy used to group samples from the distance matrix.
     :type clustering_strategy: ClusteringKMedoids | ClusteringClara
