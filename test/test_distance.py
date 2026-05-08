@@ -14,6 +14,7 @@ from sklearn.datasets import make_classification, make_regression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 from fgclustering.distance import (
+    DistanceRandomForestBase,
     DistanceRandomForestLCA,
     DistanceRandomForestProximity,
     DistanceWasserstein,
@@ -561,6 +562,29 @@ class TestTreeHelpers(unittest.TestCase):
     def test_validate_mutually_exclusive_two_raises(self):
         with self.assertRaises(ValueError):
             _validate_mutually_exclusive(a=1, b=2, c=None)
+
+
+class TestDistanceRandomForestBase(unittest.TestCase):
+    """Contract tests for the abstract base class."""
+
+    def test_direct_instantiation_raises(self):
+        """`DistanceRandomForestBase` is abstract and cannot be instantiated directly."""
+        with self.assertRaises(TypeError):
+            DistanceRandomForestBase()
+
+    def test_abstract_methods_are_marked(self):
+        """Both interface methods must be exposed as abstract on the base class."""
+        self.assertTrue(
+            getattr(DistanceRandomForestBase.calculate_terminals, "__isabstractmethod__", False)
+        )
+        self.assertTrue(
+            getattr(DistanceRandomForestBase.calculate_distance_matrix, "__isabstractmethod__", False)
+        )
+
+    def test_concrete_subclasses_are_instantiable(self):
+        """Concrete subclasses implement the abstract methods and instantiate cleanly."""
+        DistanceRandomForestProximity()
+        DistanceRandomForestLCA()
 
 
 class TestDistanceWasserstein(unittest.TestCase):

@@ -10,6 +10,7 @@ import warnings
 import numpy as np
 import pandas as pd
 
+from abc import ABC, abstractmethod
 from numba import njit, prange
 from typing import Callable
 
@@ -25,16 +26,19 @@ from .utils import check_disk_space
 ############################################
 
 
-class DistanceRandomForestBase:
+class DistanceRandomForestBase(ABC):
     """
-    Base class shared by Random-Forest-based proximity distance metrics.
+    Abstract base class shared by Random-Forest-based proximity distance metrics.
 
     Holds the memory-efficient memmap configuration, the ``terminals`` attribute,
     the on-disk allocation helper, and the cleanup logic. Subclasses
     (``DistanceRandomForestProximity``, ``DistanceRandomForestLCA``) implement
     :meth:`calculate_terminals` and :meth:`calculate_distance_matrix` with their
-    own state and numba kernels. This class is not intended for direct
-    instantiation; users should construct one of the concrete subclasses.
+    own state and numba kernels. This class declares those two methods as
+    ``@abstractmethod`` so that the public ``DistanceRandomForestBase`` type used
+    in ``clustering_distance_metric`` / ``distance_metric`` parameters is
+    recognized as exposing them, and so that direct instantiation raises
+    ``TypeError``. Construct one of the concrete subclasses instead.
 
     :param memory_efficient: Whether to store the distance matrix in a disk-backed memmap array.
     :type memory_efficient: bool
@@ -53,6 +57,47 @@ class DistanceRandomForestBase:
         self.memory_efficient = memory_efficient
         self.dir_distance_matrix = dir_distance_matrix
         self.precomputed_distance_matrix = None
+
+    @abstractmethod
+    def calculate_terminals(
+        self,
+        estimator: RandomForestClassifier | RandomForestRegressor,
+        X: pd.DataFrame,
+    ) -> None:
+        """
+        Compute and store the per-sample, per-tree state needed to derive the distance matrix.
+
+        Concrete subclasses populate ``self.terminals`` (and any subclass-specific
+        state, e.g. ``paths`` / ``path_lens`` for ``DistanceRandomForestLCA``) from
+        the trained Random Forest. Must be called before :meth:`calculate_distance_matrix`.
+
+        :param estimator: Trained Random Forest estimator.
+        :type estimator: RandomForestClassifier | RandomForestRegressor
+        :param X: Input feature matrix.
+        :type X: pd.DataFrame
+        :return: ``None``
+        :rtype: None
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def calculate_distance_matrix(
+        self,
+        sample_indices: np.ndarray | None,
+    ) -> tuple[np.ndarray | np.memmap, str | None]:
+        """
+        Compute the pairwise distance matrix from the precomputed per-tree state.
+
+        Concrete subclasses define the actual proximity model (e.g. terminal-node
+        agreement or LCA-depth proximity) and the corresponding numba kernel.
+        Requires :meth:`calculate_terminals` to have been called first.
+
+        :param sample_indices: Indices of the samples for which the distance matrix is computed, or ``None`` to use all samples.
+        :type sample_indices: np.ndarray | None
+        :return: Tuple containing the distance matrix and the memmap file path, or ``None`` as the path when computed fully in memory.
+        :rtype: tuple[np.ndarray | np.memmap, str | None]
+        """
+        raise NotImplementedError
 
     def _allocate_distance_matrix(self, n: int) -> tuple[np.ndarray | np.memmap, str | None]:
         """Allocate an in-memory or memmap-backed (n, n) float32 distance matrix."""

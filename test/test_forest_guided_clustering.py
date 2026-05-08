@@ -39,6 +39,7 @@ def _build_regression_forest(
     X, y = make_regression(
         n_samples=100,
         n_features=6,
+        n_informative=6,
         random_state=random_state,
     )
     X = pd.DataFrame(X, columns=[f"feature_{i}" for i in range(X.shape[1])])

@@ -119,12 +119,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   nothing is pruned at θ=0).
 
 ### Added (PR-B)
-- `DistanceRandomForestBase`: shared base class for `DistanceRandomForestProximity`
-  and `DistanceRandomForestLCA`. Holds the memmap configuration, the `terminals`
-  attribute, the `_allocate_distance_matrix` helper, and the
-  `remove_distance_matrix` cleanup logic. Exported from the `fgclustering`
-  package for external type hints. Both existing distance classes now inherit
-  from it.
+- `DistanceRandomForestBase`: shared **abstract** base class (`abc.ABC`) for
+  `DistanceRandomForestProximity` and `DistanceRandomForestLCA`. Holds the
+  memmap configuration, the `terminals` attribute, the
+  `_allocate_distance_matrix` helper, and the `remove_distance_matrix`
+  cleanup logic, and declares `calculate_terminals` and
+  `calculate_distance_matrix` as `@abstractmethod` so that the public
+  `DistanceRandomForestBase` type used in `clustering_distance_metric` /
+  `distance_metric` parameters is type-safe (static type checkers see the
+  full proximity interface) and direct instantiation raises `TypeError`.
+  Exported from the `fgclustering` package. Both existing distance classes
+  now inherit from it.
+- `TestDistanceRandomForestBase`: contract tests covering the new
+  ABC behavior (direct instantiation raises `TypeError`, both methods are
+  marked `__isabstractmethod__`, concrete subclasses still instantiate).
 - Targeted unit tests for `_compute_parent_array`, `_compute_node_depths`,
   `_build_leaf_to_ancestor_map`, and `_validate_mutually_exclusive` in a new
   `TestTreeHelpers` class.
