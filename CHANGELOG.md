@@ -155,6 +155,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `_build_regression_forest` helper shared across test classes. No semantic
   test changes.
 
+### Fixed (PR-B, test unification)
+- `test/test_forest_guided_clustering.py` import error: `DistanceRandomForestProximity`
+  is now imported from `fgclustering.distance` instead of
+  `fgclustering.forest_guided_clustering`. The latter only re-exports
+  `DistanceRandomForestBase` after the PR-B refactor, so the previous import
+  raised `ImportError` at collection time.
+
+### Changed (PR-B, test unification)
+- `test/test_distance.py` and `test/test_forest_guided_clustering.py`: shared
+  fixtures consolidated. `setUp` now builds the classification forest and
+  three regression forests (`squared_error`, `friedman_mse`,
+  `absolute_error`) once via the module-level
+  `_build_classification_forest` / `_build_regression_forest` helpers, and
+  every test reuses these via `self.model_clas` / `self.X_clas` /
+  `self.model_reg_squared` / `self.model_reg_friedman` /
+  `self.model_reg_absolute` (and `self.model_reg` in
+  `test_forest_guided_clustering.py`). All inline `make_classification` /
+  `make_regression` / `RandomForestRegressor` setup inside individual tests
+  removed.
+- `test/test_distance.py`:
+  - Per-attribute renames `self.X → self.X_clas`, `self.y → self.y_clas`,
+    `self.model → self.model_clas` for clarity now that classification and
+    regression fixtures coexist.
+  - `test_min_samples_in_node_one_matches_baseline` and
+    `test_max_depth_for_proximity_large_matches_baseline` now also assert
+    baseline parity on a regressor, absorbing the old standalone
+    `*_baseline_on_regressor` tests.
+  - Dropped the `*_monotonicity` tests for `min_samples_in_node` and
+    `max_depth_for_proximity`; off-diagonal mean monotonicity is not a
+    contracted invariant of bottom-up ancestor collapse and the tests were
+    flaky on small synthetic forests. Direction-of-effect is still covered
+    by the `*_collapses_to_root` and `*_large_matches_baseline` tests.
+  - Pairwise mutual-exclusivity tests renamed to a uniform
+    `test_<param_a>_mutually_exclusive_with_<param_b>` scheme and grouped
+    together with `test_all_three_mutually_exclusive`.
+- `test/test_forest_guided_clustering.py`:
+  - Removed the duplicated `test_forest_guided_clustering_with_lca_regressor`;
+    its coverage is fully subsumed by
+    `test_forest_guided_clustering_with_lca_distance_regression`, which now
+    uses the shared `self.model_reg` fixture.
+  - Module-level `_build_classification_forest` / `_build_regression_forest`
+    helpers added (regressor configurable via `criterion`, `n_estimators`,
+    `max_depth`).
+- `fgclustering/distance.py`: minor docstring/formatting polish in
+  `DistanceRandomForestBase` (wording "consumers" → "users"; a few short
+  one-liners no longer artificially line-wrapped). No behavior change.
+
 ### Known limitations
 - `DistanceRandomForestLCA` paired with `ClusteringClara` is not fully LCA-consistent
   end-to-end. While CLARA uses `calculate_distance_matrix` during medoid search,

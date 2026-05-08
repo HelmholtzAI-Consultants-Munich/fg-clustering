@@ -34,7 +34,7 @@ class DistanceRandomForestBase:
     (``DistanceRandomForestProximity``, ``DistanceRandomForestLCA``) implement
     :meth:`calculate_terminals` and :meth:`calculate_distance_matrix` with their
     own state and numba kernels. This class is not intended for direct
-    instantiation; consumers should construct one of the concrete subclasses.
+    instantiation; users should construct one of the concrete subclasses.
 
     :param memory_efficient: Whether to store the distance matrix in a disk-backed memmap array.
     :type memory_efficient: bool
@@ -48,23 +48,17 @@ class DistanceRandomForestBase:
         dir_distance_matrix: str | None = None,
     ) -> None:
         if memory_efficient and dir_distance_matrix is None:
-            raise ValueError(
-                "You must specify `dir_distance_matrix` when `memory_efficient=True`."
-            )
+            raise ValueError("You must specify `dir_distance_matrix` when `memory_efficient=True`.")
         self.terminals: np.ndarray | None = None
         self.memory_efficient = memory_efficient
         self.dir_distance_matrix = dir_distance_matrix
         self.precomputed_distance_matrix = None
 
-    def _allocate_distance_matrix(
-        self, n: int
-    ) -> tuple[np.ndarray | np.memmap, str | None]:
+    def _allocate_distance_matrix(self, n: int) -> tuple[np.ndarray | np.memmap, str | None]:
         """Allocate an in-memory or memmap-backed (n, n) float32 distance matrix."""
         if self.memory_efficient:
             if self.dir_distance_matrix is None:
-                raise ValueError(
-                    "You must specify `dir_distance_matrix` when `memory_efficient=True`."
-                )
+                raise ValueError("You must specify `dir_distance_matrix` when `memory_efficient=True`.")
             buffer_factor = 1.2
             required_bytes = int(n * n * 4 * buffer_factor)
             if not check_disk_space(self.dir_distance_matrix, required_bytes):
