@@ -2,12 +2,8 @@
 # Imports
 ############################################
 
-import os
-import gc
 import kmedoids
 import numpy as np
-
-from numba import njit, prange
 
 from imblearn.under_sampling import RandomUnderSampler
 
@@ -260,8 +256,8 @@ class ClusteringClara:
 
             # retrieve the calculated medoids and use to calculate inertia score
             sub_sample_medoids_idxs = sub_sample_indices[kmedoids_subsample.medoid_indices_]
-            sub_sample_score = _calculate_inertia(
-                distance_metric.terminals, sample_indices, sample_indices[sub_sample_medoids_idxs]
+            sub_sample_score = distance_metric.compute_inertia(
+                sample_indices, sample_indices[sub_sample_medoids_idxs]
             )
 
             # update if score is better
@@ -270,104 +266,8 @@ class ClusteringClara:
                 best_medoids_idxs = sub_sample_medoids_idxs
 
         # assign labels to the rest of the data when best medoids are found
-        cluster_labels = _asign_labels(
-            distance_metric.terminals, sample_indices, sample_indices[best_medoids_idxs]
+        cluster_labels = distance_metric.assign_labels(
+            sample_indices, sample_indices[best_medoids_idxs]
         )
 
         return cluster_labels + 1
-
-
-############################################
-# Numba Functions
-############################################
-
-
-@njit(parallel=True)
-def _calculate_inertia(
-    terminals: np.ndarray,
-    sample_idx: np.ndarray,
-    medoids_idx: np.ndarray,
-) -> float:
-    """
-    Compute the total inertia of a sample set with respect to a given set of medoids.
-
-    For each sample, the distance to the closest medoid is computed from Random Forest
-    terminal node proximity, and these minimum distances are summed across all samples.
-
-    :param terminals: Array of terminal node assignments with shape ``(n_samples, n_estimators)``.
-    :type terminals: np.ndarray
-    :param sample_idx: Indices of the samples whose inertia is evaluated.
-    :type sample_idx: np.ndarray
-    :param medoids_idx: Indices of the medoid samples.
-    :type medoids_idx: np.ndarray
-
-    :return: Total inertia of the sample set.
-    :rtype: float
-    """
-    n_estimators = terminals.shape[1]
-    n_samples = len(sample_idx)
-    n_medoids = len(medoids_idx)
-    inertia = np.zeros(n_samples)
-
-    for i in prange(n_samples):
-        sample = sample_idx[i]
-        distances = np.empty(n_medoids, dtype=np.float32)
-
-        for j in range(n_medoids):
-            medoid = medoids_idx[j]
-            # use explicit loop for proximity to avoid temporary array allocation and minimize memory traffic
-            proximity = 0
-            for t in range(n_estimators):
-                if terminals[sample, t] == terminals[medoid, t]:
-                    proximity += 1
-            distances[j] = 1.0 - (proximity / n_estimators)
-
-        inertia[i] = np.min(distances)
-
-    return np.sum(inertia)
-
-
-@njit(parallel=True)
-def _asign_labels(
-    terminals: np.ndarray,
-    sample_idx: np.ndarray,
-    medoids_idx: np.ndarray,
-) -> np.ndarray:
-    """
-    Assign each sample to the nearest medoid using Random Forest proximity-based distances.
-
-    For every sample in ``sample_idx``, the distance to each medoid is computed from the
-    terminal node assignments, and the label of the closest medoid is returned using
-    zero-based indexing.
-
-    :param terminals: Array of terminal node assignments with shape ``(n_samples, n_estimators)``.
-    :type terminals: np.ndarray
-    :param sample_idx: Indices of the samples to assign.
-    :type sample_idx: np.ndarray
-    :param medoids_idx: Indices of the medoid samples.
-    :type medoids_idx: np.ndarray
-
-    :return: Zero-based cluster labels for the input samples.
-    :rtype: np.ndarray
-    """
-    n_estimators = terminals.shape[1]
-    n_samples = len(sample_idx)
-    n_medoids = len(medoids_idx)
-    cluster_labels = np.zeros(n_samples, dtype=np.int16)
-
-    for i in prange(n_samples):
-        sample = sample_idx[i]
-        cluster_label_sample = np.zeros(n_medoids, dtype=np.float32)
-
-        for j in range(n_medoids):
-            medoid = medoids_idx[j]
-            # use explicit loop for proximity to avoid temporary array allocation and minimize memory traffic
-            proximity = 0
-            for t in range(n_estimators):
-                if terminals[sample, t] == terminals[medoid, t]:
-                    proximity += 1
-            cluster_label_sample[j] = 1.0 - (proximity / n_estimators)
-
-        cluster_labels[i] = np.argmin(cluster_label_sample)
-
-    return cluster_labels

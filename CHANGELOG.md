@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `DistanceRandomForestBase.compute_inertia(sample_idx, medoids_idx)` and
+  `DistanceRandomForestBase.assign_labels(sample_idx, medoids_idx)`:
+  distance-class methods used by `ClusteringClara` for medoid-search inertia
+  and final label assignment. `DistanceRandomForestLCA` overrides both with
+  LCA-aware numba kernels.
+- New numba kernels `_calculate_inertia_lca` and `_assign_labels_lca` (LCA-aware
+  versions of the existing terminal-node-equality kernels).
 - `DistanceRandomForestProximity.min_samples_in_node` parameter: collapses each leaf to
   the nearest ancestor whose `n_node_samples` is at least the given threshold. Reduces
   proximity-matrix sparsity for deep regression forests and produces more balanced
@@ -50,6 +57,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- `ClusteringClara.run_clustering` now calls `distance_metric.compute_inertia`
+  and `distance_metric.assign_labels` instead of the module-level helpers.
+  Behavior with `DistanceRandomForestProximity` is unchanged;
+  `DistanceRandomForestLCA` now produces LCA-consistent CLARA clusters
+  end-to-end.
+- The module-level numba functions `_calculate_inertia` / `_asign_labels` in
+  `fgclustering/clustering.py` were moved to `fgclustering/distance.py`,
+  renamed to `_calculate_inertia_terminals` / `_assign_labels_terminals`, and
+  are dispatched from `DistanceRandomForestBase`.
 - `DistanceRandomForestProximity.__init__` now accepts `min_samples_in_node` and
   validates it (must be >= 1 when not `None`).
 - `DistanceRandomForestProximity.calculate_terminals` now remaps the stored terminal
@@ -95,6 +111,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `DistanceRandomForestProximity` class docstring updated to enumerate all three
   supported ancestor-collapse criteria and document their mutual exclusivity and
   the regression-only restriction of ``min_node_variance``.
+
+### Removed
+- Obsolete limitation note about `DistanceRandomForestLCA` + `ClusteringClara`
+  inconsistency: the underlying issue is now fixed.
+- Module-level shims `_calculate_inertia` and `_asign_labels` in
+  `fgclustering/clustering.py` (not part of the public API).
 
 ### Fixed
 - Error message in `DistanceRandomForestProximity.__init__` for negative
@@ -209,14 +231,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `fgclustering/distance.py`: minor docstring/formatting polish in
   `DistanceRandomForestBase` (wording "consumers" → "users"; a few short
   one-liners no longer artificially line-wrapped). No behavior change.
-
-### Known limitations
-- `DistanceRandomForestLCA` paired with `ClusteringClara` is not fully LCA-consistent
-  end-to-end. While CLARA uses `calculate_distance_matrix` during medoid search,
-  internal kernels in `fgclustering/clustering.py` still read `self.terminals`
-  directly, including candidate evaluation/subsample-selection
-  (`_calculate_inertia`) and final label assignment (`_asign_labels`). As a result,
-  candidate medoid scoring and the final output labels are still influenced by
-  terminal-node proximity rather than the LCA metric alone. `ClusteringKMedoids` is
-  fully consistent with the LCA metric. Abstracting those kernels onto the distance
-  class is tracked as a follow-up.

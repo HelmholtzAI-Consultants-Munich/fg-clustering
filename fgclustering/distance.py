@@ -149,6 +149,51 @@ class DistanceRandomForestBase(ABC):
                     time.sleep(0.5)
                     gc.collect()
 
+    def compute_inertia(
+        self, sample_idx: np.ndarray, medoids_idx: np.ndarray
+    ) -> float:
+        """Total inertia of ``sample_idx`` w.r.t. ``medoids_idx`` under this metric.
+
+        Default implementation uses terminal-node-equality counting; subclasses
+        with a different distance definition (e.g. LCA) override this method.
+
+        :param sample_idx: Indices of the samples whose inertia is evaluated.
+        :type sample_idx: np.ndarray
+        :param medoids_idx: Indices of the medoid samples.
+        :type medoids_idx: np.ndarray
+
+        :raises ValueError: If terminals have not been precomputed.
+
+        :return: Total inertia (sum of per-sample distance to closest medoid).
+        :rtype: float
+        """
+        if self.terminals is None:
+            raise ValueError(
+                "No precomputed terminals available. Run `calculate_terminals()` first."
+            )
+        return _calculate_inertia_terminals(self.terminals, sample_idx, medoids_idx)
+
+    def assign_labels(
+        self, sample_idx: np.ndarray, medoids_idx: np.ndarray
+    ) -> np.ndarray:
+        """Zero-based cluster label per sample (argmin distance over medoids).
+
+        :param sample_idx: Indices of the samples to assign.
+        :type sample_idx: np.ndarray
+        :param medoids_idx: Indices of the medoid samples.
+        :type medoids_idx: np.ndarray
+
+        :raises ValueError: If terminals have not been precomputed.
+
+        :return: Zero-based cluster labels for the input samples.
+        :rtype: np.ndarray
+        """
+        if self.terminals is None:
+            raise ValueError(
+                "No precomputed terminals available. Run `calculate_terminals()` first."
+            )
+        return _assign_labels_terminals(self.terminals, sample_idx, medoids_idx)
+
 
 class DistanceRandomForestProximity(DistanceRandomForestBase):
     """
@@ -402,16 +447,10 @@ class DistanceRandomForestLCA(DistanceRandomForestBase):
     forests.
 
     The stored ``terminals`` attribute preserves the raw terminal-node-id matrix so
-    that downstream consumers that read it (e.g. ``ClusteringKMedoids`` null checks
-    and ``ClusteringClara`` compatibility hooks) continue to work. Note, however, that
-    ``ClusteringClara`` is not fully consistent with this LCA metric: although its
-    subsample k-medoids fits may still use :meth:`calculate_distance_matrix`, CLARA also
-    uses ``self.terminals`` for inertia-related logic and for the final full-dataset
-    label assignment, both of which count terminal-node equality rather than LCA depth.
-    As a result, when used with this class, ``ClusteringClara`` returns labels based on
-    terminal-node proximity, not pure LCA distance. ``ClusteringKMedoids`` routes all
-    distance computations through :meth:`calculate_distance_matrix` and is fully
-    consistent with the LCA metric.
+    that downstream consumers that rely on it for compatibility checks continue to work.
+    ``ClusteringKMedoids`` and ``ClusteringClara`` both route their distance-sensitive
+    logic through the class methods defined here, so clustering stays consistent with
+    the LCA metric end to end.
 
     :param memory_efficient: Whether to store the distance matrix in a disk-backed memmap array.
     :type memory_efficient: bool
@@ -521,6 +560,45 @@ class DistanceRandomForestLCA(DistanceRandomForestBase):
         distance_matrix, file_distance_matrix = self._allocate_distance_matrix(n)
         distance_matrix = _calculate_lca_distances(paths, path_lens, n, n_estimators, distance_matrix)
         return distance_matrix, file_distance_matrix
+
+    def compute_inertia(
+        self, sample_idx: np.ndarray, medoids_idx: np.ndarray
+    ) -> float:
+        """LCA-aware inertia: distance to closest medoid via LCA depth metric.
+
+        Overrides :meth:`DistanceRandomForestBase.compute_inertia`. Uses
+        ``self.paths`` and ``self.path_lens`` instead of ``self.terminals`` so
+        that medoid-search inertia is computed under the LCA metric. Required
+        for ``ClusteringClara`` to evaluate medoids consistently with the
+        clustering step.
+
+        :raises ValueError: If decision paths have not been precomputed.
+        """
+        if self.paths is None or self.path_lens is None:
+            raise ValueError(
+                "No precomputed decision paths available. Run `calculate_terminals()` first."
+            )
+        return _calculate_inertia_lca(
+            self.paths, self.path_lens, sample_idx, medoids_idx
+        )
+
+    def assign_labels(
+        self, sample_idx: np.ndarray, medoids_idx: np.ndarray
+    ) -> np.ndarray:
+        """LCA-aware label assignment (argmin distance over medoids).
+
+        Overrides :meth:`DistanceRandomForestBase.assign_labels`. See
+        :meth:`compute_inertia` for the rationale.
+
+        :raises ValueError: If decision paths have not been precomputed.
+        """
+        if self.paths is None or self.path_lens is None:
+            raise ValueError(
+                "No precomputed decision paths available. Run `calculate_terminals()` first."
+            )
+        return _assign_labels_lca(
+            self.paths, self.path_lens, sample_idx, medoids_idx
+        )
 
 
 class DistanceWasserstein:
@@ -930,3 +1008,169 @@ def _calculate_lca_distances(
             distance_matrix[j, i] = distance_matrix[i, j]
 
     return distance_matrix
+
+
+@njit(parallel=True)
+def _calculate_inertia_terminals(
+    terminals: np.ndarray,
+    sample_idx: np.ndarray,
+    medoids_idx: np.ndarray,
+) -> float:
+    """
+    Compute total inertia for ``DistanceRandomForestProximity``-derived metrics.
+
+    For each sample, the distance to the closest medoid is computed from Random Forest
+    terminal node proximity, and these minimum distances are summed across all samples.
+
+    :param terminals: Array of terminal node assignments with shape ``(n_samples, n_estimators)``.
+    :type terminals: np.ndarray
+    :param sample_idx: Indices of the samples whose inertia is evaluated.
+    :type sample_idx: np.ndarray
+    :param medoids_idx: Indices of the medoid samples.
+    :type medoids_idx: np.ndarray
+
+    :return: Total inertia of the sample set.
+    :rtype: float
+    """
+    n_estimators = terminals.shape[1]
+    n_samples = len(sample_idx)
+    n_medoids = len(medoids_idx)
+    inertia = np.zeros(n_samples)
+
+    for i in prange(n_samples):
+        sample = sample_idx[i]
+        distances = np.empty(n_medoids, dtype=np.float32)
+
+        for j in range(n_medoids):
+            medoid = medoids_idx[j]
+            # use explicit loop for proximity to avoid temporary array allocation and minimize memory traffic
+            proximity = 0
+            for t in range(n_estimators):
+                if terminals[sample, t] == terminals[medoid, t]:
+                    proximity += 1
+            distances[j] = 1.0 - (proximity / n_estimators)
+
+        inertia[i] = np.min(distances)
+
+    return np.sum(inertia)
+
+
+@njit(parallel=True)
+def _assign_labels_terminals(
+    terminals: np.ndarray,
+    sample_idx: np.ndarray,
+    medoids_idx: np.ndarray,
+) -> np.ndarray:
+    """
+    Assign labels for ``DistanceRandomForestProximity``-derived metrics.
+
+    For every sample in ``sample_idx``, the distance to each medoid is computed from the
+    terminal node assignments, and the label of the closest medoid is returned using
+    zero-based indexing.
+
+    :param terminals: Array of terminal node assignments with shape ``(n_samples, n_estimators)``.
+    :type terminals: np.ndarray
+    :param sample_idx: Indices of the samples to assign.
+    :type sample_idx: np.ndarray
+    :param medoids_idx: Indices of the medoid samples.
+    :type medoids_idx: np.ndarray
+
+    :return: Zero-based cluster labels for the input samples.
+    :rtype: np.ndarray
+    """
+    n_estimators = terminals.shape[1]
+    n_samples = len(sample_idx)
+    n_medoids = len(medoids_idx)
+    cluster_labels = np.zeros(n_samples, dtype=np.int16)
+
+    for i in prange(n_samples):
+        sample = sample_idx[i]
+        cluster_label_sample = np.zeros(n_medoids, dtype=np.float32)
+
+        for j in range(n_medoids):
+            medoid = medoids_idx[j]
+            # use explicit loop for proximity to avoid temporary array allocation and minimize memory traffic
+            proximity = 0
+            for t in range(n_estimators):
+                if terminals[sample, t] == terminals[medoid, t]:
+                    proximity += 1
+            cluster_label_sample[j] = 1.0 - (proximity / n_estimators)
+
+        cluster_labels[i] = np.argmin(cluster_label_sample)
+
+    return cluster_labels
+
+
+@njit(parallel=True)
+def _calculate_inertia_lca(
+    paths: np.ndarray,
+    path_lens: np.ndarray,
+    sample_idx: np.ndarray,
+    medoids_idx: np.ndarray,
+) -> float:
+    """Compute total inertia under the LCA distance metric."""
+    n_estimators = paths.shape[1]
+    n_samples = len(sample_idx)
+    n_medoids = len(medoids_idx)
+    inertia = np.zeros(n_samples, dtype=np.float32)
+    for i in prange(n_samples):
+        sample = sample_idx[i]
+        best = 1.0
+        for j in range(n_medoids):
+            medoid = medoids_idx[j]
+            sim_total = 0.0
+            for t in range(n_estimators):
+                path_len_i = path_lens[sample, t]
+                path_len_j = path_lens[medoid, t]
+                path_len_min = path_len_i if path_len_i < path_len_j else path_len_j
+                path_len_max = path_len_i if path_len_i > path_len_j else path_len_j
+                depth = 0
+                while depth < path_len_min and paths[sample, t, depth] == paths[medoid, t, depth]:
+                    depth += 1
+                denom = path_len_max - 1
+                sim_total += ((depth - 1) / denom) if denom > 0 else 1.0
+            distance = 1.0 - sim_total / n_estimators
+            if distance < best:
+                best = distance
+        inertia[i] = best
+    total = 0.0
+    for i in range(n_samples):
+        total += inertia[i]
+    return total
+
+
+@njit(parallel=True)
+def _assign_labels_lca(
+    paths: np.ndarray,
+    path_lens: np.ndarray,
+    sample_idx: np.ndarray,
+    medoids_idx: np.ndarray,
+) -> np.ndarray:
+    """Assign labels under the LCA distance metric."""
+    n_estimators = paths.shape[1]
+    n_samples = len(sample_idx)
+    n_medoids = len(medoids_idx)
+    labels = np.zeros(n_samples, dtype=np.int16)
+    for i in prange(n_samples):
+        sample = sample_idx[i]
+        best_distance = 1.0
+        best_label = 0
+        for j in range(n_medoids):
+            medoid = medoids_idx[j]
+            sim_total = 0.0
+            for t in range(n_estimators):
+                path_len_i = path_lens[sample, t]
+                path_len_j = path_lens[medoid, t]
+                path_len_min = path_len_i if path_len_i < path_len_j else path_len_j
+                path_len_max = path_len_i if path_len_i > path_len_j else path_len_j
+                depth = 0
+                while depth < path_len_min and paths[sample, t, depth] == paths[medoid, t, depth]:
+                    depth += 1
+                denom = path_len_max - 1
+                sim_total += ((depth - 1) / denom) if denom > 0 else 1.0
+            distance = 1.0 - sim_total / n_estimators
+            if distance < best_distance:
+                best_distance = distance
+                best_label = j
+        labels[i] = best_label
+    return labels

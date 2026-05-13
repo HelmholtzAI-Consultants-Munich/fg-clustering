@@ -204,14 +204,24 @@ class Optimizer:
 
         mapping_cluster_labels_to_samples_original = map_clusters_to_samples(cluster_labels_original)
 
-        JI_per_cluster_bootstraps = Parallel(n_jobs=self.n_jobs)(
-            delayed(self._compute_JI_single_bootstrap)(
-                k=k,
-                mapping_cluster_labels_to_samples_original=mapping_cluster_labels_to_samples_original,
-                random_state_subsampling=seed,
+        try:
+            JI_per_cluster_bootstraps = Parallel(n_jobs=self.n_jobs)(
+                delayed(self._compute_JI_single_bootstrap)(
+                    k=k,
+                    mapping_cluster_labels_to_samples_original=mapping_cluster_labels_to_samples_original,
+                    random_state_subsampling=seed,
+                )
+                for seed in seeds
             )
-            for seed in seeds
-        )
+        except (PermissionError, OSError, NotImplementedError):
+            JI_per_cluster_bootstraps = [
+                self._compute_JI_single_bootstrap(
+                    k=k,
+                    mapping_cluster_labels_to_samples_original=mapping_cluster_labels_to_samples_original,
+                    random_state_subsampling=seed,
+                )
+                for seed in seeds
+            ]
 
         JI_per_cluster_sum = defaultdict(float)
         for JI_per_cluster in JI_per_cluster_bootstraps:
