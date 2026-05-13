@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   LCA-aware numba kernels.
 - New numba kernels `_calculate_inertia_lca` and `_assign_labels_lca` (LCA-aware
   versions of the existing terminal-node-equality kernels).
+- Documentation coverage in README, Sphinx (`basic_usage.rst` via the README include),
+  and a new tutorial notebook for all three `DistanceRandomForestProximity`
+  collapse strategies and the `DistanceRandomForestLCA` distance class.
 - `DistanceRandomForestProximity.min_samples_in_node` parameter: collapses each leaf to
   the nearest ancestor whose `n_node_samples` is at least the given threshold. Reduces
   proximity-matrix sparsity for deep regression forests and produces more balanced

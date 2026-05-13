@@ -156,6 +156,54 @@ where
 
 For a detailed walkthrough, refer to the [Introduction to FGC: Simple Use Cases](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/introduction_to_FGC_use_cases.ipynb) notebook.
 
+**Distance metrics**
+
+FGC currently exposes two Random-Forest-derived distance classes:
+
+- `DistanceRandomForestProximity()` measures similarity by how often two samples end in the same effective leaf across trees. It supports three mutually exclusive ancestor-collapse options for regression forests:
+  - `min_samples_in_node=<int>`: collapse leaves upward until the chosen ancestor contains at least that many training samples. Useful when deep leaves are too sparse.
+  - `max_depth_for_proximity=<int>`: collapse leaves upward to a fixed maximum depth. Useful when you want a simple, structural cap on tree granularity.
+  - `min_node_variance=<float>`: collapse leaves upward until the chosen ancestor still has at least the given target variance. Useful when you want proximity regions to preserve response heterogeneity.
+- `DistanceRandomForestLCA()` measures similarity from the normalized Least Common Ancestor depth of each pair of decision paths. Useful when terminal-node proximity becomes too sparse and you still want graded similarity between nearby paths.
+
+Classifier example with an ancestor-collapse strategy:
+
+```python
+from fgclustering import (
+    forest_guided_clustering,
+    DistanceRandomForestProximity,
+    ClusteringKMedoids,
+)
+
+distance = DistanceRandomForestProximity(min_samples_in_node=10)
+result = forest_guided_clustering(
+    estimator=clf,
+    X=X,
+    y=y,
+    clustering_distance_metric=distance,
+    clustering_strategy=ClusteringKMedoids(),
+)
+```
+
+Regressor example with the LCA distance:
+
+```python
+from fgclustering import (
+    forest_guided_clustering,
+    DistanceRandomForestLCA,
+    ClusteringKMedoids,
+)
+
+distance = DistanceRandomForestLCA()
+result = forest_guided_clustering(
+    estimator=reg,
+    X=X,
+    y=y,
+    clustering_distance_metric=distance,
+    clustering_strategy=ClusteringKMedoids(),
+)
+```
+
 
 **Using FGC on Large Datasets**
 
