@@ -18,20 +18,20 @@ from fgclustering import ClusteringKMedoids, ClusteringClara, DistanceRandomFore
 
 def calculate_distance_matrix(model, X):
     distance_metric = DistanceRandomForestProximity()
-    distance_metric.calculate_terminals(estimator=model, X=X)
+    distance_metric.calculate_forest_encoding(estimator=model, X=X)
     distance_metric.calculate_distance_matrix(sample_indices=np.arange(X.shape[0]))
 
 
 def calculate_distance_matrix_memmap(model, X, dir_output):
     distance_metric = DistanceRandomForestProximity(memory_efficient=True, dir_distance_matrix=dir_output)
-    distance_metric.calculate_terminals(estimator=model, X=X)
+    distance_metric.calculate_forest_encoding(estimator=model, X=X)
     distance_matrix, file = distance_metric.calculate_distance_matrix(sample_indices=np.arange(X.shape[0]))
     distance_metric.remove_distance_matrix(distance_matrix, file)
 
 
 def run_clustering_kmedoids(model, X, k, method_clustering, seed):
     distance_metric = DistanceRandomForestProximity()
-    distance_metric.calculate_terminals(estimator=model, X=X)
+    distance_metric.calculate_forest_encoding(estimator=model, X=X)
 
     clustering = ClusteringKMedoids(method=method_clustering, init="random", max_iter=100, random_state=seed)
     clustering.run_clustering(
@@ -45,7 +45,7 @@ def run_clustering_kmedoids(model, X, k, method_clustering, seed):
 
 def run_clustering_kmedoids_memmap(model, X, k, method_clustering, seed, dir_output):
     distance_metric = DistanceRandomForestProximity(memory_efficient=True, dir_distance_matrix=dir_output)
-    distance_metric.calculate_terminals(estimator=model, X=X)
+    distance_metric.calculate_forest_encoding(estimator=model, X=X)
 
     clustering = ClusteringKMedoids(method=method_clustering, init="random", max_iter=100, random_state=seed)
     clustering.run_clustering(
@@ -59,7 +59,7 @@ def run_clustering_kmedoids_memmap(model, X, k, method_clustering, seed, dir_out
 
 def run_clustering_clara_memmap(model, X, k, method_clustering, seed, dir_output):
     distance_metric = DistanceRandomForestProximity(memory_efficient=True, dir_distance_matrix=dir_output)
-    distance_metric.calculate_terminals(estimator=model, X=X)
+    distance_metric.calculate_forest_encoding(estimator=model, X=X)
 
     clustering = ClusteringClara(
         sub_sample_size=0.5,
