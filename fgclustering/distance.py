@@ -279,7 +279,8 @@ class DistanceRandomForestProximity(DistanceRandomForestBase):
     :type max_depth_for_proximity: int | None
     :param min_variance_in_node: Minimum impurity threshold for an ancestor node to be used as
         the effective leaf. Requires a ``RandomForestRegressor`` trained with
-        ``criterion="squared_error"`` or ``criterion="friedman_mse"``.
+        ``criterion="squared_error"`` or ``criterion="friedman_mse"``. ``0`` is treated as
+        a no-op (identical to ``None``) and skips ancestor collapse.
     :type min_variance_in_node: float | None
     """
 
@@ -363,7 +364,7 @@ class DistanceRandomForestProximity(DistanceRandomForestBase):
                     lambda node, _depths=_compute_node_depths(tree): _depths[node] <= max_depth
                 ),
             )
-        elif self.min_variance_in_node is not None:
+        elif self.min_variance_in_node is not None and self.min_variance_in_node > 0:
             if not isinstance(estimator, RandomForestRegressor):
                 raise ValueError(
                     "`min_variance_in_node` requires a `RandomForestRegressor`; "

@@ -286,7 +286,7 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         np.testing.assert_array_equal(baseline_matrix, new_matrix)
 
     def test_min_variance_in_node_zero_matches_baseline(self):
-        """`min_variance_in_node=0` prunes nothing (every node has impurity >= 0) -> baseline."""
+        """`min_variance_in_node=0` skips ancestor collapse (same as baseline)."""
         dist_baseline = DistanceRandomForestProximity()
         dist_baseline.calculate_forest_encoding(estimator=self.model_reg_squared, X=self.X_reg_squared)
         baseline_matrix, _ = dist_baseline.calculate_distance_matrix(sample_indices=None)
