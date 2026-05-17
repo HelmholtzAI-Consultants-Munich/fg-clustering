@@ -230,16 +230,22 @@ class DistanceRandomForestBase(ABC):
                 distance_matrix.flush()
             except Exception:
                 pass
+            mmap_obj = getattr(distance_matrix, "_mmap", None)
+            if mmap_obj is not None:
+                try:
+                    mmap_obj.close()
+                except Exception:
+                    pass
         del distance_matrix
         gc.collect()
 
         if file_distance_matrix is not None and os.path.exists(file_distance_matrix):
-            for _ in range(3):
+            for _ in range(10):
                 try:
                     os.remove(file_distance_matrix)
                     break
-                except PermissionError:
-                    time.sleep(0.5)
+                except (PermissionError, OSError):
+                    time.sleep(0.1)
                     gc.collect()
 
 

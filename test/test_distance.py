@@ -444,6 +444,7 @@ class TestDistanceRandomForestLCA(unittest.TestCase):
         np.testing.assert_allclose(np.asarray(m1), np.asarray(m2), atol=1e-6)
 
         d2.remove_distance_matrix(m2, f2)
+        del m2
         self.assertFalse(os.path.exists(f2))
 
     def test_calculate_distance_matrix_error_without_paths(self):
