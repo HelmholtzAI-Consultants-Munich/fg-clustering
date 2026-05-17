@@ -14,6 +14,7 @@ import plotly.graph_objects as go
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from matplotlib.colors import ListedColormap, to_rgba
+from matplotlib.ticker import MaxNLocator
 from plotly.subplots import make_subplots
 from pathlib import Path
 
@@ -96,77 +97,78 @@ def plot_optimizer_results(
     df_clusters = pd.DataFrame(cluster_rows)
 
     ### Plotting
-    sns.set_theme(style="white", context="paper")
+    with sns.axes_style("white"), sns.plotting_context("paper"):
 
-    fig_width = max(6.5, len(ks) / 2)
-    fig_height = max(4.5, len(ks) / 3)
-    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
-    plt.suptitle("Clustering Performance Across Number of Clusters (k)", fontsize=14)
+        fig_width = max(6.5, len(ks) / 2)
+        fig_height = max(4.5, len(ks) / 3)
+        fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+        plt.suptitle("Clustering Performance Across Number of Clusters (k)", fontsize=14)
 
-    sns.scatterplot(
-        data=df_summary,
-        x="k",
-        y="score",
-        ax=ax,
-        marker="^",
-        s=70,
-        color=color_spec["color_score"],
-        zorder=3,
-    )
-    sns.lineplot(
-        data=df_summary,
-        x="k",
-        y="mean_ji",
-        ax=ax,
-        color=color_spec["color_ji"],
-        linewidth=1.5,
-        marker="o",
-        markersize=7,
-        zorder=4,
-    )
-    sns.scatterplot(
-        data=df_clusters,
-        x="k",
-        y="ji",
-        ax=ax,
-        s=20,
-        alpha=0.25,
-        color=color_spec["color_ji"],
-        zorder=2,
-    )
+        sns.scatterplot(
+            data=df_summary,
+            x="k",
+            y="score",
+            ax=ax,
+            marker="^",
+            s=70,
+            color=color_spec["color_score"],
+            zorder=3,
+        )
+        sns.lineplot(
+            data=df_summary,
+            x="k",
+            y="mean_ji",
+            ax=ax,
+            color=color_spec["color_ji"],
+            linewidth=1.5,
+            marker="o",
+            markersize=7,
+            zorder=4,
+        )
+        sns.scatterplot(
+            data=df_clusters,
+            x="k",
+            y="ji",
+            ax=ax,
+            s=20,
+            alpha=0.25,
+            color=color_spec["color_ji"],
+            zorder=2,
+        )
 
-    ax.fill_between(
-        df_summary["k"],
-        df_summary["min_ji"],
-        df_summary["max_ji"],
-        color=color_spec["color_ji"],
-        alpha=0.15,
-        linewidth=0,
-        zorder=1,
-    )
+        ax.fill_between(
+            df_summary["k"],
+            df_summary["min_ji"],
+            df_summary["max_ji"],
+            color=color_spec["color_ji"],
+            alpha=0.15,
+            linewidth=0,
+            zorder=1,
+        )
 
-    ax.set_xlabel("Number of clusters $k$")
-    ax.set_ylabel("Cluster Stability", color=color_spec["color_ji"])
-    ax.set_ylim(0, 1.02)
-    ax.tick_params(axis="y", colors=color_spec["color_ji"])
-    ax.spines["left"].set_color(color_spec["color_ji"])
-    ax.spines["right"].set_visible(False)
-    ax.spines["top"].set_visible(False)
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+        ax.set_xlabel("Number of clusters $k$")
+        ax.set_ylabel("Cluster Stability", color=color_spec["color_ji"])
+        ax.set_ylim(0, 1.02)
+        ax.tick_params(axis="y", colors=color_spec["color_ji"])
+        ax.spines["left"].set_color(color_spec["color_ji"])
+        ax.spines["right"].set_visible(False)
+        ax.spines["top"].set_visible(False)
 
-    ax_r = ax.twinx()
-    ax_r.set_ylabel("Clustering Score", color=color_spec["color_score"])
-    ax_r.set_ylim(0, 1.02)
-    ax_r.tick_params(axis="y", colors=color_spec["color_score"])
-    ax_r.spines["right"].set_color(color_spec["color_score"])
-    ax_r.spines["left"].set_visible(False)
-    ax_r.spines["top"].set_visible(False)
+        ax_r = ax.twinx()
+        ax_r.set_ylabel("Clustering Score", color=color_spec["color_score"])
+        ax_r.set_ylim(0, 1.02)
+        ax_r.tick_params(axis="y", colors=color_spec["color_score"])
+        ax_r.spines["right"].set_color(color_spec["color_score"])
+        ax_r.spines["left"].set_visible(False)
+        ax_r.spines["top"].set_visible(False)
 
-    if best_k is not None and best_k in df_summary["k"].values:
-        ax.axvline(best_k, linestyle=":", linewidth=1, color="0.5")
-        ax.text(best_k, 0.5, f"k = {best_k}", rotation=90, ha="right", va="top", fontsize=9, color="0.5")
+        if best_k is not None and best_k in df_summary["k"].values:
+            ax.axvline(best_k, linestyle=":", linewidth=1, color="0.5")
+            ax.text(best_k, 0.5, f"k = {best_k}", rotation=90, ha="right", va="top", fontsize=9, color="0.5")
 
-    if JI_discart_value is not None:
-        ax.axhline(JI_discart_value, linestyle="--", linewidth=0.7, color=color_spec["color_ji"])
+        if JI_discart_value is not None:
+            ax.axhline(JI_discart_value, linestyle="--", linewidth=0.7, color=color_spec["color_ji"])
 
     plt.tight_layout(rect=(0, 0, 1, 0.95))
 
@@ -256,37 +258,37 @@ def plot_feature_importance(
 
     ### Plotting
 
-    sns.set_theme(style="white", context="paper")
+    with sns.axes_style("white"), sns.plotting_context("paper"):
 
-    fig_width = num_cols * 4.5
-    fig_height = num_rows * max(4.5, int(np.ceil(5 * num_features / 25)))
-    fig = plt.figure(figsize=(fig_width, fig_height))
-    plt.subplots_adjust(top=0.95, hspace=0.8, wspace=0.8)
-    plt.suptitle(
-        f"Feature Importance: Global vs Cluster-Level {'(top ' + str(top_n) + 'features)' if top_n else ''}",
-        fontsize=14,
-    )
+        fig_width = num_cols * 4.5
+        fig_height = num_rows * max(4.5, int(np.ceil(5 * num_features / 25)))
+        fig = plt.figure(figsize=(fig_width, fig_height))
+        plt.subplots_adjust(top=0.95, hspace=0.8, wspace=0.8)
+        plt.suptitle(
+            f"Feature Importance: Global vs Cluster-Level {'(top ' + str(top_n) + 'features)' if top_n else ''}",
+            fontsize=14,
+        )
 
-    draw_bar(1, importance_global, "Global Feature Importance")
+        draw_bar(1, importance_global, "Global Feature Importance")
 
-    for n, cluster in enumerate(feature_importance_local.columns):
-        if reorder:
-            importance_local = (
-                feature_importance_local[cluster]
-                .loc[importance_global["Feature"].tolist()]
-                .rename_axis("Feature")
-                .reset_index(name="Importance")
-            )
-        else:
-            importance_local = (
-                feature_importance_local[cluster]
-                .sort_values(ascending=False)
-                .rename_axis("Feature")
-                .reset_index(name="Importance")
-            )
-        if top_n:
-            importance_local = importance_local.iloc[:top_n]
-        draw_bar(n + 2, importance_local, f"Local Feature Importance - Cluster {cluster}")
+        for n, cluster in enumerate(feature_importance_local.columns):
+            if reorder:
+                importance_local = (
+                    feature_importance_local[cluster]
+                    .loc[importance_global["Feature"].tolist()]
+                    .rename_axis("Feature")
+                    .reset_index(name="Importance")
+                )
+            else:
+                importance_local = (
+                    feature_importance_local[cluster]
+                    .sort_values(ascending=False)
+                    .rename_axis("Feature")
+                    .reset_index(name="Importance")
+                )
+            if top_n:
+                importance_local = importance_local.iloc[:top_n]
+            draw_bar(n + 2, importance_local, f"Local Feature Importance - Cluster {cluster}")
 
     plt.tight_layout(rect=(0, 0, 1, 0.95))
 
@@ -341,82 +343,84 @@ def plot_distributions(
     num_rows = int(np.ceil(len(features_to_plot) / num_cols))
 
     ### Plotting
-    sns.set_theme(style="white", context="paper")
+    with sns.axes_style("white"), sns.plotting_context("paper"):
 
-    fig_width = num_cols * 4.5
-    fig_height = num_rows * 4.5
+        fig_width = num_cols * 4.5
+        fig_height = num_rows * 4.5
 
-    fig = plt.figure(figsize=(fig_width, fig_height))
-    plt.subplots_adjust(top=0.95, hspace=0.8, wspace=0.8)
-    plt.suptitle(
-        f"Distribution of Feature Values by Cluster {'(top ' + str(top_n) + 'features)' if top_n else ''}",
-        fontsize=14,
-    )
+        fig = plt.figure(figsize=(fig_width, fig_height))
+        plt.subplots_adjust(top=0.95, hspace=0.8, wspace=0.8)
+        plt.suptitle(
+            f"Distribution of Feature Values by Cluster {'(top ' + str(top_n) + 'features)' if top_n else ''}",
+            fontsize=14,
+        )
 
-    for n, feature in enumerate(features_to_plot):
-        ax = plt.subplot(num_rows, num_cols, n + 1)
-        discrete = df[feature].nunique() < 5 or isinstance(df[feature].dtype, pd.CategoricalDtype)
+        for n, feature in enumerate(features_to_plot):
+            ax = plt.subplot(num_rows, num_cols, n + 1)
+            discrete = df[feature].nunique() < 5 or isinstance(df[feature].dtype, pd.CategoricalDtype)
 
-        if not discrete:
-            sns.boxplot(x="cluster", y=feature, data=df, ax=ax, color=color_spec["color_base"], orient="v")
-            ax.set_title(f"{feature}")
-            continue
+            if not discrete:
+                sns.boxplot(
+                    x="cluster", y=feature, data=df, ax=ax, color=color_spec["color_base"], orient="v"
+                )
+                ax.set_title(f"{feature}")
+                continue
 
-        if feature in ["target", "predicted_target"]:
-            sns.countplot(
-                x="cluster",
-                hue=feature,
-                data=df,
+            if feature in ["target", "predicted_target"]:
+                sns.countplot(
+                    x="cluster",
+                    hue=feature,
+                    data=df,
+                    ax=ax,
+                    palette=sns.color_palette(
+                        color_spec["color_target_cat"],
+                        n_colors=df[feature].nunique(),
+                        as_cmap=False,
+                    ),
+                )
+                ax.set_title(f"{feature}")
+                ax.legend(bbox_to_anchor=(1, 1), loc=2, fontsize="x-small")
+                continue
+
+            feature_series = df[feature].astype("string")
+            count_df = (
+                pd.DataFrame({"cluster": df["cluster"], feature: feature_series})
+                .groupby(["cluster", feature], observed=False)
+                .size()
+                .unstack(fill_value=0)
+            )
+
+            top_categories = count_df.sum().nlargest(10).index
+            count_df = count_df[
+                top_categories.tolist() + [c for c in count_df.columns if c not in top_categories]
+            ]
+            percent_df = count_df.div(count_df.sum(axis=1), axis=0) * 100
+            percent_df.plot(
+                kind="bar",
+                stacked=True,
                 ax=ax,
-                palette=sns.color_palette(
-                    color_spec["color_target_cat"],
-                    n_colors=df[feature].nunique(),
+                width=0.8,
+                color=sns.color_palette(
+                    color_spec["color_features_cat"],
+                    n_colors=feature_series.nunique(),
                     as_cmap=False,
                 ),
+                legend=False,
             )
             ax.set_title(f"{feature}")
-            ax.legend(bbox_to_anchor=(1, 1), loc=2, fontsize="x-small")
-            continue
+            ax.set_ylabel("percentage")
+            ax.set_xlabel("cluster")
 
-        feature_series = df[feature].astype("string")
-        count_df = (
-            pd.DataFrame({"cluster": df["cluster"], feature: feature_series})
-            .groupby(["cluster", feature], observed=False)
-            .size()
-            .unstack(fill_value=0)
-        )
-
-        top_categories = count_df.sum().nlargest(10).index
-        count_df = count_df[
-            top_categories.tolist() + [c for c in count_df.columns if c not in top_categories]
-        ]
-        percent_df = count_df.div(count_df.sum(axis=1), axis=0) * 100
-        percent_df.plot(
-            kind="bar",
-            stacked=True,
-            ax=ax,
-            width=0.8,
-            color=sns.color_palette(
-                color_spec["color_features_cat"],
-                n_colors=feature_series.nunique(),
-                as_cmap=False,
-            ),
-            legend=False,
-        )
-        ax.set_title(f"{feature}")
-        ax.set_ylabel("percentage")
-        ax.set_xlabel("cluster")
-
-        handles, labels = ax.get_legend_handles_labels()
-        top_indices = [i for i, label in enumerate(labels) if label in top_categories]
-        ax.legend(
-            [handles[i] for i in top_indices],
-            [labels[i] for i in top_indices],
-            bbox_to_anchor=(1, 1),
-            loc=2,
-            fontsize="x-small",
-            title="Category",
-        )
+            handles, labels = ax.get_legend_handles_labels()
+            top_indices = [i for i, label in enumerate(labels) if label in top_categories]
+            ax.legend(
+                [handles[i] for i in top_indices],
+                [labels[i] for i in top_indices],
+                bbox_to_anchor=(1, 1),
+                loc=2,
+                fontsize="x-small",
+                title="Category",
+            )
 
     plt.tight_layout(rect=(0, 0, 1, 0.95))
 
@@ -494,103 +498,103 @@ def plot_dotplot(
     n_clusters = avgs.shape[1] - 1
 
     ### Plotting
-    sns.set_theme(style="white", context="paper")
+    with sns.axes_style("white"), sns.plotting_context("paper"):
 
-    # Match largest scatter marker (sizes=(5, 200) → 200 pt²): ~constant pt spacing per rank/cluster.
-    d_max = 2 * np.sqrt(200 / np.pi)
-    g, w_ax_frac, h_ax_frac = 1.22, 0.84 * (30 / 34), 0.58
-    fig_width = max(5.0, g * d_max * max(n_features, 1) / (72 * w_ax_frac) + 2.5)
-    fig_height = max(3.5, g * d_max * max(n_clusters, 1) / (72 * h_ax_frac))
+        # Match largest scatter marker (sizes=(5, 200) → 200 pt²): ~constant pt spacing per rank/cluster.
+        d_max = 2 * np.sqrt(200 / np.pi)
+        g, w_ax_frac, h_ax_frac = 1.22, 0.84 * (30 / 34), 0.58
+        fig_width = max(5.0, g * d_max * max(n_features, 1) / (72 * w_ax_frac) + 2.5)
+        fig_height = max(3.5, g * d_max * max(n_clusters, 1) / (72 * h_ax_frac))
 
-    # Keep colorbar + size-legend columns ~fixed width (in); only the main panel scales with fig_width.
-    _r_cbar, _r_leg = 2.0, 2.5
-    _r_side = _r_cbar + _r_leg
-    _cbar_w_in = 0.35
-    _r_main = max(1.0, fig_width * _r_cbar / _cbar_w_in - _r_side)
+        # Keep colorbar + size-legend columns ~fixed width (in); only the main panel scales with fig_width.
+        _r_cbar, _r_leg = 2.0, 2.5
+        _r_side = _r_cbar + _r_leg
+        _cbar_w_in = 0.35
+        _r_main = max(1.0, fig_width * _r_cbar / _cbar_w_in - _r_side)
 
-    fig, axes = plt.subplots(
-        figsize=(fig_width, fig_height),
-        ncols=3,
-        width_ratios=[_r_main, _r_cbar, _r_leg],
-        facecolor="none",
-    )
-    plt.subplots_adjust(top=0.95, hspace=0.8, wspace=0.8)
-    plt.suptitle(
-        f"Importance and Direction of Effect by Cluster {'(top ' + str(top_n) + 'features)' if top_n else ''}",
-        fontsize=14,
-    )
+        fig, axes = plt.subplots(
+            figsize=(fig_width, fig_height),
+            ncols=3,
+            width_ratios=[_r_main, _r_cbar, _r_leg],
+            facecolor="none",
+        )
+        plt.subplots_adjust(top=0.95, hspace=0.8, wspace=0.8)
+        plt.suptitle(
+            f"Importance and Direction of Effect by Cluster {'(top ' + str(top_n) + 'features)' if top_n else ''}",
+            fontsize=14,
+        )
 
-    ax_plot, ax_cbar, ax_legend = axes
+        ax_plot, ax_cbar, ax_legend = axes
 
-    ax_plot.set_aspect("auto")
-    sns.despine(ax=ax_plot, left=True, bottom=True)
+        ax_plot.set_aspect("auto")
+        sns.despine(ax=ax_plot, left=True, bottom=True)
 
-    scatter = sns.scatterplot(
-        data=melted,
-        x="global_rank",
-        y="cluster",
-        hue="feature_avg",
-        size="local_importance",
-        palette=sns.color_palette(color_spec["color_features"], as_cmap=True),
-        sizes=(5, 200),
-        size_norm=(0, 1),
-        legend=False,
-        ax=ax_plot,
-    )
+        scatter = sns.scatterplot(
+            data=melted,
+            x="global_rank",
+            y="cluster",
+            hue="feature_avg",
+            size="local_importance",
+            palette=sns.color_palette(color_spec["color_features"], as_cmap=True),
+            sizes=(5, 200),
+            size_norm=(0, 1),
+            legend=False,
+            ax=ax_plot,
+        )
 
-    ax_plot.set(
-        xlim=(0.5, n_features + 0.5),
-        xticks=range(1, n_features + 1),
-        xticklabels=feature_importance_global.index,
-        xlabel=None,
-        ylim=(0.5, melted.cluster.nunique() + 0.5),
-        yticks=sorted(melted.cluster.unique()),
-        ylabel="Cluster",
-    )
-    ax_plot.tick_params(axis="x", rotation=90)
+        ax_plot.set(
+            xlim=(0.5, n_features + 0.5),
+            xticks=range(1, n_features + 1),
+            xticklabels=feature_importance_global.index,
+            xlabel=None,
+            ylim=(0.5, melted.cluster.nunique() + 0.5),
+            yticks=sorted(melted.cluster.unique()),
+            ylabel="Cluster",
+        )
+        ax_plot.tick_params(axis="x", rotation=90)
 
-    handles = [
-        ax_plot.scatter([], [], s=5 + (200 - 5) * v, color="gray", alpha=0.5, label=f"{v:.1f}")
-        for v in [0.1, 0.5, 1.0]
-    ]
+        handles = [
+            ax_plot.scatter([], [], s=5 + (200 - 5) * v, color="gray", alpha=0.5, label=f"{v:.1f}")
+            for v in [0.1, 0.5, 1.0]
+        ]
 
-    ax_legend.axis("off")
-    ax_legend.legend(
-        handles=handles,
-        loc="center",
-        bbox_to_anchor=(0.38, 0.5),
-        ncol=1,
-        fontsize=8,
-        frameon=False,
-        labelspacing=1.5,
-        handletextpad=0.5,
-        borderpad=1,
-    )
-    ax_legend.text(
-        1.8,
-        0.5,
-        "Feature Importance",
-        transform=ax_legend.transAxes,
-        rotation=90,
-        va="center",
-        ha="center",
-        fontsize=8,
-    )
+        ax_legend.axis("off")
+        ax_legend.legend(
+            handles=handles,
+            loc="center",
+            bbox_to_anchor=(0.38, 0.5),
+            ncol=1,
+            fontsize=8,
+            frameon=False,
+            labelspacing=1.5,
+            handletextpad=0.5,
+            borderpad=1,
+        )
+        ax_legend.text(
+            1.8,
+            0.5,
+            "Feature Importance",
+            transform=ax_legend.transAxes,
+            rotation=90,
+            va="center",
+            ha="center",
+            fontsize=8,
+        )
 
-    cbar = fig.colorbar(
-        plt.cm.ScalarMappable(
-            norm=plt.Normalize(vmin=CLIP_ZSCORE_NEGATIVE, vmax=CLIP_ZSCORE_POSITIVE),
-            cmap=sns.color_palette(color_spec["color_features"], as_cmap=True),
-        ),
-        cax=ax_cbar,
-        orientation="vertical",
-        pad=0.1,
-    )
-    cbar.set_ticks(np.linspace(CLIP_ZSCORE_NEGATIVE, CLIP_ZSCORE_POSITIVE, 5))
-    cbar.set_label("Feature Values (standardized)")
-    cbar.ax.tick_params(labelsize=8)
+        cbar = fig.colorbar(
+            plt.cm.ScalarMappable(
+                norm=plt.Normalize(vmin=CLIP_ZSCORE_NEGATIVE, vmax=CLIP_ZSCORE_POSITIVE),
+                cmap=sns.color_palette(color_spec["color_features"], as_cmap=True),
+            ),
+            cax=ax_cbar,
+            orientation="vertical",
+            pad=0.1,
+        )
+        cbar.set_ticks(np.linspace(CLIP_ZSCORE_NEGATIVE, CLIP_ZSCORE_POSITIVE, 5))
+        cbar.set_label("Feature Values (standardized)")
+        cbar.ax.tick_params(labelsize=8)
 
-    plt.tight_layout()
+    plt.tight_layout(rect=(0, 0, 1, 0.95))
 
     if save:
         save_figure(save, "_dotplot")
@@ -700,7 +704,7 @@ def plot_heatmap_classification(
             borderpad=1,
         )
 
-        plt.tight_layout()
+        plt.tight_layout(rect=(0, 0, 1, 0.95))
 
         if save:
             save_figure(save, "_heatmap")
@@ -833,7 +837,7 @@ def plot_heatmap_regression(
         cbar = fig.colorbar(target_plot.collections[0], ax=ax_target_cb, orientation="vertical", pad=0.1)
         cbar.set_label("Target")
 
-        plt.tight_layout()
+        plt.tight_layout(rect=(0, 0, 1, 0.95))
         if save:
             save_figure(save, "_heatmap")
         if show:
@@ -966,6 +970,8 @@ def _plot_heatmaps_static(
     """
 
     # Set up the figure and subplots
+    # Using with sns.axes_style("white"), sns.plotting_context("paper"): here crops the axis labels
+    # Hence keep it with global settings for now
     sns.set_theme(style="white", context="paper")
 
     figure_height = max(6.5, int(np.ceil(5 * len(features) / 25)))
