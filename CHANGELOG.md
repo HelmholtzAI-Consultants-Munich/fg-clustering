@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `DistanceRandomForestBase.compute_inertia(sample_idx, medoids_idx)` and
+  `DistanceRandomForestBase.assign_labels(sample_idx, medoids_idx)`:
+  distance-class methods used by `ClusteringClara` for medoid-search inertia
+  and final label assignment. `DistanceRandomForestLCA` overrides both with
+  LCA-aware numba kernels.
+- New numba kernels `_calculate_inertia_lca` and `_assign_labels_lca` (LCA-aware
+  versions of the existing terminal-node-equality kernels).
+- Documentation coverage in README, Sphinx (`basic_usage.rst` via the README include),
+  and tutorial notebook `special_case_tree_pruning_with_FGC` for all three
+  `DistanceRandomForestProximity` collapse strategies and
+  `DistanceRandomForestLCA`.
+- Extended `test/integration_tests.ipynb` with examples for inner-node proximity
+  collapse modes and LCA distance.
+- Regression tests ``test_clara_with_lca_distance_uses_lca_inertia`` and
+  ``test_compute_inertia_consistency_with_distance_matrix`` in
+  ``test/test_clustering.py``.
 - `DistanceRandomForestProximity.min_samples_in_node` parameter: collapses each leaf to
   the nearest ancestor whose `n_node_samples` is at least the given threshold. Reduces
   proximity-matrix sparsity for deep regression forests and produces more balanced
@@ -20,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   along decision paths. Produces graded similarity that stays informative when samples
   fall into different leaves, addressing proximity sparsity for deep regression forests.
   Exposes the same duck-typed surface as `DistanceRandomForestProximity`
-  (`calculate_terminals`, `calculate_distance_matrix`, `remove_distance_matrix`) plus
+  (`calculate_forest_encoding`, `calculate_distance_matrix`, `remove_distance_matrix`) plus
   new state attributes `paths` (root-to-leaf node-id paths, padded) and `path_lens`
   (per-sample per-tree effective path length).
 - Internal helper `_compute_node_depths(tree)` to label every sklearn tree node with
@@ -37,7 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   introduced in PR 2 and `_compute_parent_array` / `_build_leaf_to_ancestor_map` /
   `DistanceRandomForestProximity._collapse_terminals` /
   `_validate_mutually_exclusive` introduced in PR 1.
-- `DistanceRandomForestProximity.min_node_variance` parameter: collapses each leaf to
+- `DistanceRandomForestProximity.min_variance_in_node` parameter: collapses each leaf to
   the nearest ancestor whose target variance (``tree_.impurity`` under
   ``criterion="squared_error"`` or ``"friedman_mse"``) remains greater than or equal
   to the given threshold. This effectively prunes regions where the variance has
@@ -45,14 +61,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   corresponds exactly to variance-based pruning; for ``criterion="friedman_mse"``,
   the behavior is an approximation, as splits are selected using Friedman's
   improvement score rather than pure variance reduction. Regression-only; requires
-  a ``RandomForestRegressor`` and raises ``ValueError`` at ``calculate_terminals``
-  time otherwise. Defaults to ``None``.
+  a ``RandomForestRegressor`` and raises ``ValueError`` at
+  ``calculate_forest_encoding`` time otherwise. Defaults to ``None``.
 
 
 ### Changed
+- **Breaking:** ``calculate_terminals`` renamed to ``calculate_forest_encoding`` on
+  ``DistanceRandomForestBase``, ``DistanceRandomForestProximity``, and
+  ``DistanceRandomForestLCA``. Tests, profiling scripts, tutorials, and
+  ``forest_guided_clustering()`` call sites updated accordingly.
+- README installation and usage sections streamlined.
+- Class and method docstrings expanded across ``fgclustering/distance.py``,
+  ``fgclustering/clustering.py``, ``fgclustering/forest_guided_clustering.py``,
+  ``fgclustering/optimizer.py``, ``fgclustering/statistics.py``, and
+  ``fgclustering/utils.py``.
+- Tutorials updated for the renamed API and current distance-class surface:
+  ``introduction_to_FGC_use_cases``, ``introduction_to_FGC_comparing_FGC_to_FI``,
+  ``special_case_big_data_with_FGC``, and ``special_case_inference_with_FGC``.
+- `ClusteringClara.run_clustering` now calls `distance_metric.compute_inertia`
+  and `distance_metric.assign_labels` instead of the module-level helpers.
+  Behavior with `DistanceRandomForestProximity` is unchanged;
+  `DistanceRandomForestLCA` now produces LCA-consistent CLARA clusters
+  end-to-end.
+- The module-level numba functions `_calculate_inertia` / `_asign_labels` in
+  `fgclustering/clustering.py` were moved to `fgclustering/distance.py`,
+  renamed to `_calculate_inertia_proximity` / `_assign_labels_proximity` (with
+  LCA-specific variants `_calculate_inertia_lca` / `_assign_labels_lca`), and
+  are dispatched from `DistanceRandomForestBase`.
 - `DistanceRandomForestProximity.__init__` now accepts `min_samples_in_node` and
   validates it (must be >= 1 when not `None`).
-- `DistanceRandomForestProximity.calculate_terminals` now remaps the stored terminal
+- `DistanceRandomForestProximity.calculate_forest_encoding` now remaps the stored terminal
   matrix to effective-ancestor ids when `min_samples_in_node` is configured. When the
   parameter is `None` (default), behavior is byte-for-byte identical to previous
   releases.
@@ -74,47 +112,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `_validate_mutually_exclusive` call is extended to cover both
   `min_samples_in_node` and `max_depth_for_proximity`; setting both at once raises
   `ValueError`.
-- `DistanceRandomForestProximity.calculate_terminals` dispatches to a second
+- `DistanceRandomForestProximity.calculate_forest_encoding` dispatches to a second
   ancestor-collapse branch when `max_depth_for_proximity` is configured. Behavior
   with both new parameters set to `None` (default) is byte-for-byte identical to
   previous releases.
 - `DistanceRandomForestProximity` class docstring updated to enumerate both supported
   ancestor-collapse criteria and document their mutual exclusivity.
-- `DistanceRandomForestProximity.__init__` now accepts `min_node_variance` and
+- `DistanceRandomForestProximity.__init__` now accepts `min_variance_in_node` and
   validates its value range (must be >= 0 when not ``None``). The
   ``_validate_mutually_exclusive`` call is extended to cover all three
   ancestor-collapse parameters (``min_samples_in_node``,
-  ``max_depth_for_proximity``, ``min_node_variance``); setting any two at once
+  ``max_depth_for_proximity``, ``min_variance_in_node``); setting any two at once
   raises ``ValueError``.
-- `DistanceRandomForestProximity.calculate_terminals` now performs an
+- `DistanceRandomForestProximity.calculate_forest_encoding` now performs an
   estimator-type guard and allows both ``criterion="squared_error"`` and
-  ``criterion="friedman_mse"`` when ``min_node_variance`` is configured. A
+  ``criterion="friedman_mse"`` when ``min_variance_in_node`` is configured. A
   ``UserWarning`` is issued for ``friedman_mse`` to indicate that variance-based
   pruning is approximate in this case. Behavior with all three new parameters set
   to ``None`` (default) is byte-for-byte identical to previous releases.
 - `DistanceRandomForestProximity` class docstring updated to enumerate all three
   supported ancestor-collapse criteria and document their mutual exclusivity and
-  the regression-only restriction of ``min_node_variance``.
+  the regression-only restriction of ``min_variance_in_node``.
+
+### Removed
+- Obsolete limitation note about `DistanceRandomForestLCA` + `ClusteringClara`
+  inconsistency: the underlying issue is now fixed.
+- Module-level shims `_calculate_inertia` and `_asign_labels` in
+  `fgclustering/clustering.py` (not part of the public API).
+- Tutorial ``tutorials/inner_node_proximity_strategies.ipynb`` (superseded by
+  ``special_case_tree_pruning_with_FGC.ipynb``).
+- Tutorial ``tutorials/special_case_impact_of_model_complexity_on_FGC.ipynb``
+  and corresponding Sphinx nblink.
 
 ### Fixed
+- `plot_heatmap_classification` now uses ``color_spec["color_target_cat"]`` instead
+  of ``color_spec["color_target"]`` for categorical target palettes (static and
+  interactive modes).
 - Error message in `DistanceRandomForestProximity.__init__` for negative
-  `min_node_variance` values now correctly references `min_node_variance` (it
-  had still used the pre-rename parameter name after the rename).
-- CHANGELOG `[Unreleased]` "Changed" block consistency: stale references to
-  the pre-rename parameter name replaced with the post-rename name
-  `min_node_variance`.
+  `min_variance_in_node` values now correctly references `min_variance_in_node`
+  (it had still used an outdated parameter name after earlier renames).
+- CHANGELOG `[Unreleased]` consistency: stale references to outdated parameter
+  names (`max_node_variance`, `min_node_variance`) replaced with
+  `min_variance_in_node`.
 
 ### Added (PR-A hygiene)
-- `test_min_node_variance_friedman_mse_emits_warning_and_proceeds` — regression
+- `test_min_variance_in_node_friedman_mse_emits_warning_and_proceeds` — regression
   test that `criterion="friedman_mse"` is accepted with a `UserWarning` and that
-  `calculate_terminals` completes normally afterwards.
+  `calculate_forest_encoding` completes normally afterwards.
 
 ### Changed (PR-A hygiene)
-- `test_min_node_variance_rejects_absolute_error_criterion` now asserts the
+- `test_min_variance_in_node_rejects_absolute_error_criterion` now asserts the
   error message names both supported criteria (`squared_error`, `friedman_mse`)
   to give users an actionable hint, mirroring the existing
-  `test_min_node_variance_rejects_classifier` style.
-- Docstring of `test_min_node_variance_zero_matches_baseline` clarified to
+  `test_min_variance_in_node_rejects_classifier` style.
+- Docstring of `test_min_variance_in_node_zero_matches_baseline` clarified to
   reflect the bottom-up pruning semantics (every node has variance ≥ 0, so
   nothing is pruned at θ=0).
 
@@ -123,7 +174,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DistanceRandomForestProximity` and `DistanceRandomForestLCA`. Holds the
   memmap configuration, the `terminals` attribute, the
   `_allocate_distance_matrix` helper, and the `remove_distance_matrix`
-  cleanup logic, and declares `calculate_terminals` and
+  cleanup logic, and declares `calculate_forest_encoding` and
   `calculate_distance_matrix` as `@abstractmethod` so that the public
   `DistanceRandomForestBase` type used in `clustering_distance_metric` /
   `distance_metric` parameters is type-safe (static type checkers see the
@@ -209,14 +260,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `fgclustering/distance.py`: minor docstring/formatting polish in
   `DistanceRandomForestBase` (wording "consumers" → "users"; a few short
   one-liners no longer artificially line-wrapped). No behavior change.
-
-### Known limitations
-- `DistanceRandomForestLCA` paired with `ClusteringClara` is not fully LCA-consistent
-  end-to-end. While CLARA uses `calculate_distance_matrix` during medoid search,
-  internal kernels in `fgclustering/clustering.py` still read `self.terminals`
-  directly, including candidate evaluation/subsample-selection
-  (`_calculate_inertia`) and final label assignment (`_asign_labels`). As a result,
-  candidate medoid scoring and the final output labels are still influenced by
-  terminal-node proximity rather than the LCA metric alone. `ClusteringKMedoids` is
-  fully consistent with the LCA metric. Abstracting those kernels onto the distance
-  class is tracked as a follow-up.

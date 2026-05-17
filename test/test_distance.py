@@ -20,7 +20,7 @@ from fgclustering.distance import (
     DistanceWasserstein,
     DistanceJensenShannon,
     _build_leaf_to_ancestor_map,
-    _calculate_lca_distances,
+    _calculate_distance_lca,
     _compute_node_depths,
     _compute_parent_array,
     _validate_mutually_exclusive,
@@ -118,15 +118,15 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         except OSError:
             pass
 
-    def test_calculate_terminals(self):
+    def test_calculate_forest_encoding(self):
         dist = DistanceRandomForestProximity()
-        dist.calculate_terminals(estimator=self.model_clas, X=self.X_clas)
+        dist.calculate_forest_encoding(estimator=self.model_clas, X=self.X_clas)
         self.assertIsNotNone(dist.terminals)
         self.assertEqual(dist.terminals.shape[0], self.X_clas.shape[0])
 
     def test_calculate_distance_matrix_non_memory_efficient(self):
         dist = DistanceRandomForestProximity(memory_efficient=False)
-        dist.calculate_terminals(estimator=self.model_clas, X=self.X_clas)
+        dist.calculate_forest_encoding(estimator=self.model_clas, X=self.X_clas)
         matrix, file = dist.calculate_distance_matrix(sample_indices=None)
         self.assertEqual(matrix.shape[0], matrix.shape[1])
         self.assertEqual(matrix.shape[0], len(self.X_clas))
@@ -136,7 +136,7 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
 
     def test_calculate_distance_matrix_memory_efficient(self):
         dist = DistanceRandomForestProximity(memory_efficient=True, dir_distance_matrix=self.tmp_path)
-        dist.calculate_terminals(estimator=self.model_clas, X=self.X_clas)
+        dist.calculate_forest_encoding(estimator=self.model_clas, X=self.X_clas)
         matrix, file = dist.calculate_distance_matrix(sample_indices=None)
         self.assertTrue(isinstance(matrix, np.memmap))
         self.assertEqual(matrix.shape[0], matrix.shape[1])
@@ -155,7 +155,7 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
 
     def test_calculate_distance_matrix_with_sample_indices(self):
         dist = DistanceRandomForestProximity(memory_efficient=False)
-        dist.calculate_terminals(estimator=self.model_clas, X=self.X_clas)
+        dist.calculate_forest_encoding(estimator=self.model_clas, X=self.X_clas)
         sample_indices = np.random.choice(len(self.X_clas), size=20, replace=False)
         matrix, file = dist.calculate_distance_matrix(sample_indices=sample_indices)
         self.assertEqual(matrix.shape, (20, 20))
@@ -163,11 +163,11 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
     def test_min_samples_in_node_none_matches_baseline(self):
         """Default behavior (min_samples_in_node=None) must match pre-feature output."""
         dist_baseline = DistanceRandomForestProximity()
-        dist_baseline.calculate_terminals(estimator=self.model_clas, X=self.X_clas)
+        dist_baseline.calculate_forest_encoding(estimator=self.model_clas, X=self.X_clas)
         baseline_matrix, _ = dist_baseline.calculate_distance_matrix(sample_indices=None)
 
         dist_new = DistanceRandomForestProximity(min_samples_in_node=None)
-        dist_new.calculate_terminals(estimator=self.model_clas, X=self.X_clas)
+        dist_new.calculate_forest_encoding(estimator=self.model_clas, X=self.X_clas)
         new_matrix, _ = dist_new.calculate_distance_matrix(sample_indices=None)
 
         np.testing.assert_array_equal(baseline_matrix, new_matrix)
@@ -175,21 +175,21 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
     def test_min_samples_in_node_one_matches_baseline(self):
         """A threshold of 1 must be a no-op: every leaf already has >=1 sample."""
         dist_baseline = DistanceRandomForestProximity()
-        dist_baseline.calculate_terminals(estimator=self.model_clas, X=self.X_clas)
+        dist_baseline.calculate_forest_encoding(estimator=self.model_clas, X=self.X_clas)
         baseline_matrix, _ = dist_baseline.calculate_distance_matrix(sample_indices=None)
 
         dist_new = DistanceRandomForestProximity(min_samples_in_node=1)
-        dist_new.calculate_terminals(estimator=self.model_clas, X=self.X_clas)
+        dist_new.calculate_forest_encoding(estimator=self.model_clas, X=self.X_clas)
         new_matrix, _ = dist_new.calculate_distance_matrix(sample_indices=None)
 
         np.testing.assert_array_equal(baseline_matrix, new_matrix)
 
         baseline = DistanceRandomForestProximity()
-        baseline.calculate_terminals(estimator=self.model_reg_squared, X=self.X_reg_squared)
+        baseline.calculate_forest_encoding(estimator=self.model_reg_squared, X=self.X_reg_squared)
         bm, _ = baseline.calculate_distance_matrix(sample_indices=None)
 
         new = DistanceRandomForestProximity(min_samples_in_node=1)
-        new.calculate_terminals(estimator=self.model_reg_squared, X=self.X_reg_squared)
+        new.calculate_forest_encoding(estimator=self.model_reg_squared, X=self.X_reg_squared)
         nm, _ = new.calculate_distance_matrix(sample_indices=None)
         np.testing.assert_array_equal(bm, nm)
 
@@ -197,7 +197,7 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         """A threshold larger than any node forces every leaf to the root -> all zeros."""
         huge = 10 * len(self.X_clas)
         dist = DistanceRandomForestProximity(min_samples_in_node=huge)
-        dist.calculate_terminals(estimator=self.model_clas, X=self.X_clas)
+        dist.calculate_forest_encoding(estimator=self.model_clas, X=self.X_clas)
         matrix, _ = dist.calculate_distance_matrix(sample_indices=None)
         self.assertTrue(np.all(matrix == 0.0))
 
@@ -211,7 +211,7 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
     def test_min_samples_in_node_preserves_shape_and_symmetry(self):
         """Collapsed matrix keeps the symmetric / zero-diagonal contract."""
         dist = DistanceRandomForestProximity(min_samples_in_node=5)
-        dist.calculate_terminals(estimator=self.model_clas, X=self.X_clas)
+        dist.calculate_forest_encoding(estimator=self.model_clas, X=self.X_clas)
         matrix, _ = dist.calculate_distance_matrix(sample_indices=None)
         self.assertEqual(matrix.shape, (len(self.X_clas), len(self.X_clas)))
         self.assertTrue(np.allclose(matrix, matrix.T))
@@ -220,11 +220,11 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
     def test_max_depth_for_proximity_none_matches_baseline(self):
         """Default behavior (max_depth_for_proximity=None) must match pre-feature output."""
         dist_baseline = DistanceRandomForestProximity()
-        dist_baseline.calculate_terminals(estimator=self.model_clas, X=self.X_clas)
+        dist_baseline.calculate_forest_encoding(estimator=self.model_clas, X=self.X_clas)
         baseline_matrix, _ = dist_baseline.calculate_distance_matrix(sample_indices=None)
 
         dist_new = DistanceRandomForestProximity(max_depth_for_proximity=None)
-        dist_new.calculate_terminals(estimator=self.model_clas, X=self.X_clas)
+        dist_new.calculate_forest_encoding(estimator=self.model_clas, X=self.X_clas)
         new_matrix, _ = dist_new.calculate_distance_matrix(sample_indices=None)
 
         np.testing.assert_array_equal(baseline_matrix, new_matrix)
@@ -232,28 +232,28 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
     def test_max_depth_for_proximity_zero_collapses_to_root(self):
         """A threshold of 0 forces every leaf to the root -> distance matrix is all zeros."""
         dist = DistanceRandomForestProximity(max_depth_for_proximity=0)
-        dist.calculate_terminals(estimator=self.model_clas, X=self.X_clas)
+        dist.calculate_forest_encoding(estimator=self.model_clas, X=self.X_clas)
         matrix, _ = dist.calculate_distance_matrix(sample_indices=None)
         self.assertTrue(np.all(matrix == 0.0))
 
     def test_max_depth_for_proximity_large_matches_baseline(self):
         """A very large threshold leaves every leaf untouched -> identical to baseline."""
         dist_baseline = DistanceRandomForestProximity()
-        dist_baseline.calculate_terminals(estimator=self.model_clas, X=self.X_clas)
+        dist_baseline.calculate_forest_encoding(estimator=self.model_clas, X=self.X_clas)
         baseline_matrix, _ = dist_baseline.calculate_distance_matrix(sample_indices=None)
 
         dist_new = DistanceRandomForestProximity(max_depth_for_proximity=10_000)
-        dist_new.calculate_terminals(estimator=self.model_clas, X=self.X_clas)
+        dist_new.calculate_forest_encoding(estimator=self.model_clas, X=self.X_clas)
         new_matrix, _ = dist_new.calculate_distance_matrix(sample_indices=None)
 
         np.testing.assert_array_equal(baseline_matrix, new_matrix)
 
         baseline = DistanceRandomForestProximity()
-        baseline.calculate_terminals(estimator=self.model_reg_squared, X=self.X_reg_squared)
+        baseline.calculate_forest_encoding(estimator=self.model_reg_squared, X=self.X_reg_squared)
         bm, _ = baseline.calculate_distance_matrix(sample_indices=None)
 
         new = DistanceRandomForestProximity(max_depth_for_proximity=10_000)
-        new.calculate_terminals(estimator=self.model_reg_squared, X=self.X_reg_squared)
+        new.calculate_forest_encoding(estimator=self.model_reg_squared, X=self.X_reg_squared)
         nm, _ = new.calculate_distance_matrix(sample_indices=None)
 
         np.testing.assert_array_equal(bm, nm)
@@ -267,40 +267,40 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
     def test_max_depth_for_proximity_preserves_shape_and_symmetry(self):
         """Collapsed matrix keeps the symmetric / zero-diagonal contract."""
         dist = DistanceRandomForestProximity(max_depth_for_proximity=3)
-        dist.calculate_terminals(estimator=self.model_clas, X=self.X_clas)
+        dist.calculate_forest_encoding(estimator=self.model_clas, X=self.X_clas)
         matrix, _ = dist.calculate_distance_matrix(sample_indices=None)
         self.assertEqual(matrix.shape, (len(self.X_clas), len(self.X_clas)))
         self.assertTrue(np.allclose(matrix, matrix.T))
         self.assertTrue(np.all(np.diag(matrix) == 0))
 
-    def test_min_node_variance_none_matches_baseline(self):
-        """Default behavior (min_node_variance=None) on a regressor matches baseline."""
+    def test_min_variance_in_node_none_matches_baseline(self):
+        """Default behavior (min_variance_in_node=None) on a regressor matches baseline."""
         dist_baseline = DistanceRandomForestProximity()
-        dist_baseline.calculate_terminals(estimator=self.model_reg_squared, X=self.X_reg_squared)
+        dist_baseline.calculate_forest_encoding(estimator=self.model_reg_squared, X=self.X_reg_squared)
         baseline_matrix, _ = dist_baseline.calculate_distance_matrix(sample_indices=None)
 
-        dist_new = DistanceRandomForestProximity(min_node_variance=None)
-        dist_new.calculate_terminals(estimator=self.model_reg_squared, X=self.X_reg_squared)
+        dist_new = DistanceRandomForestProximity(min_variance_in_node=None)
+        dist_new.calculate_forest_encoding(estimator=self.model_reg_squared, X=self.X_reg_squared)
         new_matrix, _ = dist_new.calculate_distance_matrix(sample_indices=None)
 
         np.testing.assert_array_equal(baseline_matrix, new_matrix)
 
-    def test_min_node_variance_zero_matches_baseline(self):
-        """`min_node_variance=0` prunes nothing (every node has impurity >= 0) -> baseline."""
+    def test_min_variance_in_node_zero_matches_baseline(self):
+        """`min_variance_in_node=0` prunes nothing (every node has impurity >= 0) -> baseline."""
         dist_baseline = DistanceRandomForestProximity()
-        dist_baseline.calculate_terminals(estimator=self.model_reg_squared, X=self.X_reg_squared)
+        dist_baseline.calculate_forest_encoding(estimator=self.model_reg_squared, X=self.X_reg_squared)
         baseline_matrix, _ = dist_baseline.calculate_distance_matrix(sample_indices=None)
 
-        dist_new = DistanceRandomForestProximity(min_node_variance=0.0)
-        dist_new.calculate_terminals(estimator=self.model_reg_squared, X=self.X_reg_squared)
+        dist_new = DistanceRandomForestProximity(min_variance_in_node=0.0)
+        dist_new.calculate_forest_encoding(estimator=self.model_reg_squared, X=self.X_reg_squared)
         new_matrix, _ = dist_new.calculate_distance_matrix(sample_indices=None)
 
         np.testing.assert_array_equal(baseline_matrix, new_matrix)
 
-    def test_min_node_variance_large_collapses_to_root(self):
+    def test_min_variance_in_node_large_collapses_to_root(self):
         """A very large variance threshold collapses any leaf to the root."""
-        dist = DistanceRandomForestProximity(min_node_variance=10_000.0)
-        dist.calculate_terminals(estimator=self.model_reg_squared, X=self.X_reg_squared)
+        dist = DistanceRandomForestProximity(min_variance_in_node=10_000.0)
+        dist.calculate_forest_encoding(estimator=self.model_reg_squared, X=self.X_reg_squared)
         matrix, _ = dist.calculate_distance_matrix(sample_indices=None)
         self.assertEqual(matrix.shape, (len(self.X_reg_squared), len(self.X_reg_squared)))
         self.assertTrue(np.allclose(matrix, matrix.T))
@@ -308,45 +308,45 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         self.assertGreaterEqual(matrix.min(), 0.0 - 1e-6)
         self.assertLessEqual(matrix.max(), 1.0 + 1e-6)
 
-    def test_min_node_variance_rejects_classifier(self):
-        """Using min_node_variance with a classifier raises ValueError at calculate_terminals."""
-        dist = DistanceRandomForestProximity(min_node_variance=1.0)
+    def test_min_variance_in_node_rejects_classifier(self):
+        """Using min_variance_in_node with a classifier raises ValueError at calculate_forest_encoding."""
+        dist = DistanceRandomForestProximity(min_variance_in_node=1.0)
         with self.assertRaises(ValueError) as ctx:
-            dist.calculate_terminals(estimator=self.model_clas, X=self.X_clas)
+            dist.calculate_forest_encoding(estimator=self.model_clas, X=self.X_clas)
         self.assertIn("RandomForestRegressor", str(ctx.exception))
 
-    def test_min_node_variance_rejects_absolute_error_criterion(self):
-        """Using min_node_variance with criterion 'absolute_error' raises ValueError."""
-        dist = DistanceRandomForestProximity(min_node_variance=1.0)
+    def test_min_variance_in_node_rejects_absolute_error_criterion(self):
+        """Using min_variance_in_node with criterion 'absolute_error' raises ValueError."""
+        dist = DistanceRandomForestProximity(min_variance_in_node=1.0)
         with self.assertRaises(ValueError) as ctx:
-            dist.calculate_terminals(estimator=self.model_reg_absolute, X=self.X_reg_absolute)
+            dist.calculate_forest_encoding(estimator=self.model_reg_absolute, X=self.X_reg_absolute)
         self.assertIn("squared_error", str(ctx.exception))
         self.assertIn("friedman_mse", str(ctx.exception))
 
-    def test_min_node_variance_invalid_raises(self):
+    def test_min_variance_in_node_invalid_raises(self):
         """Negative thresholds are rejected at construction; 0 is allowed."""
         with self.assertRaises(ValueError):
-            DistanceRandomForestProximity(min_node_variance=-0.5)
-        DistanceRandomForestProximity(min_node_variance=0.0)
+            DistanceRandomForestProximity(min_variance_in_node=-0.5)
+        DistanceRandomForestProximity(min_variance_in_node=0.0)
 
-    def test_min_node_variance_preserves_shape_and_symmetry(self):
+    def test_min_variance_in_node_preserves_shape_and_symmetry(self):
         """Collapsed matrix keeps the symmetric / zero-diagonal contract on a regressor."""
-        dist = DistanceRandomForestProximity(min_node_variance=0.5)
-        dist.calculate_terminals(estimator=self.model_reg_squared, X=self.X_reg_squared)
+        dist = DistanceRandomForestProximity(min_variance_in_node=0.5)
+        dist.calculate_forest_encoding(estimator=self.model_reg_squared, X=self.X_reg_squared)
         matrix, _ = dist.calculate_distance_matrix(sample_indices=None)
         self.assertEqual(matrix.shape, (len(self.X_reg_squared), len(self.X_reg_squared)))
         self.assertTrue(np.allclose(matrix, matrix.T))
         self.assertTrue(np.all(np.diag(matrix) == 0))
 
-    def test_min_node_variance_friedman_mse_emits_warning_and_proceeds(self):
-        """Using min_node_variance with criterion='friedman_mse' must warn and complete."""
+    def test_min_variance_in_node_friedman_mse_emits_warning_and_proceeds(self):
+        """Using min_variance_in_node with criterion='friedman_mse' must warn and complete."""
         import warnings
 
-        dist = DistanceRandomForestProximity(min_node_variance=1.0)
+        dist = DistanceRandomForestProximity(min_variance_in_node=1.0)
 
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            dist.calculate_terminals(estimator=self.model_reg_friedman, X=self.X_reg_friedman)
+            dist.calculate_forest_encoding(estimator=self.model_reg_friedman, X=self.X_reg_friedman)
 
         matched = [
             w for w in caught if issubclass(w.category, UserWarning) and "friedman_mse" in str(w.message)
@@ -365,13 +365,13 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
         with self.assertRaises(ValueError):
             DistanceRandomForestProximity(min_samples_in_node=5, max_depth_for_proximity=3)
 
-    def test_min_samples_mutually_exclusive_with_min_node_variance(self):
+    def test_min_samples_mutually_exclusive_with_min_variance_in_node(self):
         with self.assertRaises(ValueError):
-            DistanceRandomForestProximity(min_samples_in_node=5, min_node_variance=1.0)
+            DistanceRandomForestProximity(min_samples_in_node=5, min_variance_in_node=1.0)
 
-    def test_max_depth_mutually_exclusive_with_min_node_variance(self):
+    def test_max_depth_mutually_exclusive_with_min_variance_in_node(self):
         with self.assertRaises(ValueError):
-            DistanceRandomForestProximity(max_depth_for_proximity=3, min_node_variance=1.0)
+            DistanceRandomForestProximity(max_depth_for_proximity=3, min_variance_in_node=1.0)
 
     def test_all_three_mutually_exclusive(self):
         """Setting any two of the three collapse params at once must raise."""
@@ -379,7 +379,7 @@ class TestDistanceRandomForestProximity(unittest.TestCase):
             DistanceRandomForestProximity(
                 min_samples_in_node=5,
                 max_depth_for_proximity=3,
-                min_node_variance=1.0,
+                min_variance_in_node=1.0,
             )
 
 
@@ -403,13 +403,14 @@ class TestDistanceRandomForestLCA(unittest.TestCase):
         except OSError:
             pass
 
-    def test_calculate_terminals_populates_state(self):
+    def test_calculate_forest_encoding_populates_state(self):
+        terminals = self.model_reg.apply(self.X_reg).astype(np.int32)
+
         dist = DistanceRandomForestLCA()
-        dist.calculate_terminals(estimator=self.model_reg, X=self.X_reg)
-        self.assertIsNotNone(dist.terminals)
+        dist.calculate_forest_encoding(estimator=self.model_reg, X=self.X_reg)
         self.assertIsNotNone(dist.paths)
         self.assertIsNotNone(dist.path_lens)
-        self.assertEqual(dist.terminals.shape, (len(self.X_reg), self.model_reg.n_estimators))
+        self.assertEqual(terminals.shape, (len(self.X_reg), self.model_reg.n_estimators))
         self.assertEqual(dist.paths.shape[0], len(self.X_reg))
         self.assertEqual(dist.paths.shape[1], self.model_reg.n_estimators)
         self.assertEqual(dist.path_lens.shape, (len(self.X_reg), self.model_reg.n_estimators))
@@ -417,33 +418,25 @@ class TestDistanceRandomForestLCA(unittest.TestCase):
         for t, dt in enumerate(self.model_reg.estimators_):
             tree = dt.tree_
             depths = _compute_node_depths(tree)
-            expected_lens = depths[dist.terminals[:, t]] + 1
+            expected_lens = depths[terminals[:, t]] + 1
             np.testing.assert_array_equal(dist.path_lens[:, t], expected_lens)
 
     def test_calculate_distance_matrix_shape_symmetry_and_diagonal(self):
         dist = DistanceRandomForestLCA()
-        dist.calculate_terminals(estimator=self.model_reg, X=self.X_reg)
+        dist.calculate_forest_encoding(estimator=self.model_reg, X=self.X_reg)
         matrix, file = dist.calculate_distance_matrix(sample_indices=None)
         self.assertEqual(matrix.shape, (len(self.X_reg), len(self.X_reg)))
         self.assertTrue(np.allclose(matrix, matrix.T))
         self.assertTrue(np.all(np.diag(matrix) == 0))
         self.assertIsNone(file)
 
-    def test_same_leaf_samples_have_zero_distance(self):
-        """Samples that share the same leaf in every tree must have distance 0."""
-        dist = DistanceRandomForestLCA()
-        dist.calculate_terminals(estimator=self.model_reg, X=self.X_reg)
-        same_terminals = (dist.terminals[:, None, :] == dist.terminals[None, :, :]).all(axis=2)
-        matrix, _ = dist.calculate_distance_matrix(sample_indices=None)
-        self.assertTrue(np.all(matrix[same_terminals] == 0.0))
-
     def test_memory_efficient_memmap_path_matches_in_memory(self):
         d1 = DistanceRandomForestLCA(memory_efficient=False)
-        d1.calculate_terminals(estimator=self.model_reg, X=self.X_reg)
+        d1.calculate_forest_encoding(estimator=self.model_reg, X=self.X_reg)
         m1, _ = d1.calculate_distance_matrix(sample_indices=None)
 
         d2 = DistanceRandomForestLCA(memory_efficient=True, dir_distance_matrix=self.tmp_path)
-        d2.calculate_terminals(estimator=self.model_reg, X=self.X_reg)
+        d2.calculate_forest_encoding(estimator=self.model_reg, X=self.X_reg)
         m2, f2 = d2.calculate_distance_matrix(sample_indices=None)
 
         self.assertTrue(isinstance(m2, np.memmap))
@@ -464,7 +457,7 @@ class TestDistanceRandomForestLCA(unittest.TestCase):
 
     def test_sample_indices_slicing(self):
         dist = DistanceRandomForestLCA()
-        dist.calculate_terminals(estimator=self.model_reg, X=self.X_reg)
+        dist.calculate_forest_encoding(estimator=self.model_reg, X=self.X_reg)
         idx = np.random.RandomState(0).choice(len(self.X_reg), size=20, replace=False)
         matrix, _ = dist.calculate_distance_matrix(sample_indices=idx)
         self.assertEqual(matrix.shape, (20, 20))
@@ -481,7 +474,7 @@ class TestDistanceRandomForestLCA(unittest.TestCase):
                 paths_arr[idx, 0, : len(path)] = path
             lens_arr = np.array([[lens_list[0]], [lens_list[1]]], dtype=np.int32)
             out = np.zeros((2, 2), dtype=np.float32)
-            return _calculate_lca_distances(paths_arr, lens_arr, 2, n_trees, out)
+            return _calculate_distance_lca(paths_arr, lens_arr, 2, n_trees, out)
 
         case_a = run([[0, 1], [0, 1, 2]], [2, 3])
         case_b = run([[0, 1], [0, 1, 2, 3]], [2, 4])
@@ -496,17 +489,17 @@ class TestDistanceRandomForestLCA(unittest.TestCase):
         paths[1, 0, 0] = 0
         lens = np.ones((2, 1), dtype=np.int32)
         out = np.zeros((2, 2), dtype=np.float32)
-        result = _calculate_lca_distances(paths, lens, 2, 1, out)
+        result = _calculate_distance_lca(paths, lens, 2, 1, out)
         self.assertEqual(float(result[0, 1]), 0.0)
 
     def test_lca_distance_le_terminal_distance(self):
         """Per-pair invariant: LCA distance ≤ terminal-node distance."""
         proximity = DistanceRandomForestProximity()
-        proximity.calculate_terminals(estimator=self.model_reg, X=self.X_reg)
+        proximity.calculate_forest_encoding(estimator=self.model_reg, X=self.X_reg)
         pm, _ = proximity.calculate_distance_matrix(sample_indices=None)
 
         lca = DistanceRandomForestLCA()
-        lca.calculate_terminals(estimator=self.model_reg, X=self.X_reg)
+        lca.calculate_forest_encoding(estimator=self.model_reg, X=self.X_reg)
         lm, _ = lca.calculate_distance_matrix(sample_indices=None)
 
         self.assertTrue(np.all(np.asarray(lm) <= np.asarray(pm) + 1e-6))
@@ -575,7 +568,7 @@ class TestDistanceRandomForestBase(unittest.TestCase):
     def test_abstract_methods_are_marked(self):
         """Both interface methods must be exposed as abstract on the base class."""
         self.assertTrue(
-            getattr(DistanceRandomForestBase.calculate_terminals, "__isabstractmethod__", False)
+            getattr(DistanceRandomForestBase.calculate_forest_encoding, "__isabstractmethod__", False)
         )
         self.assertTrue(
             getattr(DistanceRandomForestBase.calculate_distance_matrix, "__isabstractmethod__", False)

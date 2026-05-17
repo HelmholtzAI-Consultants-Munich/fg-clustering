@@ -663,7 +663,7 @@ def plot_heatmap_classification(
     if heatmap_type == "static":
         # Get plotting settings
 
-        color_target_palette = sns.color_palette(color_spec["color_target"], n_colors=len(categories))
+        color_target_palette = sns.color_palette(color_spec["color_target_cat"], n_colors=len(categories))
         color_target = ListedColormap(color_target_palette)
         color_target.set_bad(
             color=color_spec["color_boundaries"], alpha=to_rgba(color_spec["color_boundaries"])[3]
@@ -713,7 +713,7 @@ def plot_heatmap_classification(
 
         color_target_palette_rgb = [
             f"rgb({int(r * 255)},{int(g * 255)},{int(b * 255)})"
-            for r, g, b in sns.color_palette(color_spec["color_target"], n_colors=len(categories))
+            for r, g, b in sns.color_palette(color_spec["color_target_cat"], n_colors=len(categories))
         ]
         color_target_legend = {i: color_target_palette_rgb[i] for i in range(len(categories))}
         colorscale_target = [

@@ -18,16 +18,18 @@ from .distance import DistanceJensenShannon, DistanceWasserstein
 
 class FeatureImportance:
     """
-    Quantify how strongly each feature distinguishes clusters from the full data distribution.
+    Compute feature importance from cluster-vs-background distribution shifts.
 
     For each feature and cluster, the configured distance metric compares the feature
-    distribution inside the cluster to the background distribution across all samples.
-    Scores are normalized within each cluster so the largest feature distance in a cluster
-    is 1. Local feature scores are then aggregated across clusters to obtain a global
-    importance ranking, which is also used to order feature columns in the returned
-    clustering table.
+    distribution within the cluster to the feature distribution across the full dataset.
+    These cluster-specific scores form the local feature importance matrix.
 
-    :param distance_metric: Distance metric used to compare cluster and background distributions.
+    Local scores are normalized within each cluster so that the largest feature distance is
+    ``1``. Global feature importance is computed as the mean local importance across
+    clusters and is used to rank feature columns in the returned clustering table.
+
+    :param distance_metric: Distance metric used to compare cluster and background feature
+        distributions.
     :type distance_metric: DistanceJensenShannon | DistanceWasserstein
     """
 
@@ -47,27 +49,29 @@ class FeatureImportance:
         verbose: int,
     ) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
         """
-        Compute local and global feature importance scores and return a ranked clustering table.
+        Calculate local and global feature importance.
 
-        The input data are combined into one clustering table consisting of feature columns,
-        ``target``, optional ``predicted_target``, and ``cluster`` labels. Local feature
-        importance is computed with :meth:`_calculate_cluster_distance`, and global feature
-        importance is obtained by averaging local importance values across clusters. The
-        returned clustering table is sorted by ``cluster``, ``target``, and optional
-        ``predicted_target``, with feature columns ordered by descending global importance.
+        The feature matrix, target values, optional predictions, and cluster labels are combined
+        into a clustering table. Local feature importance is computed as normalized
+        cluster-vs-background distances for each feature and cluster. Global feature importance
+        is the mean local importance across clusters.
+
+        The returned clustering table is sorted by ``cluster``, ``target``, and, if present,
+        ``predicted_target``. Feature columns are ordered by descending global importance.
 
         :param X: Feature matrix with one row per sample.
         :type X: pd.DataFrame
-        :param y: Target values aligned with the rows of ``X``.
+        :param y: Target values aligned with ``X``.
         :type y: pd.Series
-        :param y_pred: Optional predicted target values aligned with the rows of ``X``.
+        :param y_pred: Optional predicted target values aligned with ``X``.
         :type y_pred: pd.Series | None
-        :param cluster_labels: Cluster label assigned to each row of ``X``.
+        :param cluster_labels: Cluster labels aligned with ``X``.
         :type cluster_labels: np.ndarray
-        :param verbose: Verbosity level controlling the progress bar and skip messages.
+        :param verbose: Verbosity level for progress output.
         :type verbose: int
 
-        :return: Tuple containing local feature importance, global feature importance, and the ranked clustering table.
+        :return: Tuple containing local feature importance, global feature importance, and the
+            ranked clustering table.
         :rtype: tuple[pd.DataFrame, pd.Series, pd.DataFrame]
         """
         self.verbose = verbose
@@ -101,21 +105,26 @@ class FeatureImportance:
         cluster_labels: np.ndarray,
     ) -> pd.DataFrame:
         """
-        Compute feature-wise distances between each cluster distribution and the full background distribution.
+        Compute normalized feature distances for each cluster.
 
-        For each feature, the values within each cluster are compared against the full set of
-        background values using the configured distance metric. Categorical and numeric
-        features are detected automatically from their dtype. Features with zero variance are
-        skipped and filled with ``NaN``. If enabled by the distance metric, numeric feature
-        values are scaled before distance calculation. Distances are normalized within each
-        cluster so the maximum feature distance per cluster is 1.
+        Each feature distribution within a cluster is compared against the corresponding
+        background distribution across all samples using the configured distance metric.
+        Categorical and numeric features are detected from their dtype. Features with zero
+        variance are skipped and filled with ``NaN``.
 
-        :param X: Feature matrix without target or cluster columns.
+        If the distance metric enables feature scaling, numeric columns are scaled before
+        distances are computed. Distances are normalized independently for each cluster by the
+        maximum feature distance in that cluster.
+
+        :param X: Feature matrix without target, prediction, or cluster columns.
         :type X: pd.DataFrame
-        :param cluster_labels: Cluster label assigned to each row of ``X``.
+        :param cluster_labels: Cluster labels aligned with ``X``.
         :type cluster_labels: np.ndarray
 
-        :return: DataFrame of normalized feature importance scores with features as rows and clusters as columns.
+        :raises TypeError: If a feature dtype is not supported.
+
+        :return: Normalized feature-importance matrix with features as rows and clusters as
+            columns.
         :rtype: pd.DataFrame
         """
         clusters_unique = np.unique(cluster_labels)

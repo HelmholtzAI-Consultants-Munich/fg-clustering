@@ -103,7 +103,7 @@ class TestOptimizer(unittest.TestCase):
         model_type = RandomForestClassifier
         X, y, model = self._train_model(model_type=model_type)
 
-        self.distance_metric.calculate_terminals(estimator=model, X=X)
+        self.distance_metric.calculate_forest_encoding(estimator=model, X=X)
 
         results, best_k = self.optimizer.optimizeK(
             y=y,
@@ -126,7 +126,7 @@ class TestOptimizer(unittest.TestCase):
         model_type = RandomForestRegressor
         X, y, model = self._train_model(model_type=model_type)
 
-        self.distance_metric.calculate_terminals(estimator=model, X=X)
+        self.distance_metric.calculate_forest_encoding(estimator=model, X=X)
 
         results, best_k = self.optimizer.optimizeK(
             y=y,
@@ -147,7 +147,7 @@ class TestOptimizer(unittest.TestCase):
         model_type = RandomForestClassifier
         X, y, model = self._train_model(model_type=model_type)
 
-        self.distance_metric.calculate_terminals(estimator=model, X=X)
+        self.distance_metric.calculate_forest_encoding(estimator=model, X=X)
 
         results, best_k = self.optimizer.optimizeK(
             y=y,
