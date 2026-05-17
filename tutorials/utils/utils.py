@@ -63,13 +63,6 @@ def plot_correlation_matrix(data, figsize=(5, 5)):
     )
 
 
-from collections import Counter
-
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-
-
 def plot_cluster_size_distribution(fgc, k):
     # Count samples per cluster
     cluster_counts = Counter(fgc.cluster_labels[k])

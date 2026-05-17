@@ -85,7 +85,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   end-to-end.
 - The module-level numba functions `_calculate_inertia` / `_asign_labels` in
   `fgclustering/clustering.py` were moved to `fgclustering/distance.py`,
-  renamed to `_calculate_inertia_terminals` / `_assign_labels_terminals`, and
+  renamed to `_calculate_inertia_proximity` / `_assign_labels_proximity` (with
+  LCA-specific variants `_calculate_inertia_lca` / `_assign_labels_lca`), and
   are dispatched from `DistanceRandomForestBase`.
 - `DistanceRandomForestProximity.__init__` now accepts `min_samples_in_node` and
   validates it (must be >= 1 when not `None`).
