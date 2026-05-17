@@ -26,9 +26,8 @@
 
    _tutorials/introduction_to_FGC_use_cases
    _tutorials/introduction_to_FGC_comparing_FGC_to_FI
-   _tutorials/inner_node_proximity_strategies
    _tutorials/special_case_inference_with_FGC
-   _tutorials/special_case_impact_of_model_complexity_on_FGC
+   _tutorials/special_case_tree_pruning_with_FGC
    _tutorials/special_case_big_data_with_FGC
 
 

@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+from collections import Counter
 
 
 def plot_permutation_feature_importance(result, data, title, figsize=(5, 4)):
@@ -60,3 +61,49 @@ def plot_correlation_matrix(data, figsize=(5, 5)):
         ax=ax,
         annot=True,
     )
+
+
+from collections import Counter
+
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+
+def plot_cluster_size_distribution(fgc, k):
+    # Count samples per cluster
+    cluster_counts = Counter(fgc.cluster_labels[k])
+
+    # Convert to dataframe
+    df = pd.DataFrame(
+        {
+            "Cluster": [f"Cluster {c}" for c in cluster_counts.keys()],
+            "Count": list(cluster_counts.values()),
+        }
+    )
+
+    # Sort clusters numerically
+    df["ClusterID"] = [int(c.split()[-1]) for c in df["Cluster"]]
+    df = df.sort_values("ClusterID")
+
+    # Plot
+    plt.figure(figsize=(8, 4))
+
+    ax = sns.barplot(
+        data=df,
+        x="Cluster",
+        y="Count",
+        color="#7FA6C9",  # subtle muted blue
+    )
+
+    # Add counts above bars
+    for container in ax.containers:
+        ax.bar_label(container, fmt="%d")
+
+    plt.title(f"Cluster Size Distribution (k = {k})")
+    plt.ylabel("Number of Samples")
+    plt.xlabel("")
+
+    sns.despine()
+    plt.tight_layout()
+    plt.show()
