@@ -2,16 +2,12 @@
 # Imports
 ############################################
 
-import os
-import gc
 import kmedoids
 import numpy as np
 
-from numba import njit, prange
-
 from imblearn.under_sampling import RandomUnderSampler
 
-from .distance import DistanceRandomForestProximity
+from .distance import DistanceRandomForestBase
 from .utils import check_sub_sample_size, custom_round
 
 ############################################
@@ -21,20 +17,20 @@ from .utils import check_sub_sample_size, custom_round
 
 class ClusteringKMedoids:
     """
-    Cluster samples with the K-Medoids algorithm using Random Forest proximity-based distances.
+    K-Medoids clustering with precomputed Random-Forest-derived distances.
 
-    Pairwise distances are derived from precomputed Random Forest terminal node
-    assignments. The distance matrix for the requested samples is computed on demand,
-    which avoids requiring a permanently stored full distance matrix and supports
-    memory-efficient workflows.
+    This class clusters selected samples using a distance matrix computed on demand by a
+    ``DistanceRandomForestBase`` instance. The distance metric must already contain its
+    forest encoding, such as terminal-node assignments for proximity distances or decision
+    paths for LCA distances.
 
-    :param method: Optimization method used by the K-Medoids implementation.
+    :param method: Optimization method passed to ``kmedoids.KMedoids``.
     :type method: str
-    :param init: Initialization strategy used for selecting starting medoids.
+    :param init: Initialization strategy passed to ``kmedoids.KMedoids``.
     :type init: str
-    :param max_iter: Maximum number of K-Medoids update iterations.
+    :param max_iter: Maximum number of K-Medoids iterations.
     :type max_iter: int
-    :param random_state: Random seed used for reproducibility.
+    :param random_state: Random seed used for reproducible initialization.
     :type random_state: int
     """
 
@@ -55,36 +51,33 @@ class ClusteringKMedoids:
     def run_clustering(
         self,
         k: int,
-        distance_metric: DistanceRandomForestProximity,
+        distance_metric: DistanceRandomForestBase,
         sample_indices: np.ndarray,
         random_state_subsampling: int | None,
         verbose: int,
     ) -> np.ndarray:
         """
-        Run K-Medoids clustering on the selected samples using Random Forest proximity distances.
+        Cluster selected samples with K-Medoids.
 
-        The required distance matrix is computed from the precomputed terminal node
-        assignments stored in ``distance_metric``. The resulting labels are shifted to
-        one-based indexing before being returned.
+        A pairwise distance matrix is computed for ``sample_indices`` using
+        ``distance_metric`` and passed to ``kmedoids.KMedoids`` with
+        ``metric="precomputed"``. After fitting, the temporary distance matrix is released.
+        Returned labels use one-based indexing.
 
         :param k: Number of clusters.
         :type k: int
-        :param distance_metric: Distance metric object with precomputed Random Forest terminal nodes.
-        :type distance_metric: DistanceRandomForestProximity
-        :param sample_indices: Indices of the samples to cluster.
+        :param distance_metric: Distance metric with a precomputed forest encoding.
+        :type distance_metric: DistanceRandomForestBase
+        :param sample_indices: Indices of samples to cluster.
         :type sample_indices: np.ndarray
-        :param random_state_subsampling: Optional subsampling seed. Not used in this implementation.
+        :param random_state_subsampling: Optional subsampling seed. Not used by this
+            implementation.
         :type random_state_subsampling: int | None
-        :param verbose: Verbosity level. Not used in this implementation.
+        :param verbose: Verbosity level. Not used by this implementation.
         :type verbose: int
-
-        :raises ValueError: If terminal nodes have not been precomputed in ``distance_metric``.
-
-        :return: One-based cluster labels for the selected samples.
+        :return: One-based cluster labels for ``sample_indices``.
         :rtype: np.ndarray
         """
-        if distance_metric.terminals is None:
-            raise ValueError("Terminals need to be precomputed!")
         distance_matrix, file = distance_metric.calculate_distance_matrix(sample_indices=sample_indices)
 
         cluster_labels = (
@@ -107,27 +100,31 @@ class ClusteringKMedoids:
 
 class ClusteringClara:
     """
-    Cluster samples with the CLARA algorithm using Random Forest proximity-based distances.
+    CLARA clustering with precomputed Random-Forest-derived distances.
 
-    CLARA repeatedly draws subsamples, runs K-Medoids on each subsample, and selects the
-    medoid set with the best total inertia on the full input sample set. Distances are
-    computed on demand from precomputed Random Forest terminal node assignments, which
-    enables scalable clustering without requiring a full precomputed distance matrix in
-    memory.
+    CLARA approximates K-Medoids by repeatedly clustering subsamples, evaluating each
+    candidate medoid set on the full selected sample set, and retaining the medoids with the
+    lowest inertia. Final labels are assigned by the nearest retained medoid.
 
-    :param sub_sample_size: Number or proportion of samples drawn in each CLARA iteration, or ``None`` to choose an adaptive size.
+    Distances are computed on demand by a ``DistanceRandomForestBase`` instance, which allows
+    the same clustering logic to work with proximity-based and LCA-based Random Forest
+    distances.
+
+    :param sub_sample_size: Number of samples, fraction of samples, or ``None`` for an
+        adaptive CLARA subsample size.
     :type sub_sample_size: int | float | None
-    :param sampling_iter: Number of CLARA subsampling iterations, or ``None`` to choose it automatically.
+    :param sampling_iter: Number of CLARA subsampling iterations, or ``None`` to choose a
+        default based on the sample size.
     :type sampling_iter: int | None
-    :param sampling_target: Optional target values used for stratified subsampling.
+    :param sampling_target: Optional labels used for stratified subsampling.
     :type sampling_target: list | None
-    :param method: Optimization method used by the K-Medoids implementation.
+    :param method: Optimization method passed to ``kmedoids.KMedoids``.
     :type method: str
-    :param init: Initialization strategy used for selecting starting medoids.
+    :param init: Initialization strategy passed to ``kmedoids.KMedoids``.
     :type init: str
-    :param max_iter: Maximum number of K-Medoids update iterations.
+    :param max_iter: Maximum number of K-Medoids iterations per subsample.
     :type max_iter: int
-    :param random_state: Random seed used for reproducibility.
+    :param random_state: Random seed used for reproducible subsampling and initialization.
     :type random_state: int
     """
 
@@ -156,38 +153,39 @@ class ClusteringClara:
     def run_clustering(
         self,
         k: int,
-        distance_metric: DistanceRandomForestProximity,
+        distance_metric: DistanceRandomForestBase,
         sample_indices: np.ndarray,
         random_state_subsampling: int | None,
         verbose: int,
     ) -> np.ndarray:
         """
-        Run CLARA clustering on the selected samples using Random Forest proximity distances.
+        Cluster selected samples with the CLARA algorithm.
 
-        Repeated subsamples of the input sample set are drawn, K-Medoids is fit on each
-        subsample, and the medoid set with the lowest full-sample inertia is retained. Final
-        labels for all selected samples are then assigned according to the best medoids. The
-        returned labels use one-based indexing.
+        In each CLARA iteration, a subsample of ``sample_indices`` is selected and clustered
+        with K-Medoids using a precomputed distance matrix. The resulting medoids are scored
+        by computing their inertia over the full selected sample set. After all iterations,
+        labels are assigned to all selected samples using the best medoid set.
+
+        If ``sampling_target`` is provided, subsamples are drawn with stratification over the
+        target values corresponding to ``sample_indices``. Otherwise, samples are drawn
+        uniformly without replacement.
+
+        Returned labels use one-based indexing.
 
         :param k: Number of clusters.
         :type k: int
-        :param distance_metric: Distance metric object with precomputed Random Forest terminal nodes.
-        :type distance_metric: DistanceRandomForestProximity
-        :param sample_indices: Indices of the samples to cluster.
+        :param distance_metric: Distance metric with a precomputed forest encoding.
+        :type distance_metric: DistanceRandomForestBase
+        :param sample_indices: Indices of samples to cluster.
         :type sample_indices: np.ndarray
-        :param random_state_subsampling: Optional random seed controlling CLARA subsampling; if ``None``, the instance-level ``random_state`` is used.
+        :param random_state_subsampling: Optional random seed for CLARA subsampling. If
+            ``None``, the instance-level ``random_state`` is used.
         :type random_state_subsampling: int | None
-        :param verbose: Verbosity level controlling progress-related output from helper routines.
+        :param verbose: Verbosity level forwarded to subsample-size validation.
         :type verbose: int
-
-        :raises ValueError: If terminal nodes have not been precomputed in ``distance_metric``.
-
-        :return: One-based cluster labels for the selected samples.
+        :return: One-based cluster labels for ``sample_indices``.
         :rtype: np.ndarray
         """
-        if distance_metric.terminals is None:
-            raise ValueError("Terminals need to be precomputed!")
-
         # the input sample indices, aren't neccesarily indices from 1 to n
         # but can be subsampled already in the JI bootstrap, hence we need to
         # define a new index mapping for the potentially subsampled input indices
@@ -260,8 +258,8 @@ class ClusteringClara:
 
             # retrieve the calculated medoids and use to calculate inertia score
             sub_sample_medoids_idxs = sub_sample_indices[kmedoids_subsample.medoid_indices_]
-            sub_sample_score = _calculate_inertia(
-                distance_metric.terminals, sample_indices, sample_indices[sub_sample_medoids_idxs]
+            sub_sample_score = distance_metric.compute_inertia(
+                sample_indices, sample_indices[sub_sample_medoids_idxs]
             )
 
             # update if score is better
@@ -270,104 +268,6 @@ class ClusteringClara:
                 best_medoids_idxs = sub_sample_medoids_idxs
 
         # assign labels to the rest of the data when best medoids are found
-        cluster_labels = _asign_labels(
-            distance_metric.terminals, sample_indices, sample_indices[best_medoids_idxs]
-        )
+        cluster_labels = distance_metric.assign_labels(sample_indices, sample_indices[best_medoids_idxs])
 
         return cluster_labels + 1
-
-
-############################################
-# Numba Functions
-############################################
-
-
-@njit(parallel=True)
-def _calculate_inertia(
-    terminals: np.ndarray,
-    sample_idx: np.ndarray,
-    medoids_idx: np.ndarray,
-) -> float:
-    """
-    Compute the total inertia of a sample set with respect to a given set of medoids.
-
-    For each sample, the distance to the closest medoid is computed from Random Forest
-    terminal node proximity, and these minimum distances are summed across all samples.
-
-    :param terminals: Array of terminal node assignments with shape ``(n_samples, n_estimators)``.
-    :type terminals: np.ndarray
-    :param sample_idx: Indices of the samples whose inertia is evaluated.
-    :type sample_idx: np.ndarray
-    :param medoids_idx: Indices of the medoid samples.
-    :type medoids_idx: np.ndarray
-
-    :return: Total inertia of the sample set.
-    :rtype: float
-    """
-    n_estimators = terminals.shape[1]
-    n_samples = len(sample_idx)
-    n_medoids = len(medoids_idx)
-    inertia = np.zeros(n_samples)
-
-    for i in prange(n_samples):
-        sample = sample_idx[i]
-        distances = np.empty(n_medoids, dtype=np.float32)
-
-        for j in range(n_medoids):
-            medoid = medoids_idx[j]
-            # use explicit loop for proximity to avoid temporary array allocation and minimize memory traffic
-            proximity = 0
-            for t in range(n_estimators):
-                if terminals[sample, t] == terminals[medoid, t]:
-                    proximity += 1
-            distances[j] = 1.0 - (proximity / n_estimators)
-
-        inertia[i] = np.min(distances)
-
-    return np.sum(inertia)
-
-
-@njit(parallel=True)
-def _asign_labels(
-    terminals: np.ndarray,
-    sample_idx: np.ndarray,
-    medoids_idx: np.ndarray,
-) -> np.ndarray:
-    """
-    Assign each sample to the nearest medoid using Random Forest proximity-based distances.
-
-    For every sample in ``sample_idx``, the distance to each medoid is computed from the
-    terminal node assignments, and the label of the closest medoid is returned using
-    zero-based indexing.
-
-    :param terminals: Array of terminal node assignments with shape ``(n_samples, n_estimators)``.
-    :type terminals: np.ndarray
-    :param sample_idx: Indices of the samples to assign.
-    :type sample_idx: np.ndarray
-    :param medoids_idx: Indices of the medoid samples.
-    :type medoids_idx: np.ndarray
-
-    :return: Zero-based cluster labels for the input samples.
-    :rtype: np.ndarray
-    """
-    n_estimators = terminals.shape[1]
-    n_samples = len(sample_idx)
-    n_medoids = len(medoids_idx)
-    cluster_labels = np.zeros(n_samples, dtype=np.int16)
-
-    for i in prange(n_samples):
-        sample = sample_idx[i]
-        cluster_label_sample = np.zeros(n_medoids, dtype=np.float32)
-
-        for j in range(n_medoids):
-            medoid = medoids_idx[j]
-            # use explicit loop for proximity to avoid temporary array allocation and minimize memory traffic
-            proximity = 0
-            for t in range(n_estimators):
-                if terminals[sample, t] == terminals[medoid, t]:
-                    proximity += 1
-            cluster_label_sample[j] = 1.0 - (proximity / n_estimators)
-
-        cluster_labels[i] = np.argmin(cluster_label_sample)
-
-    return cluster_labels

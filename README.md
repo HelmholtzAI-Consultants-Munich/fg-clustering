@@ -92,10 +92,6 @@ Installation from source:
 		pip install .   
 
 
-- Development Installation as python package (run inside directory):
-
-		pip install -e .
-
 <!-- LINK INSTALLATION END -->
 
 ## 💻 How to Use Forest-Guided Clustering
@@ -107,14 +103,18 @@ Installation from source:
 To apply Forest-Guided Clustering (FGC) for explaining a Random Forest model, you can follow the simple workflow consisting of three main steps: computing the forest-guided clusters, evaluating feature importance, and visualizing the results.
 
 ```python
+# for classification tasks
+clustering_distance_metric = DistanceRandomForestProximity()
+# for regression tasks
+clustering_distance_metric = DistanceRandomForestLCA()
+
 # compute the forest-guided clusters
 fgc = forest_guided_clustering(
     estimator=model, 
     X=X, 
     y=y, 
-    clustering_distance_metric=DistanceRandomForestProximity(), 
+    clustering_distance_metric=clustering_distance_metric, 
     clustering_strategy=ClusteringKMedoids(),
-    random_state=42,
 )
 
 # evaluate feature importance for best k
@@ -136,7 +136,7 @@ plot_forest_guided_clustering(
 
 plot_forest_guided_feature_importance(
     feature_importance_local=fgc_fi.feature_importance_local,
-    feature_importance_global=fgc_fi.feature_importance_global
+    feature_importance_global=fgc_fi.feature_importance_global,
 )
 
 plot_forest_guided_decision_paths(
@@ -152,7 +152,7 @@ where
 - `X` is the feature matrix
 - `y` is the target variable
 - `clustering_distance_metric` defines how similarity between samples is measured based on the Random Forest structure
-- `clustering_strategy` determines how the proximity-based clustering is performed 
+- `clustering_strategy` determines how the distance-based clustering is performed 
 
 For a detailed walkthrough, refer to the [Introduction to FGC: Simple Use Cases](https://github.com/HelmholtzAI-Consultants-Munich/fg-clustering/blob/main/tutorials/introduction_to_FGC_use_cases.ipynb) notebook.
 

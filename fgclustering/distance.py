@@ -6,10 +6,13 @@ import os
 import gc
 import time
 import uuid
+import warnings
 import numpy as np
 import pandas as pd
 
+from abc import ABC, abstractmethod
 from numba import njit, prange
+from typing import Callable
 
 from scipy.stats import wasserstein_distance
 from scipy.spatial.distance import jensenshannon
@@ -23,18 +26,28 @@ from .utils import check_disk_space
 ############################################
 
 
-class DistanceRandomForestProximity:
+class DistanceRandomForestBase(ABC):
     """
-    Compute a proximity-based distance matrix from the terminal nodes of a trained Random Forest model.
+    Base class for Random-Forest-based distance metrics used in forest-guided clustering.
 
-    Sample similarity is derived from how often two samples end in the same terminal node
-    across trees. Distances are defined as one minus this proximity. The distance matrix
-    can be computed fully in memory or stored in a disk-backed memmap array for
-    memory-efficient operation.
+    This class defines the shared interface for metrics that derive pairwise sample
+    distances from the structure of a fitted random forest. It provides utilities for
+    allocating distance matrices either in memory or as disk-backed memmap arrays, and
+    for safely removing memmap-backed matrices after use.
 
-    :param memory_efficient: Whether to store the distance matrix in a disk-backed memmap array.
+    Subclasses are responsible for building the forest-derived sample encoding and for
+    implementing the actual distance computation. Typical implementations include
+    proximity-based distances using terminal leaf agreement and LCA-based distances using
+    root-to-leaf path information.
+
+    This class is abstract and must not be instantiated directly. Use a concrete subclass
+    such as ``DistanceRandomForestProximity`` or ``DistanceRandomForestLCA``.
+
+    :param memory_efficient: If ``True``, store distance matrices as disk-backed memmap
+        arrays instead of dense arrays in memory.
     :type memory_efficient: bool
-    :param dir_distance_matrix: Directory used to store the memmap distance matrix when ``memory_efficient=True``.
+    :param dir_distance_matrix: Directory used for memmap-backed distance matrices. Required
+        when ``memory_efficient=True``.
     :type dir_distance_matrix: str | None
     """
 
@@ -43,87 +56,152 @@ class DistanceRandomForestProximity:
         memory_efficient: bool = False,
         dir_distance_matrix: str | None = None,
     ) -> None:
-        """Constructor for the DistanceRandomForestProximity class."""
-        if memory_efficient:
-            if dir_distance_matrix is None:
-                raise ValueError("You must specify `dir_distance_matrix` when `memory_efficient=True`.")
+        """Constructor for the DistanceRandomForestBase class."""
+        if memory_efficient and dir_distance_matrix is None:
+            raise ValueError("You must specify `dir_distance_matrix` when `memory_efficient=True`.")
 
-        self.terminals = None
         self.memory_efficient = memory_efficient
         self.dir_distance_matrix = dir_distance_matrix
-        self.precomputed_distance_matrix = None
 
-    def calculate_terminals(
+    @abstractmethod
+    def calculate_forest_encoding(
         self,
         estimator: RandomForestClassifier | RandomForestRegressor,
         X: pd.DataFrame,
     ) -> None:
         """
-        Compute and store the terminal node assignments of all samples across all trees.
+        Build the subclass-specific forest encoding for the input samples.
 
-        The terminal node matrix is obtained by applying the trained Random Forest to ``X``.
-        Each row corresponds to a sample and each column to a tree.
+        The encoding describes how each sample traverses the fitted random forest and is
+        stored on the instance for later distance computations. For example, proximity-based
+        metrics may store terminal leaf indices, while LCA-based metrics may store
+        root-to-leaf paths and path lengths.
 
-        :param estimator: Trained Random Forest estimator.
+        This method must be called before :meth:`calculate_distance_matrix`,
+        :meth:`compute_inertia`, or :meth:`assign_labels`.
+
+        :param estimator: Fitted random forest estimator.
         :type estimator: RandomForestClassifier | RandomForestRegressor
-        :param X: Input feature matrix.
+        :param X: Feature matrix to encode. Columns must be compatible with the fitted
+            estimator.
         :type X: pd.DataFrame
 
-        :return: ``None``
+        :return: ``None``.
         :rtype: None
         """
-        self.terminals = estimator.apply(X).astype(np.int32)
+        raise NotImplementedError
 
+    @abstractmethod
     def calculate_distance_matrix(
         self,
         sample_indices: np.ndarray | None,
     ) -> tuple[np.ndarray | np.memmap, str | None]:
         """
-        Compute the pairwise distance matrix from Random Forest terminal node assignments.
+        Compute the pairwise distance matrix for the selected samples.
 
-        The distance between two samples is defined as one minus the fraction of trees in
-        which both samples fall into the same terminal node. If ``memory_efficient=True``,
-        the distance matrix is created as a disk-backed memmap array after checking that
-        sufficient disk space is available.
+        The distance computation uses the subclass-specific forest encoding generated by
+        :meth:`calculate_forest_encoding`. Subclasses define both the interpretation of the
+        forest structure and the numerical kernel used to compute distances.
 
-        :param sample_indices: Indices of the samples for which the distance matrix is computed, or ``None`` to use all samples.
+        :param sample_indices: Indices of samples for which pairwise distances are computed.
+            If ``None``, distances are computed for all encoded samples.
         :type sample_indices: np.ndarray | None
 
-        :raises ValueError: If terminal nodes have not been precomputed.
-        :raises MemoryError: If insufficient disk space is available for the memmap distance matrix.
-
-        :return: Tuple containing the distance matrix and the memmap file path, or ``None`` as the path when computed fully in memory.
+        :return: Tuple containing the distance matrix and the backing memmap file path.
+            The path is ``None`` when the matrix is allocated in memory.
         :rtype: tuple[np.ndarray | np.memmap, str | None]
         """
-        if self.terminals is None:
-            raise ValueError(
-                "No precomputed terminals available to compute distance matrix! Run `calculate_terminals()` first."
-            )
-        else:
-            if sample_indices is not None:
-                terminals = self.terminals[sample_indices]
-            else:
-                terminals = self.terminals
-            n, n_estimators = terminals.shape
+        raise NotImplementedError
 
-            if self.memory_efficient:
-                buffer_factor = 1.2  # 20% safety buffer
-                required_bytes = int(n * n * 4 * buffer_factor)  # float32 = 4 bytes
-                if not check_disk_space(self.dir_distance_matrix, required_bytes):
-                    raise MemoryError(
-                        f"Not enough free space to allocate a {required_bytes / 1e9:.2f} GB memmap distance matrix (with 20% buffer)."
-                    )
-                file_distance_matrix = os.path.join(
-                    self.dir_distance_matrix, f"distance_matrix_{uuid.uuid4().hex[:8]}.dat"
+    @abstractmethod
+    def compute_inertia(
+        self,
+        sample_idx: np.ndarray,
+        medoids_idx: np.ndarray,
+    ) -> float:
+        """
+        Compute the medoid inertia for a set of samples.
+
+        The inertia is the sum, over all samples in ``sample_idx``, of the distance to the
+        nearest medoid in ``medoids_idx``. This method allows medoid-based algorithms such as
+        PAM or CLARA to optimize the same metric used for the full distance matrix.
+
+        :param sample_idx: Indices of samples included in the inertia calculation.
+        :type sample_idx: np.ndarray
+        :param medoids_idx: Indices of candidate medoids.
+        :type medoids_idx: np.ndarray
+
+        :return: Sum of distances from each sample to its nearest medoid.
+        :rtype: float
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def assign_labels(
+        self,
+        sample_idx: np.ndarray,
+        medoids_idx: np.ndarray,
+    ) -> np.ndarray:
+        """
+        Assign each sample to its nearest medoid.
+
+        Cluster labels are zero-based and correspond to the position of the selected medoid
+        in ``medoids_idx``.
+
+        :param sample_idx: Indices of samples to assign to clusters.
+        :type sample_idx: np.ndarray
+        :param medoids_idx: Indices of medoids defining the clusters.
+        :type medoids_idx: np.ndarray
+
+        :return: Cluster label for each sample in ``sample_idx``.
+        :rtype: np.ndarray
+        """
+        raise NotImplementedError
+
+    def _allocate_distance_matrix(self, n: int) -> tuple[np.ndarray | np.memmap, str | None]:
+        """
+        Allocate a square ``float32`` distance matrix.
+
+        Depending on ``memory_efficient``, the matrix is either allocated as an in-memory
+        ``numpy.ndarray`` or as a disk-backed ``numpy.memmap``. For memmap allocation, a
+        unique file name is created in ``dir_distance_matrix`` and the available disk space is
+        checked before allocation.
+
+        :param n: Number of samples, defining the shape ``(n, n)`` of the distance matrix.
+        :type n: int
+
+        :raises ValueError: If memmap allocation is requested but ``dir_distance_matrix`` is
+            not set.
+        :raises MemoryError: If there is insufficient disk space for the memmap-backed matrix.
+
+        :return: Tuple containing the allocated matrix and the memmap file path. The path is
+            ``None`` for in-memory matrices.
+        :rtype: tuple[np.ndarray | np.memmap, str | None]
+        """
+        if self.memory_efficient:
+            if self.dir_distance_matrix is None:
+                raise ValueError("You must specify `dir_distance_matrix` when `memory_efficient=True`.")
+            buffer_factor = 1.2
+            required_bytes = int(n * n * 4 * buffer_factor)
+            if not check_disk_space(self.dir_distance_matrix, required_bytes):
+                raise MemoryError(
+                    f"Not enough free space to allocate a {required_bytes / 1e9:.2f} GB "
+                    "memmap distance matrix (with 20% buffer)."
                 )
-                distance_matrix = np.memmap(file_distance_matrix, dtype=np.float32, mode="w+", shape=(n, n))
-            else:
-                file_distance_matrix = None
-                distance_matrix = np.zeros((n, n), dtype=np.float32)
-
-            distance_matrix = _calculate_distances(terminals, n, n_estimators, distance_matrix)
-
-            return distance_matrix, file_distance_matrix
+            file_distance_matrix = os.path.join(
+                self.dir_distance_matrix,
+                f"distance_matrix_{uuid.uuid4().hex[:8]}.dat",
+            )
+            return (
+                np.memmap(
+                    file_distance_matrix,
+                    dtype=np.float32,
+                    mode="w+",
+                    shape=(n, n),
+                ),
+                file_distance_matrix,
+            )
+        return np.zeros((n, n), dtype=np.float32), None
 
     def remove_distance_matrix(
         self,
@@ -131,48 +209,505 @@ class DistanceRandomForestProximity:
         file_distance_matrix: str | None,
     ) -> None:
         """
-        Remove a disk-backed distance matrix file and release associated resources.
+        Release a distance matrix and remove its backing file if present.
 
-        If the distance matrix was created as a memmap array, this method attempts to flush
-        pending writes, delete the array object, trigger garbage collection, and remove the
-        backing file from disk. Repeated removal attempts are made to avoid file-locking
-        issues on some systems.
+        If ``distance_matrix`` is a memmap, the data are flushed before references are
+        released. Garbage collection is triggered to help close file handles, and the backing
+        file is removed when ``file_distance_matrix`` points to an existing file.
 
-        :param distance_matrix: Distance matrix object to release.
+        :param distance_matrix: Distance matrix returned by
+            :meth:`_allocate_distance_matrix`.
         :type distance_matrix: np.ndarray | np.memmap
-        :param file_distance_matrix: Path to the memmap file on disk, or ``None`` if no file was created.
+        :param file_distance_matrix: Path to the memmap backing file, or ``None`` for
+            in-memory matrices.
         :type file_distance_matrix: str | None
 
-        :return: ``None``
+        :return: ``None``.
         :rtype: None
         """
-        try:
-            distance_matrix.flush()
-        except Exception:
-            pass  # Might not always be necessary, but safe to attempt
-
+        if isinstance(distance_matrix, np.memmap):
+            try:
+                distance_matrix.flush()
+            except Exception:
+                pass
+            mmap_obj = getattr(distance_matrix, "_mmap", None)
+            if mmap_obj is not None:
+                try:
+                    mmap_obj.close()
+                except Exception:
+                    pass
         del distance_matrix
         gc.collect()
 
         if file_distance_matrix is not None and os.path.exists(file_distance_matrix):
-            for _ in range(3):
+            for _ in range(10):
                 try:
                     os.remove(file_distance_matrix)
                     break
-                except PermissionError:
-                    time.sleep(0.5)  # Give OS time to release the file
+                except (PermissionError, OSError):
+                    time.sleep(0.1)
                     gc.collect()
+
+
+class DistanceRandomForestProximity(DistanceRandomForestBase):
+    """
+    Proximity-based Random Forest distance metric.
+
+    This class computes sample distances from Random Forest node assignments. By default,
+    proximity is defined as the fraction of trees in which two samples reach the same
+    terminal leaf. Distance is then computed as ``1 - proximity``.
+
+    Optionally, terminal leaves can be collapsed to coarser ancestor nodes before computing
+    proximity. This can reduce sparsity in deep forests, especially for regression models.
+
+    Exactly one ancestor-collapse strategy may be enabled:
+
+    * ``min_samples_in_node``: Use the nearest ancestor containing at least this many
+      training samples.
+    * ``max_depth_for_proximity``: Use the nearest ancestor whose depth is less than or
+      equal to this threshold.
+    * ``min_variance_in_node``: Regression-only. Use the nearest ancestor whose impurity is
+      greater than or equal to this variance threshold.
+
+    Distance matrices can be allocated in memory or as disk-backed memmap arrays.
+
+    :param memory_efficient: If ``True``, store distance matrices as disk-backed memmap
+        arrays.
+    :type memory_efficient: bool
+    :param dir_distance_matrix: Directory used for memmap-backed distance matrices. Required
+        when ``memory_efficient=True``.
+    :type dir_distance_matrix: str | None
+    :param min_samples_in_node: Minimum number of training samples required for an ancestor
+        node to be used as the effective leaf.
+    :type min_samples_in_node: int | None
+    :param max_depth_for_proximity: Maximum allowed depth for an ancestor node to be used as
+        the effective leaf. ``0`` collapses all leaves to the root.
+    :type max_depth_for_proximity: int | None
+    :param min_variance_in_node: Minimum impurity threshold for an ancestor node to be used as
+        the effective leaf. Requires a ``RandomForestRegressor`` trained with
+        ``criterion="squared_error"`` or ``criterion="friedman_mse"``. ``0`` is treated as
+        a no-op (identical to ``None``) and skips ancestor collapse.
+    :type min_variance_in_node: float | None
+    """
+
+    def __init__(
+        self,
+        memory_efficient: bool = False,
+        dir_distance_matrix: str | None = None,
+        min_samples_in_node: int | None = None,
+        max_depth_for_proximity: int | None = None,
+        min_variance_in_node: float | None = None,
+    ) -> None:
+        """Constructor for the DistanceRandomForestProximity class."""
+        super().__init__(
+            memory_efficient=memory_efficient,
+            dir_distance_matrix=dir_distance_matrix,
+        )
+
+        if min_samples_in_node is not None and min_samples_in_node < 1:
+            raise ValueError("`min_samples_in_node` must be a positive integer.")
+
+        if max_depth_for_proximity is not None and max_depth_for_proximity < 0:
+            raise ValueError("`max_depth_for_proximity` must be a non-negative integer.")
+
+        if min_variance_in_node is not None and min_variance_in_node < 0:
+            raise ValueError("`min_variance_in_node` must be a non-negative number.")
+
+        _validate_mutually_exclusive(
+            min_samples_in_node=min_samples_in_node,
+            max_depth_for_proximity=max_depth_for_proximity,
+            min_variance_in_node=min_variance_in_node,
+        )
+
+        self.min_samples_in_node = min_samples_in_node
+        self.max_depth_for_proximity = max_depth_for_proximity
+        self.min_variance_in_node = min_variance_in_node
+
+        self.terminals: np.ndarray | None = None
+
+    def calculate_forest_encoding(
+        self,
+        estimator: RandomForestClassifier | RandomForestRegressor,
+        X: pd.DataFrame,
+    ) -> None:
+        """
+        Encode samples by their effective node assignment in each tree.
+
+        The initial encoding is obtained from ``estimator.apply(X)``, which returns the
+        terminal leaf reached by each sample in each tree. If an ancestor-collapse option is
+        configured, each terminal leaf is replaced by the nearest ancestor satisfying the
+        selected criterion.
+
+        The resulting array is stored in ``self.terminals`` with shape
+        ``(n_samples, n_estimators)`` and dtype ``int32``.
+
+        :param estimator: Fitted Random Forest estimator used to encode the samples.
+        :type estimator: RandomForestClassifier | RandomForestRegressor
+        :param X: Feature matrix to encode. Columns must be compatible with the fitted
+            estimator.
+        :type X: pd.DataFrame
+
+        :raises ValueError: If ``min_variance_in_node`` is used with a classifier.
+        :raises ValueError: If ``min_variance_in_node`` is used with an unsupported
+            regression criterion.
+
+        :return: ``None``.
+        :rtype: None
+        """
+        self.terminals = estimator.apply(X).astype(np.int32)
+
+        if self.min_samples_in_node is not None:
+            min_samples = self.min_samples_in_node
+            self.terminals = self._collapse_terminals(
+                estimator=estimator,
+                predicate_factory=lambda tree: (lambda node: tree.n_node_samples[node] >= min_samples),
+            )
+        elif self.max_depth_for_proximity is not None:
+            max_depth = self.max_depth_for_proximity
+            self.terminals = self._collapse_terminals(
+                estimator=estimator,
+                predicate_factory=lambda tree: (
+                    lambda node, _depths=_compute_node_depths(tree): _depths[node] <= max_depth
+                ),
+            )
+        elif self.min_variance_in_node is not None and self.min_variance_in_node > 0:
+            if not isinstance(estimator, RandomForestRegressor):
+                raise ValueError(
+                    "`min_variance_in_node` requires a `RandomForestRegressor`; "
+                    f"received {type(estimator).__name__}."
+                )
+
+            criterion = getattr(estimator, "criterion", None)
+
+            if criterion not in {"squared_error", "friedman_mse"}:
+                raise ValueError(
+                    "`min_variance_in_node` requires the regressor to be trained with "
+                    '`criterion="squared_error"` or `criterion="friedman_mse"`; '
+                    f"received criterion={criterion!r}."
+                )
+
+            if criterion == "friedman_mse":
+                warnings.warn(
+                    "`min_variance_in_node` with `criterion='friedman_mse'` is treated as an "
+                    "approximation: `tree_.impurity` is MSE-like but the split criterion uses "
+                    "Friedman's improvement score rather than pure variance reduction.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
+            min_var = self.min_variance_in_node
+            self.terminals = self._collapse_terminals(
+                estimator=estimator,
+                predicate_factory=lambda tree: (lambda node: tree.impurity[node] >= min_var),
+            )
+
+    def _collapse_terminals(
+        self,
+        estimator: RandomForestClassifier | RandomForestRegressor,
+        predicate_factory: Callable,
+    ) -> np.ndarray:
+        """
+        Collapse terminal leaves to ancestor nodes satisfying a predicate.
+
+        For each tree, this method builds a leaf-to-ancestor mapping. Each leaf is replaced
+        by the nearest ancestor for which the predicate returned by ``predicate_factory`` is
+        ``True``. If no ancestor satisfies the predicate before reaching the root, the root is
+        used.
+
+        :param estimator: Fitted Random Forest estimator whose trees are used for the
+            collapse.
+        :type estimator: RandomForestClassifier | RandomForestRegressor
+        :param predicate_factory: Callable that receives a tree object and returns a
+            node-level predicate.
+        :type predicate_factory: Callable
+
+        :raises ValueError: If ``self.terminals`` has not been initialized by
+            :meth:`calculate_forest_encoding`.
+
+        :return: Collapsed node-assignment matrix with shape ``(n_samples, n_estimators)``.
+        :rtype: np.ndarray
+        """
+        if self.terminals is None:
+            raise ValueError(
+                "No precomputed terminals in `self.terminals` available to collapse! Run `calculate_forest_encoding()` first."
+            )
+
+        terminals = self.terminals
+        collapsed = np.empty_like(terminals)
+        for t, dt in enumerate(estimator.estimators_):
+            tree = dt.tree_
+            parent = _compute_parent_array(tree)
+            predicate = predicate_factory(tree)
+            leaf_map = _build_leaf_to_ancestor_map(tree, parent, predicate)
+            collapsed[:, t] = leaf_map[terminals[:, t]]
+        return collapsed
+
+    def calculate_distance_matrix(
+        self,
+        sample_indices: np.ndarray | None,
+    ) -> tuple[np.ndarray | np.memmap, str | None]:
+        """
+        Compute the proximity-based pairwise distance matrix.
+
+        For two samples, proximity is the fraction of trees in which both samples have the
+        same effective node assignment. The returned distance is ``1 - proximity``.
+
+        If ``sample_indices`` is provided, only the selected rows of ``self.terminals`` are
+        used. Otherwise, the full encoded sample set is used.
+
+        :param sample_indices: Indices of samples for which pairwise distances are computed.
+            If ``None``, all encoded samples are used.
+        :type sample_indices: np.ndarray | None
+
+        :raises ValueError: If :meth:`calculate_forest_encoding` has not been called.
+        :raises MemoryError: If memmap allocation is requested but there is insufficient disk
+            space.
+
+        :return: Tuple containing the distance matrix and the backing memmap file path. The
+            path is ``None`` for in-memory matrices.
+        :rtype: tuple[np.ndarray | np.memmap, str | None]
+        """
+        if self.terminals is None:
+            raise ValueError(
+                "No precomputed terminals available to compute distance matrix! "
+                "Run `calculate_forest_encoding()` first."
+            )
+
+        terminals = self.terminals if sample_indices is None else self.terminals[sample_indices]
+        n, n_estimators = terminals.shape
+        distance_matrix, file_distance_matrix = self._allocate_distance_matrix(n)
+        distance_matrix = _calculate_distance_proximity(terminals, n, n_estimators, distance_matrix)
+        return distance_matrix, file_distance_matrix
+
+    def compute_inertia(self, sample_idx: np.ndarray, medoids_idx: np.ndarray) -> float:
+        """
+        Compute medoid inertia using the proximity-based distance.
+
+        The inertia is the sum, over all samples in ``sample_idx``, of the distance to the
+        closest medoid in ``medoids_idx``.
+
+        :param sample_idx: Indices of samples included in the inertia calculation.
+        :type sample_idx: np.ndarray
+        :param medoids_idx: Indices of medoid samples.
+        :type medoids_idx: np.ndarray
+
+        :raises ValueError: If :meth:`calculate_forest_encoding` has not been called.
+
+        :return: Sum of distances from each sample to its closest medoid.
+        :rtype: float
+        """
+        if self.terminals is None:
+            raise ValueError("No precomputed terminals available. Run `calculate_forest_encoding()` first.")
+        return _calculate_inertia_proximity(self.terminals, sample_idx, medoids_idx)
+
+    def assign_labels(self, sample_idx: np.ndarray, medoids_idx: np.ndarray) -> np.ndarray:
+        """
+        Assign samples to their nearest medoid using the proximity-based distance.
+
+        Cluster labels are zero-based and correspond to the position of the nearest medoid in
+        ``medoids_idx``.
+
+        :param sample_idx: Indices of samples to assign to clusters.
+        :type sample_idx: np.ndarray
+        :param medoids_idx: Indices of medoids defining the clusters.
+        :type medoids_idx: np.ndarray
+
+        :raises ValueError: If :meth:`calculate_forest_encoding` has not been called.
+
+        :return: Cluster label for each sample in ``sample_idx``.
+        :rtype: np.ndarray
+        """
+        if self.terminals is None:
+            raise ValueError("No precomputed terminals available. Run `calculate_forest_encoding()` first.")
+        return _assign_labels_proximity(self.terminals, sample_idx, medoids_idx)
+
+
+class DistanceRandomForestLCA(DistanceRandomForestBase):
+    """
+    LCA-based Random Forest distance metric.
+
+    This class computes sample distances from root-to-leaf decision paths in a fitted Random
+    Forest. For each pair of samples and each tree, similarity is defined as the depth of the
+    least common ancestor (LCA), normalized by the longer of the two root-to-leaf path lengths.
+    Distances are computed as ``1 - mean_similarity`` across trees.
+
+    Unlike terminal-node proximity, this metric can assign non-zero similarity to samples that
+    end in different leaves if they share part of the same decision path.
+
+    :param memory_efficient: If ``True``, store distance matrices as disk-backed memmap
+        arrays.
+    :type memory_efficient: bool
+    :param dir_distance_matrix: Directory used for memmap-backed distance matrices. Required
+        when ``memory_efficient=True``.
+    :type dir_distance_matrix: str | None
+    """
+
+    def __init__(
+        self,
+        memory_efficient: bool = False,
+        dir_distance_matrix: str | None = None,
+    ) -> None:
+        """Constructor for the DistanceRandomForestLCA class."""
+        super().__init__(
+            memory_efficient=memory_efficient,
+            dir_distance_matrix=dir_distance_matrix,
+        )
+        self.paths: np.ndarray | None = None
+        self.path_lens: np.ndarray | None = None
+
+    def calculate_forest_encoding(
+        self,
+        estimator: RandomForestClassifier | RandomForestRegressor,
+        X: pd.DataFrame,
+    ) -> None:
+        """
+        Encode samples by their root-to-leaf decision paths in each tree.
+
+        Leaf assignments are obtained from ``estimator.apply(X)``. For each tree, this method
+        reconstructs the full root-to-leaf node-id path for every sample by walking from each
+        terminal leaf to the root through the parent array.
+
+        Paths are stored in ``self.paths`` as a padded ``int32`` tensor with shape
+        ``(n_samples, n_estimators, max_path_len)``. Unused positions are filled with ``-1``.
+        Effective path lengths are stored in ``self.path_lens`` with shape
+        ``(n_samples, n_estimators)``.
+
+        :param estimator: Fitted Random Forest estimator used to encode the samples.
+        :type estimator: RandomForestClassifier | RandomForestRegressor
+        :param X: Feature matrix to encode. Columns must be compatible with the fitted
+            estimator.
+        :type X: pd.DataFrame
+
+        :return: ``None``.
+        :rtype: None
+        """
+        terminals = estimator.apply(X).astype(np.int32)
+        n_samples, n_estimators = terminals.shape
+
+        path_lens = np.empty((n_samples, n_estimators), dtype=np.int32)
+        for t, dt in enumerate(estimator.estimators_):
+            depth = _compute_node_depths(dt.tree_)
+            path_lens[:, t] = depth[terminals[:, t]] + 1
+        max_path_len = int(path_lens.max())
+
+        paths = np.full((n_samples, n_estimators, max_path_len), -1, dtype=np.int32)
+        for t, dt in enumerate(estimator.estimators_):
+            parent = _compute_parent_array(dt.tree_)
+            for i in range(n_samples):
+                cur = terminals[i, t]
+                length = path_lens[i, t]
+                pos = length - 1
+                while pos >= 0:
+                    paths[i, t, pos] = cur
+                    cur = parent[cur]
+                    pos -= 1
+
+        self.paths = paths
+        self.path_lens = path_lens
+
+    def calculate_distance_matrix(
+        self,
+        sample_indices: np.ndarray | None,
+    ) -> tuple[np.ndarray | np.memmap, str | None]:
+        """
+        Compute the LCA-based pairwise distance matrix.
+
+        For each tree, two samples are compared by the deepest shared node along their
+        root-to-leaf paths. The depth of this LCA is normalized by the longer path length of
+        the two samples. Per-tree similarities are averaged, and distance is computed as
+        ``1 - mean_similarity``.
+
+        If ``sample_indices`` is provided, only the selected rows of ``self.paths`` and
+        ``self.path_lens`` are used. Otherwise, all encoded samples are used.
+
+        :param sample_indices: Indices of samples for which pairwise distances are computed.
+            If ``None``, all encoded samples are used.
+        :type sample_indices: np.ndarray | None
+
+        :raises ValueError: If :meth:`calculate_forest_encoding` has not been called.
+        :raises MemoryError: If memmap allocation is requested but there is insufficient disk
+            space.
+
+        :return: Tuple containing the distance matrix and the backing memmap file path. The
+            path is ``None`` for in-memory matrices.
+        :rtype: tuple[np.ndarray | np.memmap, str | None]
+        """
+        if self.paths is None or self.path_lens is None:
+            raise ValueError(
+                "No precomputed decision paths available to compute distance matrix! Run `calculate_forest_encoding()` first."
+            )
+        if sample_indices is not None:
+            paths = self.paths[sample_indices]
+            path_lens = self.path_lens[sample_indices]
+        else:
+            paths = self.paths
+            path_lens = self.path_lens
+        n, n_estimators, _ = paths.shape
+        distance_matrix, file_distance_matrix = self._allocate_distance_matrix(n)
+        distance_matrix = _calculate_distance_lca(paths, path_lens, n, n_estimators, distance_matrix)
+        return distance_matrix, file_distance_matrix
+
+    def compute_inertia(self, sample_idx: np.ndarray, medoids_idx: np.ndarray) -> float:
+        """
+        Compute medoid inertia using the LCA-based distance.
+
+        The inertia is the sum, over all samples in ``sample_idx``, of the LCA-based distance
+        to the closest medoid in ``medoids_idx``.
+
+        :param sample_idx: Indices of samples included in the inertia calculation.
+        :type sample_idx: np.ndarray
+        :param medoids_idx: Indices of medoid samples.
+        :type medoids_idx: np.ndarray
+
+        :raises ValueError: If :meth:`calculate_forest_encoding` has not been called.
+
+        :return: Sum of distances from each sample to its closest medoid.
+        :rtype: float
+        """
+        if self.paths is None or self.path_lens is None:
+            raise ValueError(
+                "No precomputed decision paths available. Run `calculate_forest_encoding()` first."
+            )
+        return _calculate_inertia_lca(self.paths, self.path_lens, sample_idx, medoids_idx)
+
+    def assign_labels(self, sample_idx: np.ndarray, medoids_idx: np.ndarray) -> np.ndarray:
+        """
+        Assign samples to their nearest medoid using the LCA-based distance.
+
+        Cluster labels are zero-based and correspond to the position of the nearest medoid in
+        ``medoids_idx``.
+
+        :param sample_idx: Indices of samples to assign to clusters.
+        :type sample_idx: np.ndarray
+        :param medoids_idx: Indices of medoids defining the clusters.
+        :type medoids_idx: np.ndarray
+
+        :raises ValueError: If :meth:`calculate_forest_encoding` has not been called.
+
+        :return: Cluster label for each sample in ``sample_idx``.
+        :rtype: np.ndarray
+        """
+        if self.paths is None or self.path_lens is None:
+            raise ValueError(
+                "No precomputed decision paths available. Run `calculate_forest_encoding()` first."
+            )
+        return _assign_labels_lca(self.paths, self.path_lens, sample_idx, medoids_idx)
 
 
 class DistanceWasserstein:
     """
-    Compute Wasserstein distance between a cluster-specific feature distribution and the background distribution.
+    Wasserstein distance between cluster-specific and background feature distributions.
 
-    This distance metric supports both numeric and categorical features. Numeric features
-    are compared directly, while categorical features are dummy-encoded and compared per
-    category, returning the maximum category-wise Wasserstein distance.
+    This metric compares the distribution of a feature within a cluster against its
+    distribution in the full dataset. Both numeric and categorical features are supported.
 
-    :param scale_features: Whether numeric features should be scaled before distance computation.
+    Numeric features are compared directly using the first Wasserstein distance.
+    Categorical features are dummy-encoded and compared independently per category, with
+    the maximum category-wise Wasserstein distance returned as the final score.
+
+    Optionally, numeric features can be scaled before distance computation.
+
+    :param scale_features: If ``True``, scale numeric features before computing distances.
     :type scale_features: bool
     """
 
@@ -190,7 +725,7 @@ class DistanceWasserstein:
         """
         Scale numeric feature columns using standard scaling without mean centering.
 
-        Only numeric columns are transformed. Non-numeric columns are left unchanged.
+        Only numeric columns are transformed. Non-numeric columns are returned unchanged.
 
         :param X: Input feature matrix.
         :type X: pd.DataFrame
@@ -211,15 +746,18 @@ class DistanceWasserstein:
         is_categorical: bool,
     ) -> float:
         """
-        Compute the Wasserstein distance between the cluster and background distributions of a feature.
+        Compute the Wasserstein distance between cluster and background distributions.
 
-        For categorical features, the values are dummy-encoded and the maximum Wasserstein
-        distance across categories is returned. For numeric features, the raw feature values
-        are compared directly.
+        For categorical features, values are one-hot encoded and the Wasserstein distance
+        is computed independently for each category indicator variable. The maximum
+        category-wise distance is returned.
+
+        For numeric features, the raw feature values are compared directly using the
+        first Wasserstein distance.
 
         :param values_background: Feature values from the full dataset.
         :type values_background: pd.Series
-        :param values_cluster: Feature values from the current cluster.
+        :param values_cluster: Feature values from the cluster being evaluated.
         :type values_cluster: pd.Series
         :param is_categorical: Whether the feature should be treated as categorical.
         :type is_categorical: bool
@@ -243,13 +781,18 @@ class DistanceWasserstein:
 
 class DistanceJensenShannon:
     """
-    Compute Jensen-Shannon distance between a cluster-specific feature distribution and the background distribution.
+    Jensen-Shannon distance between cluster-specific and background feature distributions.
 
-    This distance metric supports both numeric and categorical features. Categorical
-    features are compared using category frequency distributions, while numeric features
-    are compared using histogram-based approximations of their distributions.
+    This metric compares the distribution of a feature within a cluster against its
+    distribution in the full dataset. Both numeric and categorical features are supported.
 
-    :param scale_features: Whether numeric features should be scaled before distance computation.
+    Categorical features are compared using normalized category frequencies. Numeric
+    features are compared using histogram-based approximations of their empirical
+    distributions.
+
+    Optionally, numeric features can be scaled before distance computation.
+
+    :param scale_features: If ``True``, scale numeric features before computing distances.
     :type scale_features: bool
     """
 
@@ -267,7 +810,7 @@ class DistanceJensenShannon:
         """
         Scale numeric feature columns using standard scaling without mean centering.
 
-        Only numeric columns are transformed. Non-numeric columns are left unchanged.
+        Only numeric columns are transformed. Non-numeric columns are returned unchanged.
 
         :param X: Input feature matrix.
         :type X: pd.DataFrame
@@ -288,16 +831,19 @@ class DistanceJensenShannon:
         is_categorical: bool,
     ) -> float:
         """
-        Compute the Jensen-Shannon distance between the cluster and background distributions of a feature.
+        Compute the Jensen-Shannon distance between cluster and background distributions.
 
-        For categorical features, the distance is computed from category frequency
-        distributions over the categories present in the background data. For numeric
-        features, histogram-based distributions are constructed using bin edges derived from
-        the background values.
+        For categorical features, normalized category frequencies are computed over the
+        categories present in the background data.
+
+        For numeric features, histogram-based probability distributions are constructed
+        using bin edges derived from the background values. The number of bins is estimated
+        using the Freedman-Diaconis rule with additional lower and upper bounds for
+        numerical stability.
 
         :param values_background: Feature values from the full dataset.
         :type values_background: pd.Series
-        :param values_cluster: Feature values from the current cluster.
+        :param values_cluster: Feature values from the cluster being evaluated.
         :type values_cluster: pd.Series
         :param is_categorical: Whether the feature should be treated as categorical.
         :type is_categorical: bool
@@ -337,31 +883,161 @@ class DistanceJensenShannon:
 
 
 ############################################
+# Tree helpers
+############################################
+
+
+def _compute_parent_array(tree) -> np.ndarray:
+    """
+    Compute the parent index for each node in a sklearn decision tree.
+
+    The root node has parent ``-1``. Parent indices are derived from the tree's
+    ``children_left`` and ``children_right`` arrays in a single pass.
+
+    :param tree: Underlying sklearn ``Tree`` object.
+    :type tree: sklearn.tree._tree.Tree
+
+    :return: Parent-node array with shape ``(n_nodes,)``. The root node is marked as ``-1``.
+    :rtype: np.ndarray
+    """
+    n_nodes = tree.node_count
+    parent = np.full(n_nodes, -1, dtype=np.int32)
+    children_left = tree.children_left
+    children_right = tree.children_right
+    for node in range(n_nodes):
+        left = children_left[node]
+        right = children_right[node]
+        if left != -1:
+            parent[left] = node
+        if right != -1:
+            parent[right] = node
+    return parent
+
+
+def _build_leaf_to_ancestor_map(tree, parent: np.ndarray, predicate) -> np.ndarray:
+    """
+    Build a mapping from leaf nodes to effective ancestor nodes.
+
+    For each leaf, the parent chain is traversed upward until ``predicate(node)`` evaluates
+    to ``True`` or the root is reached. The selected node is used as the effective ancestor
+    for that leaf. Intermediate results are memoized to avoid repeated traversal.
+
+    :param tree: Underlying sklearn ``Tree`` object.
+    :type tree: sklearn.tree._tree.Tree
+    :param parent: Parent-node array returned by :func:`_compute_parent_array`.
+    :type parent: np.ndarray
+    :param predicate: Callable that receives a node id and returns whether that node should
+        be used as an effective ancestor.
+    :type predicate: Callable[[int], bool]
+
+    :return: Node-id mapping with shape ``(n_nodes,)``. Leaf entries map to their effective
+        ancestor node ids.
+    :rtype: np.ndarray
+    """
+    n_nodes = tree.node_count
+    resolved = np.full(n_nodes, -1, dtype=np.int32)
+    children_left = tree.children_left
+
+    for node in range(n_nodes):
+        if children_left[node] != -1:
+            continue
+
+        path = []
+        cur = node
+        while resolved[cur] == -1 and not predicate(cur):
+            path.append(cur)
+            nxt = parent[cur]
+            if nxt == -1:
+                break
+            cur = nxt
+
+        ancestor = resolved[cur] if resolved[cur] != -1 else cur
+        for path_node in path:
+            resolved[path_node] = ancestor
+        resolved[cur] = ancestor
+
+    return resolved
+
+
+def _compute_node_depths(tree) -> np.ndarray:
+    """
+    Compute the depth of each node in a sklearn decision tree.
+
+    The root node has depth ``0``. Depths are computed by traversing the tree from the root
+    using the ``children_left`` and ``children_right`` arrays.
+
+    :param tree: Underlying sklearn ``Tree`` object.
+    :type tree: sklearn.tree._tree.Tree
+
+    :return: Node-depth array with shape ``(n_nodes,)``.
+    :rtype: np.ndarray
+    """
+    n_nodes = tree.node_count
+    depths = np.zeros(n_nodes, dtype=np.int32)
+    children_left = tree.children_left
+    children_right = tree.children_right
+    stack = [0]
+    while stack:
+        node = stack.pop()
+        left = children_left[node]
+        right = children_right[node]
+        if left != -1:
+            depths[left] = depths[node] + 1
+            stack.append(left)
+        if right != -1:
+            depths[right] = depths[node] + 1
+            stack.append(right)
+    return depths
+
+
+def _validate_mutually_exclusive(**named_params) -> None:
+    """
+    Validate that at most one parameter is set.
+
+    Parameters whose value is not ``None`` are considered set. This helper is used for
+    options where only one configuration mode may be active at a time.
+
+    :param named_params: Named parameters to check for mutual exclusivity.
+
+    :raises ValueError: If more than one parameter is not ``None``.
+
+    :return: ``None``.
+    :rtype: None
+    """
+    set_params = [name for name, value in named_params.items() if value is not None]
+    if len(set_params) > 1:
+        raise ValueError(f"Parameters {set_params} are mutually exclusive; only one may be set.")
+
+
+############################################
 # Numba Functions
 ############################################
 
 
 @njit(parallel=True)
-def _calculate_distances(
+def _calculate_distance_proximity(
     terminals: np.ndarray,
     n: int,
     n_estimators: int,
     distance_matrix: np.ndarray | np.memmap,
 ) -> np.ndarray | np.memmap:
     """
-    Compute the symmetric pairwise distance matrix from Random Forest terminal node assignments.
+    Compute a proximity-based pairwise distance matrix.
 
-    The distance between two samples is defined as one minus the fraction of trees in
-    which both samples fall into the same terminal node. The upper triangle is computed
-    first, and the lower triangle is filled in a second pass to ensure symmetry.
+    For two samples, proximity is the fraction of trees in which both samples have the same
+    effective terminal-node assignment. Distance is computed as ``1 - proximity``.
 
-    :param terminals: Array of terminal node assignments with shape ``(n_samples, n_estimators)``.
+    Only the upper triangle is computed directly. The lower triangle is filled afterward to
+    produce a symmetric matrix.
+
+    :param terminals: Effective terminal-node assignments with shape
+        ``(n_samples, n_estimators)``.
     :type terminals: np.ndarray
-    :param n: Number of samples.
+    :param n: Number of samples to compare.
     :type n: int
-    :param n_estimators: Number of trees in the Random Forest.
+    :param n_estimators: Number of trees used for the proximity calculation.
     :type n_estimators: int
-    :param distance_matrix: Pre-allocated array in which the pairwise distances are stored.
+    :param distance_matrix: Pre-allocated output matrix.
     :type distance_matrix: np.ndarray | np.memmap
 
     :return: Symmetric pairwise distance matrix.
@@ -384,3 +1060,270 @@ def _calculate_distances(
             distance_matrix[j, i] = distance_matrix[i, j]
 
     return distance_matrix
+
+
+@njit(parallel=True)
+def _calculate_distance_lca(
+    paths: np.ndarray,
+    path_lens: np.ndarray,
+    n: int,
+    n_estimators: int,
+    distance_matrix: np.ndarray | np.memmap,
+) -> np.ndarray | np.memmap:
+    """
+    Compute an LCA-based pairwise distance matrix.
+
+    For each tree, two samples are compared by the deepest shared node along their
+    root-to-leaf paths. The LCA depth is normalized by the deeper leaf depth, and per-tree
+    similarities are averaged across the forest. Distance is computed as
+    ``1 - mean_similarity``.
+
+    Only the upper triangle is computed directly. The lower triangle is filled afterward to
+    produce a symmetric matrix.
+
+    :param paths: Root-to-leaf node-id paths with shape
+        ``(n_samples, n_estimators, max_path_len)``. Unused positions are padded with ``-1``.
+    :type paths: np.ndarray
+    :param path_lens: Effective path lengths with shape ``(n_samples, n_estimators)``.
+    :type path_lens: np.ndarray
+    :param n: Number of samples to compare.
+    :type n: int
+    :param n_estimators: Number of trees used for the LCA calculation.
+    :type n_estimators: int
+    :param distance_matrix: Pre-allocated output matrix.
+    :type distance_matrix: np.ndarray | np.memmap
+
+    :return: Symmetric pairwise distance matrix.
+    :rtype: np.ndarray | np.memmap
+    """
+    for i in prange(n):
+        for j in range(i + 1, n):
+            sim_total = 0.0
+            for t in range(n_estimators):
+                path_len_i = path_lens[i, t]
+                path_len_j = path_lens[j, t]
+                path_len_min = path_len_i if path_len_i < path_len_j else path_len_j
+                path_len_max = path_len_i if path_len_i > path_len_j else path_len_j
+                depth = 0
+                while depth < path_len_min and paths[i, t, depth] == paths[j, t, depth]:
+                    depth += 1
+                denom = path_len_max - 1
+                if denom > 0:
+                    sim_total += (depth - 1) / denom
+                else:
+                    sim_total += 1.0
+            distance_matrix[i, j] = 1.0 - sim_total / n_estimators
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            distance_matrix[j, i] = distance_matrix[i, j]
+
+    return distance_matrix
+
+
+@njit(parallel=True)
+def _calculate_inertia_proximity(
+    terminals: np.ndarray,
+    sample_idx: np.ndarray,
+    medoids_idx: np.ndarray,
+) -> float:
+    """
+    Compute medoid inertia using proximity-based distances.
+
+    For each sample in ``sample_idx``, this function computes the distance to every medoid
+    in ``medoids_idx`` and adds the smallest distance to the total inertia.
+
+    :param terminals: Effective terminal-node assignments with shape
+        ``(n_samples, n_estimators)``.
+    :type terminals: np.ndarray
+    :param sample_idx: Indices of samples included in the inertia calculation.
+    :type sample_idx: np.ndarray
+    :param medoids_idx: Indices of medoid samples.
+    :type medoids_idx: np.ndarray
+
+    :return: Sum of distances from each sample to its closest medoid.
+    :rtype: float
+    """
+    n_estimators = terminals.shape[1]
+    n_samples = len(sample_idx)
+    n_medoids = len(medoids_idx)
+    inertia = np.zeros(n_samples, dtype=np.float32)
+
+    for i in prange(n_samples):
+        sample = sample_idx[i]
+        distances = np.empty(n_medoids, dtype=np.float32)
+
+        for j in range(n_medoids):
+            medoid = medoids_idx[j]
+            proximity = 0
+
+            # use explicit loop for proximity to avoid temporary array allocation and minimize memory traffic
+            for t in range(n_estimators):
+                if terminals[sample, t] == terminals[medoid, t]:
+                    proximity += 1
+            distances[j] = 1.0 - (proximity / n_estimators)
+
+        inertia[i] = np.min(distances)
+
+    return np.sum(inertia)
+
+
+@njit(parallel=True)
+def _calculate_inertia_lca(
+    paths: np.ndarray,
+    path_lens: np.ndarray,
+    sample_idx: np.ndarray,
+    medoids_idx: np.ndarray,
+) -> float:
+    """
+    Compute medoid inertia using LCA-based distances.
+
+    For each sample in ``sample_idx``, this function computes the LCA-based distance to every
+    medoid in ``medoids_idx`` and adds the smallest distance to the total inertia.
+
+    :param paths: Root-to-leaf node-id paths with shape
+        ``(n_samples, n_estimators, max_path_len)``. Unused positions are padded with ``-1``.
+    :type paths: np.ndarray
+    :param path_lens: Effective path lengths with shape ``(n_samples, n_estimators)``.
+    :type path_lens: np.ndarray
+    :param sample_idx: Indices of samples included in the inertia calculation.
+    :type sample_idx: np.ndarray
+    :param medoids_idx: Indices of medoid samples.
+    :type medoids_idx: np.ndarray
+
+    :return: Sum of distances from each sample to its closest medoid.
+    :rtype: float
+    """
+    n_estimators = paths.shape[1]
+    n_samples = len(sample_idx)
+    n_medoids = len(medoids_idx)
+    inertia = np.zeros(n_samples, dtype=np.float32)
+
+    for i in prange(n_samples):
+        sample = sample_idx[i]
+        distances = np.empty(n_medoids, dtype=np.float32)
+
+        for j in range(n_medoids):
+            medoid = medoids_idx[j]
+            sim_total = 0.0
+
+            for t in range(n_estimators):
+                path_len_i = path_lens[sample, t]
+                path_len_j = path_lens[medoid, t]
+                path_len_min = path_len_i if path_len_i < path_len_j else path_len_j
+                path_len_max = path_len_i if path_len_i > path_len_j else path_len_j
+                depth = 0
+                while depth < path_len_min and paths[sample, t, depth] == paths[medoid, t, depth]:
+                    depth += 1
+                denom = path_len_max - 1
+                sim_total += ((depth - 1) / denom) if denom > 0 else 1.0
+            distances[j] = 1.0 - (sim_total / n_estimators)
+
+        inertia[i] = np.min(distances)
+
+    return np.sum(inertia)
+
+
+@njit(parallel=True)
+def _assign_labels_proximity(
+    terminals: np.ndarray,
+    sample_idx: np.ndarray,
+    medoids_idx: np.ndarray,
+) -> np.ndarray:
+    """
+    Assign samples to the nearest medoid using proximity-based distances.
+
+    For each sample in ``sample_idx``, this function computes the proximity-based distance
+    to every medoid in ``medoids_idx`` and returns the index of the closest medoid as the
+    cluster label.
+
+    :param terminals: Effective terminal-node assignments with shape
+        ``(n_samples, n_estimators)``.
+    :type terminals: np.ndarray
+    :param sample_idx: Indices of samples to assign to clusters.
+    :type sample_idx: np.ndarray
+    :param medoids_idx: Indices of medoid samples defining the clusters.
+    :type medoids_idx: np.ndarray
+
+    :return: Zero-based cluster labels for the input samples.
+    :rtype: np.ndarray
+    """
+    n_estimators = terminals.shape[1]
+    n_samples = len(sample_idx)
+    n_medoids = len(medoids_idx)
+    cluster_labels = np.zeros(n_samples, dtype=np.int16)
+
+    for i in prange(n_samples):
+        sample = sample_idx[i]
+        cluster_label_sample = np.zeros(n_medoids, dtype=np.float32)
+
+        for j in range(n_medoids):
+            medoid = medoids_idx[j]
+            proximity = 0
+
+            # use explicit loop for proximity to avoid temporary array allocation and minimize memory traffic
+            for t in range(n_estimators):
+                if terminals[sample, t] == terminals[medoid, t]:
+                    proximity += 1
+            cluster_label_sample[j] = 1.0 - (proximity / n_estimators)
+
+        cluster_labels[i] = np.argmin(cluster_label_sample)
+
+    return cluster_labels
+
+
+@njit(parallel=True)
+def _assign_labels_lca(
+    paths: np.ndarray,
+    path_lens: np.ndarray,
+    sample_idx: np.ndarray,
+    medoids_idx: np.ndarray,
+) -> np.ndarray:
+    """
+    Assign samples to the nearest medoid using LCA-based distances.
+
+    For each sample in ``sample_idx``, this function computes the LCA-based distance to every
+    medoid in ``medoids_idx`` and returns the index of the closest medoid as the cluster
+    label.
+
+    :param paths: Root-to-leaf node-id paths with shape
+        ``(n_samples, n_estimators, max_path_len)``. Unused positions are padded with ``-1``.
+    :type paths: np.ndarray
+    :param path_lens: Effective path lengths with shape ``(n_samples, n_estimators)``.
+    :type path_lens: np.ndarray
+    :param sample_idx: Indices of samples to assign to clusters.
+    :type sample_idx: np.ndarray
+    :param medoids_idx: Indices of medoid samples defining the clusters.
+    :type medoids_idx: np.ndarray
+
+    :return: Zero-based cluster labels for the input samples.
+    :rtype: np.ndarray
+    """
+    n_estimators = paths.shape[1]
+    n_samples = len(sample_idx)
+    n_medoids = len(medoids_idx)
+    cluster_labels = np.zeros(n_samples, dtype=np.int16)
+
+    for i in prange(n_samples):
+        sample = sample_idx[i]
+        cluster_label_sample = np.zeros(n_medoids, dtype=np.float32)
+
+        for j in range(n_medoids):
+            medoid = medoids_idx[j]
+            sim_total = 0.0
+
+            for t in range(n_estimators):
+                path_len_i = path_lens[sample, t]
+                path_len_j = path_lens[medoid, t]
+                path_len_min = path_len_i if path_len_i < path_len_j else path_len_j
+                path_len_max = path_len_i if path_len_i > path_len_j else path_len_j
+                depth = 0
+                while depth < path_len_min and paths[sample, t, depth] == paths[medoid, t, depth]:
+                    depth += 1
+                denom = path_len_max - 1
+                sim_total += ((depth - 1) / denom) if denom > 0 else 1.0
+            cluster_label_sample[j] = 1.0 - (sim_total / n_estimators)
+
+        cluster_labels[i] = np.argmin(cluster_label_sample)
+
+    return cluster_labels
